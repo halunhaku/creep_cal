@@ -388,7 +388,7 @@ export default function BatchCalculator() {
                         )}
                         isAnimationActive="auto"
                         animationDuration={900}
-                        animationEasing="spring"
+                        animationEasing="ease-out"
                       />
                     </ScatterChart>
                   ) : (
