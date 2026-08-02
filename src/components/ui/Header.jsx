@@ -43,7 +43,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
               `}
             >
               <span className="material-symbols-outlined text-[16px] md:text-[18px]" aria-hidden="true">{item.icon}</span>
-              <span className={`${isActive ? 'inline' : 'hidden'} sm:hidden`}>{item.shortLabel}</span>
+              <span className="sm:hidden">{item.shortLabel}</span>
               <span className="hidden sm:inline">{item.label}</span>
             </button>
           )})}

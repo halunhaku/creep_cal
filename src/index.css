@@ -441,10 +441,19 @@
     text-align: left;
   }
 
+  .formula-render {
+    max-width: 100%;
+  }
+
   .formula-render .katex {
     color: var(--text);
     font-size: 1.05rem;
     line-height: 1.6;
+  }
+
+  /* Long display formulas scroll horizontally instead of wrapping */
+  .formula-render .katex-display > .katex {
+    white-space: nowrap;
   }
 
   /* ── Status indicators ─────────────────────────────── */
