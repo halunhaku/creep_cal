@@ -2,9 +2,9 @@ import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import App from './App';
 
-vi.mock('./components/RustAci209Calculator', () => ({
-  default: function MockRustAci209Calculator() {
-  return <div>Mocked calculator panel</div>;
+vi.mock('./components/Aci209Calculator', () => ({
+  default: function MockAci209Calculator() {
+    return <div>Mocked calculator panel</div>;
   },
 }));
 

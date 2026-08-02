@@ -183,6 +183,11 @@ creep_cal/
   src/
     components/
       ui/
+      ModelCalculator.jsx
+      Aci209Calculator.jsx
+      Mc2010Calculator.jsx
+      B4Calculator.jsx
+      B4sCalculator.jsx
       BatchCalculator.jsx
       DocsPage.jsx
       SingleCalculationDashboard.jsx

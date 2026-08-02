@@ -1,33 +1,18 @@
-import React, { useState } from 'react';
-import Aci209Calculator from './Aci209Calculator';
-import Mc2010Calculator from './Mc2010Calculator';
-import B4Calculator from './B4Calculator';
-import B4sCalculator from './B4sCalculator';
-import RustAci209Calculator from './RustAci209Calculator';
-import RustMc2010Calculator from './RustMc2010Calculator';
-import RustB4Calculator from './RustB4Calculator';
-import RustB4sCalculator from './RustB4sCalculator';
+import React, { lazy, Suspense, useState } from 'react';
+import LoadingSpinner from './LoadingSpinner';
+
+const CALCULATORS = {
+  aci209: lazy(() => import('./Aci209Calculator')),
+  mc2010: lazy(() => import('./Mc2010Calculator')),
+  b4: lazy(() => import('./B4Calculator')),
+  b4s: lazy(() => import('./B4sCalculator')),
+};
 
 export default function SingleCalculationDashboard() {
   const [engine, setEngine] = useState('rust'); // 'rust' | 'js'
   const [algorithm, setAlgorithm] = useState('aci209'); // 'aci209' | 'mc2010' | 'b4' | 'b4s'
 
-  const ComponentTree = {
-    rust: {
-      aci209: RustAci209Calculator,
-      mc2010: RustMc2010Calculator,
-      b4: RustB4Calculator,
-      b4s: RustB4sCalculator
-    },
-    js: {
-      aci209: Aci209Calculator,
-      mc2010: Mc2010Calculator,
-      b4: B4Calculator,
-      b4s: B4sCalculator
-    }
-  };
-
-  const ActiveComponent = ComponentTree[engine][algorithm];
+  const ActiveComponent = CALCULATORS[algorithm];
   const algorithms = [
     { id: 'aci209', label: 'ACI 209R-92', shortLabel: 'ACI 209' },
     { id: 'mc2010', label: 'fib MC 2010', shortLabel: 'MC 2010' },
@@ -89,7 +74,9 @@ export default function SingleCalculationDashboard() {
       </div>
 
       {/* Render the selected calculator */}
-      <ActiveComponent />
+      <Suspense fallback={<LoadingSpinner message="Loading model..." />}>
+        <ActiveComponent engine={engine} />
+      </Suspense>
     </div>
   );
 }

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/ui/Layout';
+import LoadingSpinner from './components/LoadingSpinner';
 
-import SingleCalculationDashboard from './components/SingleCalculationDashboard';
-import BatchCalculator from './components/BatchCalculator';
-import DocsPage from './components/DocsPage';
+const SingleCalculationDashboard = lazy(() => import('./components/SingleCalculationDashboard'));
+const BatchCalculator = lazy(() => import('./components/BatchCalculator'));
+const DocsPage = lazy(() => import('./components/DocsPage'));
 
 function App() {
   const [activeMode, setActiveMode] = useState('single');
@@ -17,9 +18,11 @@ function App() {
       onOpenDocs={() => setActiveMode('docs')}
     >
       <ErrorBoundary>
-        {activeMode === 'single' && <SingleCalculationDashboard />}
-        {activeMode === 'batch' && <BatchCalculator />}
-        {activeMode === 'docs' && <DocsPage />}
+        <Suspense fallback={<LoadingSpinner message="Loading workspace..." />}>
+          {activeMode === 'single' && <SingleCalculationDashboard />}
+          {activeMode === 'batch' && <BatchCalculator />}
+          {activeMode === 'docs' && <DocsPage />}
+        </Suspense>
       </ErrorBoundary>
     </Layout>
   );

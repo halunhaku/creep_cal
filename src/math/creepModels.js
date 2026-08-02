@@ -84,9 +84,9 @@ export function mc2010Single({ fcm, RH, t0, Ac, u, T, Cs, t }) {
 
 // ─── B4 Model ───────────────────────────────────────────────────────────────
 const B4_CEMENT = {
-  R:  { τcem:0.016, εcem:360e-6, p1:0.70, p2:58.6e-3, p3:39.3e-3, p4:3.4e-3, p5:777e-6,  p5H:8.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
-  RS: { τcem:0.08,  εcem:860e-6, p1:0.60, p2:17.4e-3, p3:39.3e-3, p4:3.4e-3, p5:94.6e-6, p5H:1.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
-  SL: { τcem:0.01,  εcem:410e-6, p1:0.80, p2:40.5e-3, p3:39.3e-3, p4:3.4e-3, p5:496e-6,  p5H:8.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
+  R:  { τcem:0.016, εcem:360e-6, tauAu:1, epsAu:210e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1, rT:-4.5, tauA:-0.33, tauW:-0.06, tauC:-0.1, epsA:-0.8, epsW:1.1, epsC:0.11, p1:0.70, p2:58.6e-3, p3:39.3e-3, p4:3.4e-3, p5:777e-6,  p5H:8.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
+  RS: { τcem:0.08,  εcem:860e-6, tauAu:41, epsAu:-84e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1.4, rT:-4.5, tauA:-0.33, tauW:-2.4, tauC:-2.7, epsA:-0.8, epsW:-0.27, epsC:0.11, p1:0.60, p2:17.4e-3, p3:39.3e-3, p4:3.4e-3, p5:94.6e-6, p5H:1.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
+  SL: { τcem:0.01,  εcem:410e-6, tauAu:1, epsAu:0, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1, rT:-4.5, tauA:-0.33, tauW:3.55, tauC:3.8, epsA:-0.8, epsW:1.0, epsC:0.11, p1:0.80, p2:40.5e-3, p3:39.3e-3, p4:3.4e-3, p5:496e-6,  p5H:8.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
 };
 const B4_AGG = {
   Quartzite:    { ksτa:0.59,  ksεa:0.71 },
@@ -119,13 +119,13 @@ export function b4Point({ t0, tPrime, T, h, fc, vS, c, wC, aC, cementType, aggre
   const tpHat  = t0T + (tpNum - t0Num) * bTh;
   const tHat   = tpHat + (tNum - tpNum) * bTh;
 
-  const tau0   = cem.τcem * Math.pow(parseFloat(aC)/6, -0.33) *
-                 Math.pow(parseFloat(wC)/0.38, -0.06) *
-                 Math.pow((6.5 * parseFloat(c)) / 2350, -0.1);
+  const tau0   = cem.τcem * Math.pow(parseFloat(aC)/6, cem.tauA) *
+                 Math.pow(parseFloat(wC)/0.38, cem.tauW) *
+                 Math.pow((6.5 * parseFloat(c)) / 2350, cem.tauC);
   const tauSH  = tau0 * agg.ksτa * Math.pow(shape.ks * D, 2);
-  const eps0   = cem.εcem * Math.pow(parseFloat(aC)/6, -0.8) *
-                 Math.pow(parseFloat(wC)/0.38, 1.1) *
-                 Math.pow((6.5 * parseFloat(c)) / 2350, 0.11);
+  const eps0   = cem.εcem * Math.pow(parseFloat(aC)/6, cem.epsA) *
+                 Math.pow(parseFloat(wC)/0.38, cem.epsW) *
+                 Math.pow((6.5 * parseFloat(c)) / 2350, cem.epsC);
   const E1     = E28 * Math.sqrt((7*bTh + 600*bTh) / (4 + (6/7)*(7*bTh + 600*bTh)));
   const E2     = E28 * Math.sqrt((t0T + tauSH*bTh) / (4 + (6/7)*(t0T + tauSH*bTh)));
   const epsSHInf = -eps0 * agg.ksεa * (E1 / E2);
@@ -154,8 +154,14 @@ export function b4Point({ t0, tPrime, T, h, fc, vS, c, wC, aC, cementType, aggre
   // Shrinkage strain at time t (measured from t0)
   const tTilde    = (tNum - t0Num) * bTh;
   const epsilonSH = epsSHInf * kh * Math.tanh(Math.sqrt(Math.max(0, tTilde) / tauSH));
+  const epsilonAUInf = -cem.epsAu * Math.pow(parseFloat(aC)/6, cem.rEpsA) *
+                       Math.pow(parseFloat(wC)/0.38, cem.rEpsW);
+  const tauAU        = cem.tauAu * Math.pow(parseFloat(wC)/0.38, cem.rTauW);
+  const alphaAU      = cem.rAlpha * (parseFloat(wC)/0.38);
+  const epsilonAU    = epsilonAUInf *
+                       Math.pow(1 + Math.pow(tauAU / (tTilde + t0T), alphaAU), cem.rT);
 
-  return { J, epsilonSH };
+  return { J, epsilonSH, epsilonAU };
 }
 
 /** Single-row version for batch use. */
@@ -165,9 +171,9 @@ export function b4Single(row) {
 
 // ─── B4S Model ──────────────────────────────────────────────────────────────
 const B4S_CEMENT = {
-  R:  { tau_s_cem:0.027, s_tau_f:0.21,  eps_s_cem:590e-6, s_eps_f:-0.51, p1:0.70, p5e:-0.85, p5H:8,  s2:14.2e-3, s3:0.976, s4:4.00e-3, s5:1.54e-3,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
-  RS: { tau_s_cem:0.027, s_tau_f:1.55,  eps_s_cem:830e-6, s_eps_f:-0.84, p1:0.60, p5e:-0.85, p5H:1,  s2:29.9e-3, s3:0.976, s4:4.00e-3, s5:41.8e-3,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
-  SL: { tau_s_cem:0.032, s_tau_f:-1.84, eps_s_cem:640e-6, s_eps_f:-0.69, p1:0.80, p5e:-0.85, p5H:8,  s2:11.2e-3, s3:0.976, s4:4.00e-3, s5:150e-3,   s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
+  R:  { tau_au_cem:2.26, r_tau_f:0.27, eps_au_cem:78.2e-6, r_eps_f:1.03, tau_s_cem:0.027, s_tau_f:0.21,  eps_s_cem:590e-6, s_eps_f:-0.51, p1:0.70, p5e:-0.85, p5H:8,  s2:14.2e-3, s3:0.976, s4:4.00e-3, s5:1.54e-3,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
+  RS: { tau_au_cem:2.26, r_tau_f:0.27, eps_au_cem:78.2e-6, r_eps_f:1.03, tau_s_cem:0.027, s_tau_f:1.55,  eps_s_cem:830e-6, s_eps_f:-0.84, p1:0.60, p5e:-0.85, p5H:1,  s2:29.9e-3, s3:0.976, s4:4.00e-3, s5:41.8e-3,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
+  SL: { tau_au_cem:2.26, r_tau_f:0.27, eps_au_cem:78.2e-6, r_eps_f:1.03, tau_s_cem:0.032, s_tau_f:-1.84, eps_s_cem:640e-6, s_eps_f:-0.69, p1:0.80, p5e:-0.85, p5H:8,  s2:11.2e-3, s3:0.976, s4:4.00e-3, s5:150e-3,   s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
 };
 const B4S_AGG = {
   Quartzite:       { ksτa:0.59,  ksεa:0.71 },
@@ -229,8 +235,12 @@ export function b4sPoint({ t0, tPrime, T, h, fc, vS, cementType, aggregateType, 
 
   const tTilde    = (tNum - t0Num) * bTh;
   const epsilonSH = epsSHInf * kh * Math.tanh(Math.sqrt(Math.max(0, tTilde) / tauSH));
+  const epsilonAUInf = -cem.eps_au_cem * Math.pow(fcNum / 40, cem.r_eps_f);
+  const tauAU        = cem.tau_au_cem * Math.pow(fcNum / 40, cem.r_tau_f);
+  const epsilonAU    = epsilonAUInf *
+                       Math.pow(1 + Math.pow(tauAU / (tTilde + t0T), 1.73), -1.73);
 
-  return { J, epsilonSH };
+  return { J, epsilonSH, epsilonAU };
 }
 
 /** Single-row version for batch use. */
