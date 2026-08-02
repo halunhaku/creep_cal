@@ -17,8 +17,6 @@
   <code>MIT</code>
 </p>
 
-> The interface follows the HALUNHAKU design language defined in [DESIGN.md](DESIGN.md).
-
 ---
 
 ## Overview
@@ -150,18 +148,17 @@ build.bat
 
 ## Design Language
 
-CREEP_LAB inherits its visual vocabulary from [DESIGN.md](DESIGN.md):
+CREEP_LAB uses a laboratory-instrument theme with dark and light variants:
 
-| Token | Expression in the app |
-| --- | --- |
-| Background | Warm off-white / pale green surface `#f6f8f3` |
-| Emphasis | Deep forest green `#2f6f4e` |
-| Surfaces | White cards with fine green-gray borders |
-| Radius | Rounded cards and capsule navigation |
-| Type | Serif display headings, sans body text, mono numeric values |
-| Motion | Quiet transitions only; no loud or decorative animation |
+| Token | Dark (default) | Light |
+| --- | --- | --- |
+| Background | Graphite chassis `#0c0f12` + coordinate grid | Warm white `#f3f5f3` + grid |
+| Emphasis | Phosphor green `#41d98a`, amber `#e8a84c` | Forest green `#0e7a4e`, amber `#a8731a` |
+| Surfaces | Dark panels, 1px hairline borders, 8px radius | White panels, same borders |
+| Type | Uppercase mono labels and readouts, sans body, no serif | Same |
+| Motion | Fast ease-out micro-interactions only (<300ms) | Same |
 
-The README mirrors that direction with pale screenshots, card-like image grouping, restrained badges, and documentation-first structure.
+Theme cycles through `system → light → dark` via the header toggle.
 
 ---
 
@@ -169,7 +166,6 @@ The README mirrors that direction with pale screenshots, card-like image groupin
 
 ```text
 creep_cal/
-  DESIGN.md
   README.md
   docs/
     images/

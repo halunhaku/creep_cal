@@ -165,23 +165,33 @@ export default function BatchCalculator() {
     .filter(d => !isNaN(d.x) && !isNaN(d.y));
 
   const allResultKeys = model.resultKeys;
-  const greenHex = '#2f6f4e';
+  const greenHex = 'var(--green)';
 
   return (
     <div className="max-w-content mx-auto space-y-8 animate-fade-in relative z-10">
-      <header className="mb-12">
-        <h1 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-primary mb-4">
-          Data pipeline <span className="text-green">matrix</span>
+      <header className="mb-6">
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-green-dark">Data Pipeline</span>
+          <span className="h-px w-8 bg-green-border" aria-hidden="true" />
+        </div>
+        <h1 className="font-mono text-xl font-bold uppercase tracking-[0.08em] text-primary md:text-2xl">
+          Batch <span className="text-green-dark">matrix</span>
         </h1>
-        <p className="text-muted text-base md:text-lg max-w-[65ch] leading-relaxed">
+        <p className="mt-1.5 max-w-[65ch] text-sm leading-relaxed text-muted">
           Import CSV or Excel datasets, compute model outputs in batch, then inspect and export the resulting table.
         </p>
       </header>
 
       {/* Config panel */}
-      <div className="card p-5 md:p-8 relative overflow-hidden">
-        <h3 className="font-sans text-xl font-semibold tracking-tight text-green mb-6">Pipeline configuration</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+      <div className="card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-line bg-surface-2 px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-green" aria-hidden="true">settings</span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Pipeline Configuration</span>
+          </div>
+        </div>
+        <div className="p-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="min-w-0">
             <label className="block text-xs font-label uppercase label-strong mb-2">Target algorithm</label>
             <CustomSelect
@@ -205,7 +215,7 @@ export default function BatchCalculator() {
             </div>
           </div>
         </div>
-        <div className="flex flex-wrap gap-4 items-center border-t border-line/20 pt-8 mt-4">
+        <div className="flex flex-wrap gap-3 items-center border-t border-line pt-5 mt-5">
           <label className="btn-secondary px-6 py-3 cursor-pointer flex items-center gap-2 text-sm">
             <span className="material-symbols-outlined text-green" aria-hidden="true">upload_file</span>
             <span className="font-label tracking-[0.10em]">{isProcessing ? 'Processing file' : 'Upload CSV / XLSX'}</span>
@@ -221,31 +231,32 @@ export default function BatchCalculator() {
           </button>
         </div>
         {batchError && (
-          <div className="mt-5 rounded-card border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+          <div className="mt-5 rounded-card border border-error-border bg-error-soft px-4 py-3 text-sm text-error">
             {batchError}
           </div>
         )}
+        </div>
       </div>
 
       {/* Empty state */}
       {batchResults.length === 0 && !batchError && (
-        <div className="card p-6 md:p-8">
+        <div className="card p-6">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-[10px] font-label uppercase tracking-[0.18em] text-green mb-2">Ready for dataset</div>
-              <h3 className="font-sans text-2xl font-semibold tracking-tight text-primary">Upload a table to generate the output matrix</h3>
+              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-green-dark mb-2">Ready for dataset</div>
+              <h3 className="font-mono text-lg font-bold uppercase tracking-[0.06em] text-primary">Upload a table to generate the output matrix</h3>
               <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-muted">
                 Use the template for exact column names, or load the sample dataset to preview the computed table and chart immediately.
               </p>
             </div>
             <div className="grid min-w-52 grid-cols-2 gap-3 text-center">
-              <div className="metric-tile rounded-card border border-line/20 bg-surface-soft p-3">
-                <div className="font-mono text-lg text-green">{model.resultKeys.length}</div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted font-semibold">outputs</div>
+              <div className="rounded-card border border-line bg-surface-2 p-3">
+                <div className="font-mono text-lg text-green-dark">{model.resultKeys.length}</div>
+                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">outputs</div>
               </div>
-              <div className="metric-tile rounded-card border border-line/20 bg-surface-soft p-3">
+              <div className="rounded-card border border-line bg-surface-2 p-3">
                 <div className="font-mono text-lg text-muted">{model.req.split(', ').length}</div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-muted font-semibold">columns</div>
+                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">columns</div>
               </div>
             </div>
           </div>
@@ -256,11 +267,11 @@ export default function BatchCalculator() {
         <>
           {/* Table */}
           <div className="card overflow-hidden animate-fade-in-up">
-            <div className="bg-surface-soft p-4 border-b border-line/20 flex justify-between items-center flex-wrap gap-3">
-              <h3 className="font-sans text-lg tracking-tight text-primary">
-                Output matrix <span className="text-muted text-sm ml-2">({batchResults.length} records)</span>
+            <div className="flex justify-between items-center flex-wrap gap-3 border-b border-line bg-surface-2 px-4 py-2.5">
+              <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+                Output Matrix <span className="text-faint">({batchResults.length} records)</span>
               </h3>
-              <button onClick={exportCSV} className="btn-primary text-[10px] py-2 px-4">
+              <button onClick={exportCSV} className="btn-primary px-3 py-1.5 text-[10px]">
                 Export CSV
               </button>
             </div>
@@ -300,16 +311,19 @@ export default function BatchCalculator() {
           </div>
 
           {/* Visualization */}
-          <div className="card card-hoverable p-5 md:p-8">
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-              <h3 className="font-sans text-xl tracking-tight text-primary">
-                Result <span className="text-green italic">visualizer</span>
-              </h3>
-              <div className="flex gap-2 flex-wrap items-center">
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-green" aria-hidden="true">scatter_plot</span>
+                <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+                  Result <span className="text-green-dark">visualizer</span>
+                </h3>
+              </div>
+              <div className="flex gap-1.5 items-center">
                 {['scatter', 'line'].map(t => (
                   <button key={t} onClick={() => setChartType(t)}
-                    className={`px-3 py-1.5 rounded-full text-[10px] font-label uppercase tracking-[0.12em] border transition-all ${
-                      chartType === t ? 'active-pill' : 'text-muted border-line hover:bg-green-soft/50 hover:text-primary hover:border-green-border/50'
+                    className={`rounded border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 ${
+                      chartType === t ? 'active-pill' : 'text-muted border-line-strong hover:bg-surface-3 hover:text-primary'
                     }`}>
                     {t}
                   </button>
@@ -317,9 +331,9 @@ export default function BatchCalculator() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-[10px] font-label uppercase label-strong block mb-2">X Axis (Input Parameter)</label>
+                <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-faint">X Axis (Input Parameter)</label>
                 <CustomSelect
                   name="xKey"
                   value={xKey}
@@ -328,7 +342,7 @@ export default function BatchCalculator() {
                 />
               </div>
               <div>
-                <label className="text-[10px] font-label uppercase label-strong block mb-2">Y Axis (Result)</label>
+                <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-faint">Y Axis (Result)</label>
                 <CustomSelect
                   name="yKey"
                   value={yKey}
@@ -340,8 +354,8 @@ export default function BatchCalculator() {
 
             {chartData.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-48 text-faint gap-3">
-                <span className="material-symbols-outlined text-5xl" aria-hidden="true">scatter_plot</span>
-                <p className="font-label text-xs uppercase tracking-[0.16em]">Select numeric X column to visualize</p>
+                <span className="material-symbols-outlined text-4xl" aria-hidden="true">scatter_plot</span>
+                <p className="font-mono text-[10px] uppercase tracking-[0.16em]">Select numeric X column to visualize</p>
               </div>
             ) : (
               <div className="chart-stage" style={{ width: '100%', height: 380 }}>

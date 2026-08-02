@@ -17,7 +17,7 @@ export default function CustomSelect({ name, value, onChange, options }) {
     if (ref.current) {
       const rect = ref.current.getBoundingClientRect();
       setCoords({
-        top: rect.bottom + window.scrollY + 8,
+        top: rect.bottom + window.scrollY + 4,
         left: rect.left + window.scrollX,
         width: rect.width
       });
@@ -29,7 +29,7 @@ export default function CustomSelect({ name, value, onChange, options }) {
       const isOutsideTrigger = ref.current && !ref.current.contains(e.target);
       const portalElements = document.querySelectorAll('.custom-select-portal');
       const isOutsidePortal = Array.from(portalElements).every(el => !el.contains(e.target));
-      
+
       if (isOutsideTrigger && isOutsidePortal) {
         setOpen(false);
       }
@@ -55,13 +55,6 @@ export default function CustomSelect({ name, value, onChange, options }) {
     setOpen(false);
   };
 
-  const palette = [
-    'text-green-dark bg-green-soft',
-    'text-muted bg-surface-soft',
-    'text-muted bg-surface-soft',
-    'text-muted bg-surface-soft',
-  ];
-
   return (
     <div className={`relative w-full ${open ? 'z-40' : 'z-0'}`} ref={ref}>
       <button
@@ -71,35 +64,32 @@ export default function CustomSelect({ name, value, onChange, options }) {
         aria-haspopup="listbox"
         className={`
           w-full flex items-center justify-between
-          px-5 py-3 rounded-full text-sm font-body
-          bg-surface-soft text-primary
-          border transition-all duration-200
+          h-9 rounded border px-3 text-sm font-mono
+          bg-surface-2 text-primary
+          transition-all duration-150
           ${open
-            ? 'border-green-border ring-1 ring-green/30'
-            : 'border-line/30 hover:border-green-border/60'
+            ? 'border-green-border shadow-[0_0_0_1px_var(--green-border)]'
+            : 'border-line-strong hover:border-green-border'
           }
         `}
       >
         <span className="truncate">{selected?.label}</span>
         <span
           aria-hidden="true"
-          className={`material-symbols-outlined text-[18px] text-green ml-2 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`material-symbols-outlined text-[16px] text-green ml-2 transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
         >
           expand_more
         </span>
       </button>
 
       {open && typeof document !== 'undefined' && createPortal(
-        <div 
-          className="custom-select-portal absolute z-50 bg-surface border border-green-border/30 rounded-card shadow-card overflow-hidden"
+        <div
+          className="custom-select-portal absolute z-50 overflow-hidden rounded-md border border-line-strong bg-surface shadow-card-raised"
           style={{ top: coords.top, left: coords.left, width: coords.width }}
           role="listbox"
         >
-          {opts.map((opt, idx) => {
+          {opts.map((opt) => {
             const isSelected = opt.value === value;
-            const accent = palette[idx % palette.length];
-            const letter = (opt.label || opt.value)[0].toUpperCase();
-
             return (
               <button
                 key={opt.value}
@@ -108,20 +98,17 @@ export default function CustomSelect({ name, value, onChange, options }) {
                 role="option"
                 aria-selected={isSelected}
                 className={`
-                  w-full flex items-center gap-3 px-4 py-3 text-sm text-left
-                  transition-colors duration-150
+                  w-full flex items-center justify-between gap-3 px-3.5 py-2.5 font-mono text-[13px] text-left
+                  transition-colors duration-100
                   ${isSelected
-                    ? 'bg-green-soft text-green-dark'
-                    : 'text-primary hover:bg-surface-soft'
+                    ? 'bg-green-soft text-green-dark font-bold'
+                    : 'text-primary hover:bg-surface-3'
                   }
                 `}
               >
-                <span className={`w-7 h-7 rounded-md flex-shrink-0 flex items-center justify-center text-[11px] font-sans font-bold ${accent}`}>
-                  {letter}
-                </span>
-                <span className="flex-1 truncate">{opt.label}</span>
+                <span className="truncate">{opt.label}</span>
                 {isSelected && (
-                  <span className="material-symbols-outlined text-[16px] text-green" aria-hidden="true">check_circle</span>
+                  <span className="material-symbols-outlined shrink-0 text-[14px] text-green" aria-hidden="true">check</span>
                 )}
               </button>
             );

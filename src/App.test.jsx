@@ -10,6 +10,6 @@ vi.mock('./components/Aci209Calculator', () => ({
 
 test('renders the app shell', () => {
   render(<App />);
-  expect(screen.getByText(/CREEP LAB/i)).toBeInTheDocument();
+  expect(screen.getByText((_, node) => node?.textContent === 'CREEP_LAB')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /single analysis/i })).toBeInTheDocument();
 });

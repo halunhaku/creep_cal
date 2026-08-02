@@ -43,7 +43,7 @@ const config = {
   getSummary(results) {
     return { primary: results.at(-1)?.phi ?? NaN };
   },
-  chartLines: [{ dataKey: 'phi', stroke: '#2f6f4e', name: 'Creep Coefficient φ' }],
+  chartLines: [{ dataKey: 'phi', stroke: 'var(--green)', name: 'Creep Coefficient φ' }],
 };
 
 export default function Aci209Calculator({ engine }) {

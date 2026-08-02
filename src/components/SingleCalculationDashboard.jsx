@@ -16,60 +16,73 @@ export default function SingleCalculationDashboard() {
   const algorithms = [
     { id: 'aci209', label: 'ACI 209R-92', shortLabel: 'ACI 209' },
     { id: 'mc2010', label: 'fib MC 2010', shortLabel: 'MC 2010' },
-    { id: 'b4', label: 'B4 MODEL', shortLabel: 'B4' },
-    { id: 'b4s', label: 'B4S MODEL', shortLabel: 'B4S' }
+    { id: 'b4', label: 'B4', shortLabel: 'B4' },
+    { id: 'b4s', label: 'B4S', shortLabel: 'B4S' }
   ];
 
-  const pillBase = "px-3 py-2 rounded-full text-[10px] font-label uppercase tracking-[0.08em] border border-transparent transition-all duration-200 flex-1 xl:flex-none whitespace-nowrap flex items-center justify-center gap-1.5 md:px-5 md:py-2.5 md:text-xs md:tracking-[0.12em]";
+  const segmentBase = 'rounded px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors duration-150 whitespace-nowrap';
 
   return (
-    <div className="animate-fade-in relative z-10 w-full">
-      {/* Top Controller Bar — pill group */}
-      <div className="mb-6 card card-hoverable p-2 md:mb-8 md:p-3 flex flex-col xl:flex-row gap-2 md:gap-3 items-stretch xl:items-center">
-        {/* Algorithm Selection — pill group */}
-        <div className="flex w-full overflow-x-auto p-0.5 bg-surface-soft rounded-full border border-line/50 xl:w-auto">
-          {algorithms.map((algo) => (
+    <div className="animate-fade-in relative z-10">
+      {/* Instrument control bar */}
+      <div className="card mb-6 flex flex-col gap-3 p-2 xl:flex-row xl:items-center xl:justify-between">
+        {/* Model selection */}
+        <div className="flex overflow-x-auto rounded-md border border-line bg-surface-2 p-0.5">
+          {algorithms.map((algo, idx) => (
             <button
               key={algo.id}
               onClick={() => setAlgorithm(algo.id)}
-              className={`${pillBase} ${
-                algorithm === algo.id 
-                  ? 'bg-green text-white border-green shadow-sm font-semibold'
-                  : 'text-muted hover:text-primary hover:bg-green-soft/50 hover:border-green-border/50'
+              aria-pressed={algorithm === algo.id}
+              className={`${segmentBase} ${
+                algorithm === algo.id
+                  ? 'bg-green-soft font-bold text-green-dark'
+                  : 'text-muted hover:bg-surface-3 hover:text-primary'
               }`}
             >
+              <span className="mr-1.5 text-faint">MOD-{String(idx + 1).padStart(2, '0')}</span>
               <span className="md:hidden">{algo.shortLabel}</span>
               <span className="hidden md:inline">{algo.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Engine Selection — pill group */}
-        <div className="flex w-full p-0.5 bg-surface-soft rounded-full border border-line/50 xl:w-auto">
-          <button
-            onClick={() => setEngine('rust')}
-            className={`${pillBase} ${
-              engine === 'rust'
-                ? 'bg-green text-white border-green shadow-sm font-semibold'
-                : 'text-muted hover:text-primary hover:bg-green-soft/50 hover:border-green-border/50'
-            }`}
-          >
-            <span className="material-symbols-outlined text-sm" aria-hidden="true">memory</span>
-            <span className="md:hidden">Rust</span>
-            <span className="hidden md:inline">RUST KERNEL</span>
-          </button>
-          <button
-            onClick={() => setEngine('js')}
-            className={`${pillBase} ${
-              engine === 'js'
-                ? 'bg-green text-white border-green shadow-sm font-semibold'
-                : 'text-muted hover:text-primary hover:bg-green-soft/50 hover:border-green-border/50'
-            }`}
-          >
-            <span className="material-symbols-outlined text-sm" aria-hidden="true">javascript</span>
-            <span className="md:hidden">JS</span>
-            <span className="hidden md:inline">STANDARD JS</span>
-          </button>
+        {/* Engine selection */}
+        <div className="flex items-center gap-3 px-1 xl:px-2">
+          <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-faint lg:block">
+            Kernel
+          </span>
+          <div className="flex rounded-md border border-line bg-surface-2 p-0.5">
+            <button
+              onClick={() => setEngine('rust')}
+              aria-pressed={engine === 'rust'}
+              className={`${segmentBase} ${
+                engine === 'rust'
+                  ? 'bg-green-soft font-bold text-green-dark'
+                  : 'text-muted hover:bg-surface-3 hover:text-primary'
+              }`}
+            >
+              Rust WASM
+            </button>
+            <button
+              onClick={() => setEngine('js')}
+              aria-pressed={engine === 'js'}
+              className={`${segmentBase} ${
+                engine === 'js'
+                  ? 'bg-green-soft font-bold text-green-dark'
+                  : 'text-muted hover:bg-surface-3 hover:text-primary'
+              }`}
+            >
+              JS Reference
+            </button>
+          </div>
+          <span
+            className="hidden h-1.5 w-1.5 rounded-full sm:block"
+            style={{
+              background: 'var(--green)',
+              boxShadow: '0 0 5px var(--green)',
+            }}
+            aria-hidden="true"
+          />
         </div>
       </div>
 

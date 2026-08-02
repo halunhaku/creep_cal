@@ -149,49 +149,53 @@ export default function DocsPage() {
 
   return (
     <div className="max-w-content mx-auto space-y-8 animate-fade-in relative z-10">
-      <header className="mb-10">
-          <h1 className="font-serif text-4xl md:text-5xl font-normal tracking-tight text-primary mb-4">
-          Model <span className="text-green">library</span>
+      <header className="mb-6">
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-green-dark">Reference Library</span>
+          <span className="h-px w-8 bg-green-border" aria-hidden="true" />
+        </div>
+        <h1 className="font-mono text-xl font-bold uppercase tracking-[0.08em] text-primary md:text-2xl">
+          Model <span className="text-green-dark">library</span>
         </h1>
-        <p className="text-muted text-base md:text-lg max-w-[65ch] leading-relaxed">
+        <p className="mt-1.5 max-w-[65ch] text-sm leading-relaxed text-muted">
           Reference documentation for all supported concrete creep & shrinkage prediction models.
         </p>
       </header>
 
-      {/* Model Tabs — pill style */}
-      <div className="flex gap-2 flex-wrap">
-        {MODELS.map(m => (
+      {/* Model Tabs — segmented */}
+      <div className="mb-6 flex flex-wrap gap-1.5 rounded-md border border-line bg-surface-2 p-1">
+        {MODELS.map((m, idx) => (
           <button
             key={m.id}
             onClick={() => setSelected(m.id)}
-            className={`px-5 py-2 rounded-full font-label uppercase tracking-[0.12em] text-xs transition-all duration-200 border ${
+            aria-pressed={selected === m.id}
+            className={`rounded px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors duration-150 ${
               selected === m.id
                 ? 'active-pill'
-                : 'text-muted hover:text-primary border-line hover:bg-green-soft/50 hover:border-green-border/50'
+                : 'text-muted hover:bg-surface-3 hover:text-primary'
             }`}
           >
+            <span className="mr-1.5 text-faint">DOC-{String(idx + 1).padStart(2, '0')}</span>
             {m.name}
           </button>
         ))}
       </div>
 
       {/* Model Detail Panel */}
-      <div className="card p-5 md:p-8 relative overflow-hidden max-w-[1040px] mx-auto">
-        <div className="flex items-start justify-between mb-8 flex-wrap gap-4">
+      <div className="card p-5 relative overflow-hidden max-w-[1040px] mx-auto md:p-6">
+        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
           <div>
-            <div className="text-[10px] font-label uppercase tracking-[0.13em] text-green-dark font-bold mb-2">{model.category}</div>
-            <h2 className="font-serif text-3xl font-normal text-primary">{model.name}</h2>
+            <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-green-dark font-bold">{model.category}</div>
+            <h2 className="font-mono text-lg font-bold uppercase tracking-[0.08em] text-primary md:text-xl">{model.name}</h2>
           </div>
           <div className="flex gap-2">
             {model.engine.map(e => (
-              <span key={e} className="tag">
-                {e} Engine
-              </span>
+              <span key={e} className="tag">{e} Engine</span>
             ))}
           </div>
         </div>
 
-        <p className="text-muted leading-relaxed mb-10 max-w-[92ch]">{model.description}</p>
+        <p className="mb-8 max-w-[92ch] text-sm leading-relaxed text-muted">{model.description}</p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Parameters Table */}

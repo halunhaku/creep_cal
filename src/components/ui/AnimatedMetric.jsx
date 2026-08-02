@@ -15,7 +15,7 @@ export default function AnimatedMetric({ value, className = '', format = 'fixed'
 
     const animation = animate(current, {
       current: numericValue,
-      duration: 720,
+      duration: 420,
       ease: 'outExpo',
       onUpdate: () => setDisplay(formatValue(current.current, format)),
     });

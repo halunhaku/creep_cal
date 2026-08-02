@@ -30,9 +30,9 @@ const rustShapeNames = {
 };
 
 const chartLines = [
-  { dataKey: 'j', stroke: '#2f6f4e', name: 'Compliance J (×10⁻⁶ GPa⁻¹)' },
-  { dataKey: 'epsilon_sh', stroke: '#4a9e6e', name: 'Drying Shrinkage εsh (με)' },
-  { dataKey: 'epsilon_au', stroke: '#8fc7b8', name: 'Autogenous Shrinkage εau (με)' },
+  { dataKey: 'j', stroke: 'var(--green)', name: 'Compliance J (×10⁻⁶ GPa⁻¹)' },
+  { dataKey: 'epsilon_sh', stroke: 'var(--amber)', name: 'Drying Shrinkage εsh (με)' },
+  { dataKey: 'epsilon_au', stroke: '#7fb8c9', name: 'Autogenous Shrinkage εau (με)' },
 ];
 
 const config = {

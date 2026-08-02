@@ -32,7 +32,7 @@ function NumericParameterInput({ value, min, max, unit, name, onChange, step, in
   };
 
   return (
-    <div className="flex items-stretch rounded-input border border-line bg-surface focus-within:border-green-border focus-within:ring-2 focus-within:ring-green/10">
+    <div className="flex items-stretch overflow-hidden rounded border border-line-strong bg-surface-2 transition-colors focus-within:border-green-border">
       <input
         id={inputId}
         type="number"
@@ -51,10 +51,10 @@ function NumericParameterInput({ value, min, max, unit, name, onChange, step, in
             e.currentTarget.blur();
           }
         }}
-        className="h-11 w-full min-w-0 rounded-l-input bg-transparent px-3 text-right font-mono text-base text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="h-9 w-full min-w-0 bg-transparent px-2.5 text-right font-mono text-sm text-primary outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       {unit && (
-        <span className="flex min-w-12 items-center justify-center border-l border-line/50 px-3 text-[11px] font-label uppercase tracking-[0.08em] text-muted">
+        <span className="flex min-w-10 items-center justify-center border-l border-line px-2 font-mono text-[10px] uppercase tracking-[0.06em] text-faint">
           {unit === 'Days' ? 'd' : unit}
         </span>
       )}
@@ -62,42 +62,46 @@ function NumericParameterInput({ value, min, max, unit, name, onChange, step, in
   );
 }
 
-export function ParameterSlider({ label, value, min, max, unit, name, options, onChange, motionIndex = 0 }) {
+function ParameterRow({ label, value, min, max, unit, name, options, onChange }) {
   const step = max > 10 ? 1 : (max <= 1 ? 0.01 : 0.1);
   const inputId = `param-input-${name}`;
 
   if (options) {
     return (
-      <div className="parameter-motion stagger-pop card p-4 space-y-3" style={{ '--stagger-index': motionIndex }}>
-        <div className="flex items-center justify-between gap-3">
-          <label className="font-label text-xs uppercase tracking-widest text-muted">
+      <div className="px-4 py-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <label htmlFor={`param-select-${name}`} className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
             {label}
           </label>
-          <span className="material-symbols-outlined text-base text-green" aria-hidden="true">list_alt</span>
         </div>
-        <CustomSelect
-          name={name}
-          value={value}
-          onChange={onChange}
-          options={options}
-        />
+        <CustomSelect name={name} value={value} onChange={onChange} options={options} />
       </div>
     );
   }
 
   return (
-    <div className="parameter-motion stagger-pop card p-4 transition-colors focus-within:border-green-border hover:border-green-border/50" style={{ '--stagger-index': motionIndex }}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(8rem,11rem)] items-center gap-4">
-        <div className="min-w-0">
-          <label htmlFor={inputId} className="block font-label text-xs uppercase tracking-widest text-muted">
-            {label}
-          </label>
-          <div className="mt-1 flex items-center gap-2 text-[10px] font-label uppercase tracking-[0.12em] text-faint">
-            <span>{formatLimit(min, unit)}</span>
-            <span className="h-px w-5 bg-line/60"></span>
-            <span>{formatLimit(max, unit)}</span>
-          </div>
-        </div>
+    <div className="px-4 py-3">
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <label htmlFor={inputId} className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
+          {label}
+        </label>
+        <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-faint">
+          {formatLimit(min, unit)} — {formatLimit(max, unit)}
+        </span>
+      </div>
+      <div className="flex items-center gap-3">
+        <input
+          id={`param-${name}`}
+          aria-label={`${label} slider`}
+          className="w-full accent-green"
+          name={name}
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={onChange}
+          step={step}
+        />
         <NumericParameterInput
           value={value}
           min={min}
@@ -109,66 +113,50 @@ export function ParameterSlider({ label, value, min, max, unit, name, options, o
           inputId={inputId}
         />
       </div>
-      <input 
-        id={`param-${name}`}
-        aria-label={`${label} slider`}
-        className="mt-4 w-full accent-green" 
-        name={name}
-        type="range" 
-        min={min} 
-        max={max} 
-        value={value} 
-        onChange={onChange}
-        step={step}
-      />
     </div>
   );
 }
 
 export default function DynamicParameters({ paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText }) {
   return (
-    <section className="space-y-8">
-      <div className="card p-5 md:p-8">
-        <div className="flex items-center gap-3 mb-8">
-          <span className="material-symbols-outlined text-green" aria-hidden="true">tune</span>
-          <div>
-            <h2 className="font-sans text-xl font-semibold tracking-tight text-primary">Dynamic parameters</h2>
-            <p className="mt-1 text-xs text-muted">{paramsConfig.length} inputs configured for the active model.</p>
-          </div>
+    <section className="card overflow-hidden">
+      {/* Panel header */}
+      <div className="flex items-center justify-between border-b border-line bg-surface-2 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-[16px] text-green" aria-hidden="true">tune</span>
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Parameter Set</span>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {paramsConfig.map((config, idx) => {
-            return (
-              <ParameterSlider
-                key={config.name}
-                motionIndex={idx}
-                label={config.label}
-                name={config.name}
-                value={params[config.name] ?? config.min}
-                min={config.min}
-                max={config.max}
-                unit={config.unit}
-                options={config.options}
-                onChange={onParamChange}
-              />
-            );
-          })}
-        </div>
+        <span className="font-mono text-[10px] text-faint">{paramsConfig.length} inputs</span>
+      </div>
 
-        <div className="mt-12 flex flex-col sm:flex-row gap-4">
-          <button 
-            onClick={onCalculate}
-            disabled={!calculateReady}
-            aria-busy={!calculateReady}
-            className={`calculate-trigger btn-primary w-full py-4 md:py-5 text-sm md:text-base tracking-[0.10em] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none ${
-              calculateReady ? 'shadow-card hover:shadow-card-hover' : ''
-            }`}
-          >
-            <span className="material-symbols-outlined" aria-hidden="true" style={{fontVariationSettings: "'FILL' 1"}}>bolt</span>
-            {buttonText || 'INITIATE CALCULATION'}
-          </button>
-        </div>
+      {/* Parameter rows */}
+      <div className="divide-y divide-line">
+        {paramsConfig.map((config) => (
+          <ParameterRow
+            key={config.name}
+            label={config.label}
+            name={config.name}
+            value={params[config.name] ?? config.min}
+            min={config.min}
+            max={config.max}
+            unit={config.unit}
+            options={config.options}
+            onChange={onParamChange}
+          />
+        ))}
+      </div>
+
+      {/* Run button */}
+      <div className="border-t border-line p-3">
+        <button
+          onClick={onCalculate}
+          disabled={!calculateReady}
+          aria-busy={!calculateReady}
+          className="btn-primary w-full py-3 text-xs tracking-[0.14em]"
+        >
+          <span className="material-symbols-outlined text-sm" aria-hidden="true" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+          {buttonText || 'RUN CALCULATION'}
+        </button>
       </div>
     </section>
   );
