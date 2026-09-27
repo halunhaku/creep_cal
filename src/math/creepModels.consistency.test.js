@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, test } from 'vitest';
 import {
+  calculate_aci209_series,
   calculate_aci209_single,
   calculate_b4_single,
   calculate_b4s_single,
@@ -28,23 +29,22 @@ beforeAll(() => {
 
 describe('JavaScript and Rust model consistency', () => {
   test.each([
-    { t0: 28, H: 70, VS: 100, sPhi: 0.5, Cc: 350, alpha: 0.08 },
-    { t0: 7, H: 50, VS: 150, sPhi: 0.45, Cc: 420, alpha: 0.04 },
-  ])('ACI 209R-92 matches for %#', (params) => {
-    const rustParams = {
-      t0: params.t0,
-      h: params.H,
-      vs: params.VS,
-      s_phi: params.sPhi,
-      cc: params.Cc,
-      alpha: params.alpha,
-    };
+    {
+      curingType: 'moist', t0: 28, H: 70, VS: 100,
+      slump: 100, fineAggregate: 50, airContent: 8,
+    },
+    {
+      curingType: 'steam', t0: 7, H: 50, VS: 150,
+      slump: 75, fineAggregate: 45, airContent: 4,
+    },
+  ])('ACI 209R-92 single and series engines match for %#', (params) => {
+    const series = calculate_aci209_series(params, 10000);
 
-    for (const t of [params.t0, params.t0 + 1, 90, 365, 10000]) {
-      expectConsistent(
-        aci209Phi(params.t0, params.H, params.VS, params.sPhi, params.Cc, params.alpha, t),
-        calculate_aci209_single(rustParams, t),
-      );
+    for (const t of [0, params.t0, params.t0 + 1, 90, 365, 10000]) {
+      const jsValue = aci209Phi({ ...params, t });
+      expectConsistent(jsValue, calculate_aci209_single(params, t));
+      expect(series[t].t).toBe(t);
+      expectConsistent(jsValue, series[t].phi);
     }
   });
 

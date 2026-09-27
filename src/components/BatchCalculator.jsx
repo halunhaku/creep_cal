@@ -10,7 +10,7 @@ import CustomSelect from './ui/CustomSelect';
 
 // ─── Model Registry ──────────────────────────────────────────────────────────
 const MODELS = [
-  { id: 'aci209', name: 'ACI 209R-92',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 't0, H, VS, sphi, Cc, alpha, t' },
+  { id: 'aci209', name: 'ACI 209R-92',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t', template: ['moist', 28, 70, 100, 100, 50, 8, 365] },
   { id: 'mc2010', name: 'fib MC 2010',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'fcm, RH, t0, Ac, u, T, Cs, t' },
   { id: 'b4',     name: 'B4 Model',     resultKeys: ['result_J', 'result_epsilonSH'], labels: ['J (1/GPa)', 'εsh (Shrinkage)'], req: 't0, tPrime, T, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, t' },
   { id: 'b4s',    name: 'B4S Model',    resultKeys: ['result_J', 'result_epsilonSH'], labels: ['J (1/GPa)', 'εsh (Shrinkage)'], req: 't0, tPrime, T, h, fc, vS, cementType, specimenShape, aggregateType, t' },
@@ -18,7 +18,8 @@ const MODELS = [
 
 const SAMPLE_DATA = {
   aci209: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
-    t0: 28, H: 70, VS: 100, sphi: 0.5, Cc: 350, alpha: 0.08, t
+    curingType: 'moist', t0: 28, H: 70, VS: 100, slump: 100,
+    fineAggregate: 50, airContent: 8, t
   })),
   mc2010: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
     fcm: 38, RH: 70, t0: 28, Ac: 90000, u: 1200, T: 20, Cs: '42.5R', t
@@ -152,7 +153,7 @@ export default function BatchCalculator() {
 
   const downloadTemplate = () => {
     const cols = model.req.split(', ');
-    const csv = Papa.unparse([cols, cols.map(() => '0')]);
+    const csv = Papa.unparse([cols, model.template ?? cols.map(() => '0')]);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);

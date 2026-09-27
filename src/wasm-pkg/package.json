@@ -1,5 +1,5 @@
 {
-  "name": "creep-calculator-engine",
+  "name": "@creep-calculator/creep-calculator-engine",
   "type": "module",
   "version": "0.1.0",
   "files": [

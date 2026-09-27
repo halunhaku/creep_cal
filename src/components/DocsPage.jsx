@@ -23,28 +23,81 @@ const MODELS = [
     name: 'ACI 209R-92',
     category: 'North American Standard',
     engine: ['JS', 'RUST'],
-    description: 'The ACI 209R-92 implementation in this app returns the creep coefficient φ(t,t₀). It uses the current shared kernel: a time development term based on t−t₀ multiplied by correction factors for loading age, humidity, volume-to-surface ratio, slump parameter, cement content, and α.',
+    description: 'Official ACI 209R-92 creep coefficient for moist- or steam-cured concrete. Time is measured from loading, while the input t is concrete age from casting.',
     params: [
+      { name: 'curingType', description: 'Curing method: moist or steam' },
       { name: 't0', description: 'Age at loading (days)' },
       { name: 'H', description: 'Ambient relative humidity (%)' },
-      { name: 'VS', description: 'Volume-to-surface ratio (mm)' },
-      { name: 'sPhi / sphi', description: 'Sand ratio; batch files use sphi' },
-      { name: 'Cc', description: 'Cement content (kg/m³)' },
-      { name: 'alpha', description: 'Air content' },
-      { name: 't', description: 'Target age from casting (days); batch files provide this column' },
+      { name: 'VS', description: 'Volume / exposed surface ratio (mm)' },
+      { name: 'slump', description: 'Concrete slump (mm)' },
+      { name: 'fineAggregate', description: 'Fine aggregate / total aggregate by weight (%)' },
+      { name: 'airContent', description: 'Air content (%)' },
+      { name: 't', description: 'Concrete age from casting (days)' },
     ],
     output: 'φ(t, t₀) — Creep Coefficient (dimensionless)',
-    reference: 'ACI Committee 209 (1992). Prediction of Creep, Shrinkage, and Temperature Effects in Concrete Structures. ACI 209R-92.',
+    reference: 'ACI Committee 209 (1992, reapproved 2008). Prediction of Creep, Shrinkage, and Temperature Effects in Concrete Structures. ACI 209R-92.',
+    officialDocuments: [
+      {
+        designation: 'ACI PRC-209-92',
+        title: 'Prediction of Creep, Shrinkage, and Temperature Effects in Concrete Structures',
+        status: 'Published 1992 · Reapproved 2008',
+        coverage: 'Primary committee report covering creep, shrinkage, temperature effects, strength development, and stiffness development.',
+      },
+      {
+        designation: 'ACI 209.2R-08',
+        title: 'Guide for Modeling and Calculating Shrinkage and Creep in Hardened Concrete',
+        status: 'Adopted and published May 2008',
+        coverage: 'Comparison guide; Appendix A.1 summarizes ACI 209R-92 and Appendix C.1 contains its numerical example.',
+      },
+    ],
+    applicability: [
+      'Hardened concrete moist cured for at least 1 day and loaded after curing or later.',
+      'Mean 28-day cylindrical compressive strength range: 20–70 MPa (3000–10000 psi).',
+      'Calibrated for typical concrete compositions; concretes with silica fume, more than 30% fly ash, or natural pozzolans require test calibration.',
+      'This application implements the creep-coefficient path only; it does not implement ACI shrinkage, strength, stiffness, aging coefficient, or structural-response calculations.',
+    ],
+    limitations: [
+      'ACI committee reports and guides are guidance documents, not mandatory contract language.',
+      'Creep predictions have substantial experimental variability; creep-sensitive structures should use project-specific material testing and calibration.',
+      'The result is an empirical prediction and does not replace project analysis or qualified engineering judgment.',
+    ],
+    sourceMapping: [
+      'Time-development function: ACI 209R-92 §2.4, Eq. (2-8).',
+      'Ultimate coefficient and correction factors: ACI 209R-92 §§2.5–2.6.',
+      'Model summary and worked example: ACI 209.2R-08 Appendices A.1 and C.1.',
+    ],
+    sources: [
+      {
+        label: 'ACI PRC-209-92 official document details',
+        url: 'https://www.concrete.org/publications/internationalconcreteabstractsportal.aspx?id=5089&m=details',
+        note: 'Official title, abstract, status, and reapproval information.',
+      },
+      {
+        label: 'ACI PRC-209-92 official product page',
+        url: 'https://www.concrete.org/store/productdetail.aspx?Format=DOWNLOAD&ItemID=20992&Language=English&Units=US_AND_METRIC',
+        note: 'Official ACI publication and download entry.',
+      },
+      {
+        label: 'ACI 209.2R-08 official guide PDF',
+        url: 'https://www.concrete.org/portals/0/files/pdf/previews/209.2r-08web.pdf',
+        note: 'Official scope, limitations, model appendix, and numerical-example index.',
+      },
+      {
+        label: 'ACI Committee 209 official page',
+        url: 'https://www.concrete.org/getinvolved/committees/directoryofcommittees/acommitteehome/committee_code/c0020900.aspx',
+        note: 'Committee responsible for creep and shrinkage documents.',
+      },
+    ],
     formulas: [
-      { label: 'Creep Coefficient', expr: String.raw`\phi(t,t_0)=\beta_c(t-t_0)\cdot\phi_{\infty}` },
-      { label: 'Time Function', expr: String.raw`\beta_c(t-t_0)=\frac{(t-t_0)^{0.6}}{10+(t-t_0)^{0.6}}` },
-      { label: 'Ultimate Creep', expr: String.raw`\phi_{\infty}=2.35\cdot\beta_{t_0}\cdot\beta_{RH}\cdot\beta_{VS}\cdot\beta_{s\phi}\cdot\beta_{Cc}\cdot\beta_{\alpha}` },
-      { label: 'Age Factor', expr: String.raw`\beta_{t_0}=1.25\cdot t_0^{-0.118}` },
-      { label: 'Humidity Factor', expr: String.raw`\beta_{RH}=1.27-0.0067H` },
-      { label: 'V/S Factor', expr: String.raw`\beta_{VS}=\frac{2\left[1+1.13e^{-0.0213VS}\right]}{3}` },
-      { label: 'Sand Ratio Factor', expr: String.raw`\beta_{s\phi}=0.88+0.244s\phi` },
-      { label: 'Cement Factor', expr: String.raw`\beta_{Cc}=0.75+0.00061Cc` },
-      { label: 'Air Content Factor', expr: String.raw`\beta_{\alpha}=0.46+9\alpha` },
+      { label: 'Creep Coefficient', expr: String.raw`\phi(t,t_0)=\frac{(t-t_0)^{0.6}}{10+(t-t_0)^{0.6}}\phi_u` },
+      { label: 'Ultimate Creep', expr: String.raw`\phi_u=2.35\gamma_{la}\gamma_{RH}\gamma_{V/S}\gamma_s\gamma_\psi\gamma_\alpha` },
+      { label: 'Moist-Cured Loading Age', expr: String.raw`\gamma_{la}=1\ (t_0\le7);\quad1.25t_0^{-0.118}\ (t_0>7)` },
+      { label: 'Steam-Cured Loading Age', expr: String.raw`\gamma_{la}=1\ (t_0\le3);\quad1.13t_0^{-0.094}\ (t_0>3)` },
+      { label: 'Humidity Factor', expr: String.raw`\gamma_{RH}=1\ (H\le40);\quad1.27-0.0067H\ (H>40)` },
+      { label: 'V/S Factor', expr: String.raw`\gamma_{V/S}=\frac{2}{3}\left[1+1.13e^{-0.0213(V/S)}\right]` },
+      { label: 'Slump Factor', expr: String.raw`\gamma_s=0.82+0.00264s_{mm}` },
+      { label: 'Fine Aggregate Factor', expr: String.raw`\gamma_\psi=0.88+0.0024\psi_{\%}` },
+      { label: 'Air Content Factor', expr: String.raw`\gamma_\alpha=\max\left(1,0.46+0.09\alpha_{\%}\right)` },
     ],
   },
   {
@@ -230,6 +283,22 @@ export default function DocsPage() {
               </div>
             </div>
 
+            {model.officialDocuments && (
+              <div>
+                <h3 className="font-sans text-sm uppercase doc-section-title mb-4">Official Documents</h3>
+                <div className="space-y-2">
+                  {model.officialDocuments.map((document) => (
+                    <div key={document.designation} className="p-4 rounded-card bg-surface border border-line">
+                      <div className="font-mono text-xs font-bold text-green-dark">{document.designation}</div>
+                      <div className="mt-1 text-sm font-medium text-primary">{document.title}</div>
+                      <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-faint">{document.status}</div>
+                      <p className="mt-2 text-xs leading-relaxed text-muted">{document.coverage}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div>
               <h3 className="font-sans text-sm uppercase doc-section-title mb-4">Computation Engine</h3>
               <div className="space-y-2">
@@ -251,6 +320,66 @@ export default function DocsPage() {
             </div>
           </div>
         </div>
+
+        {(model.applicability || model.limitations) && (
+          <div className="mb-8 grid grid-cols-1 gap-6 border-t border-line/20 pt-8 md:grid-cols-2">
+            {model.applicability && (
+              <section>
+                <h3 className="mb-4 font-sans text-sm uppercase doc-section-title">Applicability</h3>
+                <ul className="space-y-2 text-sm leading-relaxed text-muted">
+                  {model.applicability.map((item) => (
+                    <li key={item} className="rounded-card border border-line bg-surface p-3">{item}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+            {model.limitations && (
+              <section>
+                <h3 className="mb-4 font-sans text-sm uppercase doc-section-title">Limitations</h3>
+                <ul className="space-y-2 text-sm leading-relaxed text-muted">
+                  {model.limitations.map((item) => (
+                    <li key={item} className="rounded-card border border-line bg-surface p-3">{item}</li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </div>
+        )}
+
+        {model.sourceMapping && (
+          <section className="mb-8 border-t border-line/20 pt-8">
+            <h3 className="mb-4 font-sans text-sm uppercase doc-section-title">Formula Source Mapping</h3>
+            <div className="space-y-2">
+              {model.sourceMapping.map((item) => (
+                <div key={item} className="rounded-card border border-line bg-surface px-4 py-3 text-sm text-primary">{item}</div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {model.sources && (
+          <section className="mb-8 border-t border-line/20 pt-8">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h3 className="font-sans text-sm uppercase doc-section-title">Official Sources</h3>
+              <span className="tag text-[10px]">ACI links</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {model.sources.map((source) => (
+                <a
+                  key={source.url}
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-card border border-green-border bg-green-soft p-4 transition-colors hover:bg-surface-3"
+                >
+                  <div className="font-mono text-xs font-bold text-green-dark">{source.label}</div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted">{source.note}</p>
+                  <span className="mt-2 block break-all font-mono text-[10px] text-faint">{source.url}</span>
+                </a>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Formulas Section */}
         {model.formulas && (

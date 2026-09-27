@@ -1,5 +1,5 @@
-use wasm_bindgen::prelude::*;
 use serde::{Deserialize, Serialize};
+use wasm_bindgen::prelude::*;
 
 // 导入JavaScript的console.log用于调试
 #[wasm_bindgen]
@@ -36,15 +36,28 @@ pub struct B4sResult {
     pub epsilon_au: f64,
 }
 
-// ACI209模型参数
+// ACI 209R-92 creep parameters use the units defined by the report.
+#[derive(Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum Aci209CuringType {
+    Moist,
+    Steam,
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct Aci209Params {
     pub t0: f64,
+    #[serde(rename = "H")]
     pub h: f64,
+    #[serde(rename = "VS")]
     pub vs: f64,
-    pub s_phi: f64,
-    pub cc: f64,
-    pub alpha: f64,
+    #[serde(rename = "curingType")]
+    pub curing_type: Aci209CuringType,
+    pub slump: f64,
+    #[serde(rename = "fineAggregate")]
+    pub fine_aggregate: f64,
+    #[serde(rename = "airContent")]
+    pub air_content: f64,
 }
 
 // MC2010模型参数
@@ -61,15 +74,15 @@ pub struct Mc2010Params {
 
 // 模块声明
 mod aci209;
-mod mc2010;
 mod b4;
 mod b4s;
+mod mc2010;
 mod utils;
 
 pub use aci209::*;
-pub use mc2010::*;
 pub use b4::*;
 pub use b4s::*;
+pub use mc2010::*;
 pub use utils::*;
 
 // 初始化函数
@@ -90,9 +103,10 @@ pub fn benchmark_calculation(model: &str, iterations: usize) -> f64 {
                     t0: 28.0,
                     h: 70.0,
                     vs: 100.0,
-                    s_phi: 0.5,
-                    cc: 350.0,
-                    alpha: 0.08,
+                    curing_type: Aci209CuringType::Moist,
+                    slump: 100.0,
+                    fine_aggregate: 50.0,
+                    air_content: 8.0,
                 };
                 // 使用内部函数避免序列化开销
                 let _ = aci209::calculate_aci209_single_internal(&params, 365.0);

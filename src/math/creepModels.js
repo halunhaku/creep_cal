@@ -6,37 +6,60 @@
 
 // ─── ACI 209R-92 ────────────────────────────────────────────────────────────
 /**
- * ACI 209R-92 creep coefficient.
- * @param {number} t0   Age at loading (days)
- * @param {number} H    Relative humidity (%)
- * @param {number} VS   Volume-to-surface ratio (mm)
- * @param {number} sPhi Sand ratio (0–1 normalized)
- * @param {number} Cc   Cement content (kg/m³)
- * @param {number} alpha Air content
- * @param {number} t    Time since start (days), loop variable
+ * ACI 209R-92 creep coefficient for moist- or steam-cured concrete.
+ *
+ * @param {object} params
+ * @param {'moist'|'steam'} params.curingType Curing method
+ * @param {number} params.t0 Age at loading (days)
+ * @param {number} params.H Relative humidity (%)
+ * @param {number} params.VS Volume-to-exposed-surface ratio (mm)
+ * @param {number} params.slump Concrete slump (mm)
+ * @param {number} params.fineAggregate Fine aggregate / total aggregate by weight (%)
+ * @param {number} params.airContent Air content (%)
+ * @param {number} params.t Concrete age at evaluation (days)
  * @returns {number} φ(t, t₀) — creep coefficient
  */
-export function aci209Phi(t0, H, VS, sPhi, Cc, alpha, t) {
+export function aci209Phi({ curingType, t0, H, VS, slump, fineAggregate, airContent, t }) {
   const dt = t - t0;
   if (dt <= 0) return 0;
-  const βt0   = 1.25 * Math.pow(t0, -0.118);
-  const βRH   = 1.27 - 0.0067 * H;
-  const βVS   = (2 * (1 + 1.13 * Math.exp(-0.0213 * VS))) / 3;
-  const βsPhi = 0.88 + 0.244 * sPhi;
-  const βCc   = 0.75 + 0.00061 * Cc;
-  const βα    = 0.46 + 9 * alpha;
-  const phiInfinity = 2.35 * βt0 * βRH * βVS * βsPhi * βCc * βα;
-  const βc = Math.pow(dt, 0.6) / (10 + Math.pow(dt, 0.6));
-  return βc * phiInfinity;
+
+  let loadingAgeFactor;
+  if (curingType === 'moist') {
+    loadingAgeFactor = t0 <= 7 ? 1 : 1.25 * Math.pow(t0, -0.118);
+  } else if (curingType === 'steam') {
+    loadingAgeFactor = t0 <= 3 ? 1 : 1.13 * Math.pow(t0, -0.094);
+  } else {
+    throw new RangeError(`Unsupported ACI 209R-92 curing type: ${curingType}`);
+  }
+
+  const humidityFactor = H <= 40 ? 1 : 1.27 - 0.0067 * H;
+  const sizeFactor = (2 * (1 + 1.13 * Math.exp(-0.0213 * VS))) / 3;
+  const slumpFactor = 0.82 + 0.00264 * slump;
+  const fineAggregateFactor = 0.88 + 0.0024 * fineAggregate;
+  const airContentFactor = Math.max(1, 0.46 + 0.09 * airContent);
+  const ultimateCreep = 2.35
+    * loadingAgeFactor
+    * humidityFactor
+    * sizeFactor
+    * slumpFactor
+    * fineAggregateFactor
+    * airContentFactor;
+  const timeFactor = Math.pow(dt, 0.6) / (10 + Math.pow(dt, 0.6));
+  return timeFactor * ultimateCreep;
 }
 
 /** Single-row version for batch use (accepts row object). */
-export function aci209Single({ t0, H, VS, sphi, Cc, alpha, t }) {
-  return aci209Phi(
-    parseFloat(t0), parseFloat(H), parseFloat(VS),
-    parseFloat(sphi), parseFloat(Cc), parseFloat(alpha),
-    parseFloat(t)
-  );
+export function aci209Single({ curingType, t0, H, VS, slump, fineAggregate, airContent, t }) {
+  return aci209Phi({
+    curingType: String(curingType).trim().toLowerCase(),
+    t0: parseFloat(t0),
+    H: parseFloat(H),
+    VS: parseFloat(VS),
+    slump: parseFloat(slump),
+    fineAggregate: parseFloat(fineAggregate),
+    airContent: parseFloat(airContent),
+    t: parseFloat(t),
+  });
 }
 
 // ─── fib MC 2010 ────────────────────────────────────────────────────────────
