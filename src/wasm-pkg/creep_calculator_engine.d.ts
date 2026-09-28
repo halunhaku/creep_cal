@@ -29,24 +29,12 @@ export function calculate_aci209_series(params: any, max_time: number): any;
  */
 export function calculate_aci209_single(params: any, t: number): number;
 
-/**
- * B4模型时间序列计算
- */
 export function calculate_b4_series(params: any, max_time: number): any;
 
-/**
- * B4模型单点计算（完整版本）
- */
 export function calculate_b4_single(params: any, t: number): any;
 
-/**
- * B4S模型时间序列计算
- */
-export function calculate_b4s_series(params: any, days: number): any;
+export function calculate_b4s_series(params: any, max_time: number): any;
 
-/**
- * B4S模型单点计算（完整版本）
- */
 export function calculate_b4s_single(params: any, t: number): any;
 
 /**

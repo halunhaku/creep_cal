@@ -24,16 +24,12 @@ pub struct TimeSeriesPoint {
 pub struct B4Result {
     pub t: f64,
     pub j: f64,
+    pub j_gpa: f64,
+    pub c0: f64,
+    pub cd: f64,
     pub epsilon_sh: f64,
     pub epsilon_au: f64,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct B4sResult {
-    pub t: f64,
-    pub j: f64,
-    pub epsilon_sh: f64,
-    pub epsilon_au: f64,
+    pub epsilon_total: f64,
 }
 
 // ACI 209R-92 creep parameters use the units defined by the report.
@@ -75,7 +71,7 @@ pub struct Mc2010Params {
 
 // 模块声明
 mod aci209;
-mod b4;
+pub(crate) mod b4;
 mod b4s;
 mod mc2010;
 mod utils;

@@ -4,7 +4,9 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import {
   calculate_aci209_series,
   calculate_aci209_single,
+  calculate_b4_series,
   calculate_b4_single,
+  calculate_b4s_series,
   calculate_b4s_single,
   calculate_mc2010_series,
   calculate_mc2010_single,
@@ -163,29 +165,64 @@ describe('JavaScript and Rust model consistency', () => {
     expect(() => mc2010Point({ ...boundary, Cs: '42.5R' })).toThrow(/Unsupported/);
   });
 
+  test('matches official RILEM B4 §1.9 composition-based benchmarks', () => {
+    const plain = {
+      t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50,
+      fc: 27.6, vS: 19.05, c: 219.3, wC: 0.60, aC: 7.0,
+      cementType: 'R', aggregateType: 'No Information', specimenShape: '1',
+      retarder: 0, flyAsh: 0, superplasticizer: 0, silicaFume: 0,
+      airEntrainingAgent: 0, waterReducer: 0, t: 112,
+    };
+    const r1 = b4Point(plain);
+    expect(r1.J * 1e6).toBeCloseTo(169.54, 1);
+    expect(r1.C0 * 1e6).toBeCloseTo(59.95, 1);
+    expect(r1.Cd * 1e6).toBeCloseTo(81.44, 1);
+    expect(r1.epsilonSH * 1e6).toBeCloseTo(-434.74, 1);
+    expect(r1.epsilonAU * 1e6).toBeCloseTo(-36.97, 1);
+    expect(r1.epsilonTotal * 1e6).toBeCloseTo(-471.71, 1);
+
+    const withFlyAsh = b4Point({ ...plain, flyAsh: 20 });
+    expect(withFlyAsh.C0 * 1e6).toBeCloseTo(29.69, 1);
+    expect(withFlyAsh.epsilonSH * 1e6).toBeCloseTo(-455.06, 1);
+    expect(withFlyAsh.epsilonAU * 1e6).toBeCloseTo(-45.11, 1);
+  });
+
+  test('matches official RILEM B4s §1.8/§1.9 strength-based benchmark', () => {
+    const plain = {
+      t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50,
+      fc: 27.6, vS: 19.05, cementType: 'R', aggregateType: 'No Information',
+      specimenShape: '1', t: 112,
+    };
+    const r = b4sPoint(plain);
+    expect(r.C0 * 1e6).toBeCloseTo(55.33, 1);
+    expect(r.Cd * 1e6).toBeCloseTo(104.56, 1);
+    expect(r.epsilonSH * 1e6).toBeCloseTo(-585.07, 1);
+    expect(r.epsilonAU * 1e6).toBeCloseTo(-53.27, 1);
+    expect(r.J * 1e6).toBeCloseTo(188.03, 1);
+  });
+
   test.each([
     {
-      t0: 7, tPrime: 28, T: 20, h: 70, fc: 40, vS: 100,
+      t0: 7, tPrime: 28, Tcur: 25, Tsh: 20, Tc: 30, h: 70, fc: 40, vS: 100,
       c: 350, wC: 0.42, aC: 5.8, cementType: 'R',
       aggregateType: 'Quartzite', specimenShape: '2',
+      retarder: 0, flyAsh: 0, superplasticizer: 1.5, silicaFume: 0,
+      airEntrainingAgent: 0, waterReducer: 0,
     },
     {
-      t0: 3, tPrime: 14, T: 30, h: 55, fc: 55, vS: 75,
+      t0: 3, tPrime: 14, Tcur: 22, Tsh: 15, Tc: 25, h: 55, fc: 55, vS: 75,
       c: 400, wC: 0.36, aC: 6.2, cementType: 'SL',
       aggregateType: 'Limestone', specimenShape: '5',
+      retarder: 0.3, flyAsh: 20, superplasticizer: 0, silicaFume: 5,
+      airEntrainingAgent: 0, waterReducer: 0,
     },
-  ])('B4 matches for %#', (params) => {
-    const rustShapes = {
-      1: 'infinite slab',
-      2: 'infinite cylinder',
-      3: 'infinite square prism',
-      4: 'sphere',
-      5: 'cube',
-    };
+  ])('RILEM B4 JS and Rust single and series match for %#', (params) => {
     const rustParams = {
       t0: params.t0,
       t_prime: params.tPrime,
-      t_temp: params.T,
+      t_cur: params.Tcur,
+      t_sh: params.Tsh,
+      t_c: params.Tc,
       h: params.h,
       fc: params.fc,
       v_s: params.vS,
@@ -193,33 +230,54 @@ describe('JavaScript and Rust model consistency', () => {
       w_c: params.wC,
       a_c: params.aC,
       cement_type: params.cementType,
-      aggregate_type: params.aggregateType === 'Quartzite' ? 'Quartz' : params.aggregateType,
-      specimen_shape: rustShapes[params.specimenShape],
+      aggregate_type: params.aggregateType,
+      specimen_shape: params.specimenShape,
+      retarder: params.retarder,
+      fly_ash: params.flyAsh,
+      superplasticizer: params.superplasticizer,
+      silica_fume: params.silicaFume,
+      air_entraining_agent: params.airEntrainingAgent,
+      water_reducer: params.waterReducer,
     };
 
-    for (const t of [params.tPrime + 1, 90, 365, 10000]) {
+    const series = calculate_b4_series(rustParams, 1000);
+
+    for (const t of [0, params.t0, params.tPrime, params.tPrime + 1, 90, 365, 1000]) {
       const jsResult = b4Point({ ...params, t });
       const rustResult = calculate_b4_single(rustParams, t);
-      expectConsistent(jsResult.J, rustResult.j);
-      expectConsistent(jsResult.epsilonSH, rustResult.epsilon_sh);
-      expectConsistent(jsResult.epsilonAU, rustResult.epsilon_au);
+      const seriesResult = series[t];
+
+      expect(seriesResult.t).toBe(t);
+      for (const key of ['J', 'J_GPa', 'C0', 'Cd', 'epsilonSH', 'epsilonAU', 'epsilonTotal']) {
+        const rustKey = key === 'J' ? 'j'
+          : key === 'J_GPa' ? 'j_gpa'
+          : key === 'C0' ? 'c0'
+          : key === 'Cd' ? 'cd'
+          : key === 'epsilonSH' ? 'epsilon_sh'
+          : key === 'epsilonAU' ? 'epsilon_au'
+          : 'epsilon_total';
+        expectConsistent(jsResult[key], rustResult[rustKey]);
+        expectConsistent(jsResult[key], seriesResult[rustKey]);
+      }
     }
   });
 
   test.each([
     {
-      t0: 7, tPrime: 28, T: 20, h: 70, fc: 40, vS: 100,
+      t0: 7, tPrime: 28, Tcur: 25, Tsh: 20, Tc: 30, h: 70, fc: 40, vS: 100,
       cementType: 'R', aggregateType: 'Quartzite', specimenShape: '2',
     },
     {
-      t0: 3, tPrime: 14, T: 30, h: 55, fc: 55, vS: 75,
+      t0: 3, tPrime: 14, Tcur: 20, Tsh: 10, Tc: 22, h: 55, fc: 55, vS: 75,
       cementType: 'RS', aggregateType: 'Granite', specimenShape: '4',
     },
-  ])('B4S matches for %#', (params) => {
+  ])('RILEM B4s JS and Rust single and series match for %#', (params) => {
     const rustParams = {
       t0: params.t0,
       t_prime: params.tPrime,
-      t_temp: params.T,
+      t_cur: params.Tcur,
+      t_sh: params.Tsh,
+      t_c: params.Tc,
       h: params.h,
       fc: params.fc,
       v_s: params.vS,
@@ -228,12 +286,53 @@ describe('JavaScript and Rust model consistency', () => {
       specimen_shape: params.specimenShape,
     };
 
-    for (const t of [params.tPrime + 1, 90, 365, 10000]) {
+    const series = calculate_b4s_series(rustParams, 1000);
+
+    for (const t of [0, params.t0, params.tPrime, params.tPrime + 1, 90, 365, 1000]) {
       const jsResult = b4sPoint({ ...params, t });
       const rustResult = calculate_b4s_single(rustParams, t);
-      expectConsistent(jsResult.J, rustResult.j);
-      expectConsistent(jsResult.epsilonSH, rustResult.epsilon_sh);
-      expectConsistent(jsResult.epsilonAU, rustResult.epsilon_au);
+      const seriesResult = series[t];
+
+      expect(seriesResult.t).toBe(t);
+      for (const key of ['J', 'J_GPa', 'C0', 'Cd', 'epsilonSH', 'epsilonAU', 'epsilonTotal']) {
+        const rustKey = key === 'J' ? 'j'
+          : key === 'J_GPa' ? 'j_gpa'
+          : key === 'C0' ? 'c0'
+          : key === 'Cd' ? 'cd'
+          : key === 'epsilonSH' ? 'epsilon_sh'
+          : key === 'epsilonAU' ? 'epsilon_au'
+          : 'epsilon_total';
+        expectConsistent(jsResult[key], rustResult[rustKey]);
+        expectConsistent(jsResult[key], seriesResult[rustKey]);
+      }
     }
+  });
+
+  test('RILEM B4 and B4s enforce formal calibration ranges', () => {
+    const valid = {
+      t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50,
+      fc: 27.6, vS: 19.05, c: 219.3, wC: 0.60, aC: 7.0,
+      cementType: 'R', aggregateType: 'No Information', specimenShape: '1',
+      retarder: 0, flyAsh: 0, superplasticizer: 0, silicaFume: 0,
+      airEntrainingAgent: 0, waterReducer: 0, t: 112,
+    };
+
+    expect(() => b4Point({ ...valid, fc: 14 })).toThrow(/15 ≤ fc ≤ 70/);
+    expect(() => b4Point({ ...valid, fc: 75 })).toThrow(/15 ≤ fc ≤ 70/);
+    expect(() => b4Point({ ...valid, vS: 10 })).toThrow(/12 ≤ V\/S ≤ 120/);
+    expect(() => b4Point({ ...valid, c: 150 })).toThrow(/200 ≤ c ≤ 1500/);
+    expect(() => b4Point({ ...valid, wC: 0.18 })).toThrow(/0.22 ≤ w\/c ≤ 0.87/);
+    expect(() => b4Point({ ...valid, aC: 0.8 })).toThrow(/1 ≤ a\/c ≤ 13.2/);
+    expect(() => b4Point({ ...valid, Tcur: 32 })).toThrow(/20 ≤ Tcur ≤ 30/);
+    expect(() => b4Point({ ...valid, h: 105 })).toThrow(/0 and 100%/);
+    expect(() => b4Point({ ...valid, cementType: 'X' })).toThrow(/Unsupported/);
+
+    const validS = {
+      t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50,
+      fc: 27.6, vS: 19.05, cementType: 'R', aggregateType: 'No Information',
+      specimenShape: '1', t: 112,
+    };
+    expect(() => b4sPoint({ ...validS, fc: 14 })).toThrow(/15 ≤ fc ≤ 70/);
+    expect(() => b4sPoint({ ...validS, vS: 125 })).toThrow(/12 ≤ V\/S ≤ 120/);
   });
 });

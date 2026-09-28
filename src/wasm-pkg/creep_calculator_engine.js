@@ -87,7 +87,6 @@ export function calculate_aci209_single(params, t) {
 }
 
 /**
- * B4模型时间序列计算
  * @param {any} params
  * @param {number} max_time
  * @returns {any}
@@ -101,7 +100,6 @@ export function calculate_b4_series(params, max_time) {
 }
 
 /**
- * B4模型单点计算（完整版本）
  * @param {any} params
  * @param {number} t
  * @returns {any}
@@ -115,13 +113,12 @@ export function calculate_b4_single(params, t) {
 }
 
 /**
- * B4S模型时间序列计算
  * @param {any} params
- * @param {number} days
+ * @param {number} max_time
  * @returns {any}
  */
-export function calculate_b4s_series(params, days) {
-    const ret = wasm.calculate_b4s_series(params, days);
+export function calculate_b4s_series(params, max_time) {
+    const ret = wasm.calculate_b4s_series(params, max_time);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
@@ -129,7 +126,6 @@ export function calculate_b4s_series(params, days) {
 }
 
 /**
- * B4S模型单点计算（完整版本）
  * @param {any} params
  * @param {number} t
  * @returns {any}

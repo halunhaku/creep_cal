@@ -172,168 +172,240 @@ export function mc2010Single({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
   });
 }
 
-// ─── B4 Model ───────────────────────────────────────────────────────────────
+// ─── RILEM Model B4 / B4s ──────────────────────────────────────────────────
 const B4_CEMENT = {
-  R:  { τcem:0.016, εcem:360e-6, tauAu:1, epsAu:210e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1, rT:-4.5, tauA:-0.33, tauW:-0.06, tauC:-0.1, epsA:-0.8, epsW:1.1, epsC:0.11, p1:0.70, p2:58.6e-3, p3:39.3e-3, p4:3.4e-3, p5:777e-6,  p5H:8.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
-  RS: { τcem:0.08,  εcem:860e-6, tauAu:41, epsAu:-84e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1.4, rT:-4.5, tauA:-0.33, tauW:-2.4, tauC:-2.7, epsA:-0.8, epsW:-0.27, epsC:0.11, p1:0.60, p2:17.4e-3, p3:39.3e-3, p4:3.4e-3, p5:94.6e-6, p5H:1.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
-  SL: { τcem:0.01,  εcem:410e-6, tauAu:1, epsAu:0, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1, rT:-4.5, tauA:-0.33, tauW:3.55, tauC:3.8, epsA:-0.8, epsW:1.0, epsC:0.11, p1:0.80, p2:40.5e-3, p3:39.3e-3, p4:3.4e-3, p5:496e-6,  p5H:8.00, p2w:3.00, p3a:-1.10, p3w:0.40, p4a:-0.90, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
+  R:  { tauCem:0.016, epsilonCem:360e-6, tauAuCem:1,  epsilonAuCem:210e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1,   rT:-4.5, tauA:-0.33, tauW:-0.06, tauC:-0.1, epsA:-0.8, epsW:1.1,   epsC:0.11, p1:0.70, p2:58.6e-3, p3:39.3e-3, p4:3.4e-3, p5:777e-6,  p5H:8, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
+  RS: { tauCem:0.08,  epsilonCem:860e-6, tauAuCem:41, epsilonAuCem:-84e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1.4, rT:-4.5, tauA:-0.33, tauW:-2.4,  tauC:-2.7, epsA:-0.8, epsW:-0.27, epsC:0.11, p1:0.60, p2:17.4e-3, p3:39.3e-3, p4:3.4e-3, p5:94.6e-6, p5H:1, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
+  SL: { tauCem:0.01,  epsilonCem:410e-6, tauAuCem:1,  epsilonAuCem:0,      rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1,   rT:-4.5, tauA:-0.33, tauW:3.55,  tauC:3.8,  epsA:-0.8, epsW:1,     epsC:0.11, p1:0.80, p2:40.5e-3, p3:39.3e-3, p4:3.4e-3, p5:496e-6,  p5H:8, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
 };
-const B4_AGG = {
-  Quartzite:    { ksτa:0.59,  ksεa:0.71 },
-  Limestone:    { ksτa:1.80,  ksεa:0.95 },
-  Sandstone:    { ksτa:2.30,  ksεa:1.60 },
-  Granite:      { ksτa:4.00,  ksεa:1.05 },
-  Diabase:      { ksτa:0.06,  ksεa:0.76 },
-  'Quartz Diorite': { ksτa:15.0, ksεa:2.20 },
-  'No Information': { ksτa:1.00, ksεa:1.00 },
-};
-const B4_SHAPE = { '1':{ks:1.00},'2':{ks:1.15},'3':{ks:1.25},'4':{ks:1.30},'5':{ks:1.55} };
 
-/**
- * B4 compliance function J(t, t') in 1/GPa.
- * Also returns shrinkage strain εsh at time t.
- * @returns {{ J: number, epsilonSH: number }}
- */
-export function b4Point({ t0, tPrime, T, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, t }) {
-  const hDec   = h > 1 ? h / 100 : h;
-  const cem    = B4_CEMENT[cementType || 'R'] || B4_CEMENT.R;
-  const agg    = B4_AGG[aggregateType || 'Quartzite'] || B4_AGG.Quartzite;
-  const shape  = B4_SHAPE[String(specimenShape) || '2'] || B4_SHAPE['2'];
-  const tNum   = parseFloat(t), t0Num = parseFloat(t0), tpNum = parseFloat(tPrime);
-  if (isNaN(tNum) || tNum < tpNum) return { J: NaN, epsilonSH: NaN };
-
-  const D      = 2 * parseFloat(vS);
-  const E28    = (4734 * Math.sqrt(parseFloat(fc))) / 1000;
-  const bTh    = Math.exp(4000 * (1 / 293 - 1 / (parseFloat(T) + 273)));
-  const t0T    = t0Num * bTh;
-  const tpHat  = t0T + (tpNum - t0Num) * bTh;
-  const tHat   = tpHat + (tNum - tpNum) * bTh;
-
-  const tau0   = cem.τcem * Math.pow(parseFloat(aC)/6, cem.tauA) *
-                 Math.pow(parseFloat(wC)/0.38, cem.tauW) *
-                 Math.pow((6.5 * parseFloat(c)) / 2350, cem.tauC);
-  const tauSH  = tau0 * agg.ksτa * Math.pow(shape.ks * D, 2);
-  const eps0   = cem.εcem * Math.pow(parseFloat(aC)/6, cem.epsA) *
-                 Math.pow(parseFloat(wC)/0.38, cem.epsW) *
-                 Math.pow((6.5 * parseFloat(c)) / 2350, cem.epsC);
-  const E1     = E28 * Math.sqrt((7*bTh + 600*bTh) / (4 + (6/7)*(7*bTh + 600*bTh)));
-  const E2     = E28 * Math.sqrt((t0T + tauSH*bTh) / (4 + (6/7)*(t0T + tauSH*bTh)));
-  const epsSHInf = -eps0 * agg.ksεa * (E1 / E2);
-  const kh     = hDec <= 0.98 ? 1 - Math.pow(hDec, 3) : 12.94 * (1 - hDec) - 0.2;
-
-  const q1  = cem.p1 / (E28 * 1000);
-  const q2  = (cem.p2 * Math.pow(parseFloat(wC)/0.38, cem.p2w)) / 1000;
-  const q3  = cem.p3 * q2 * Math.pow(parseFloat(aC)/6, cem.p3a) * Math.pow(parseFloat(wC)/0.38, cem.p3w);
-  const q4  = (cem.p4 * Math.pow(parseFloat(aC)/6, cem.p4a) * Math.pow(parseFloat(wC)/0.38, cem.p4w)) / 1000;
-  const rHat= 1.7 * Math.pow(tpHat, 0.12) + 8;
-  const Z   = tHat > tpHat ? Math.pow(tpHat, -0.5) * Math.log(1 + Math.pow(tHat - tpHat, 0.1)) : 0.001;
-  const Qf  = 1 / (0.086 * Math.pow(tpHat, 2/9) + 1.21 * Math.pow(tpHat, 4/9));
-  const Q   = Qf * Math.pow(1 + Math.pow(Qf / Math.max(0.0001, Z), rHat), -1/rHat);
-  const C0  = q2 * Q + q3 * Math.log(1 + Math.pow(Math.max(0, tHat - tpHat), 0.1)) +
-              q4 * Math.log(Math.max(1, tHat / tpHat));
-  const RT  = Math.exp(4000 * (1 / 293 - 1 / (parseFloat(T) + 273)));
-  const q5  = (cem.p5 * Math.pow(parseFloat(aC)/6, cem.p5a) *
-               Math.pow(parseFloat(wC)/0.38, cem.p5w) *
-               Math.pow(Math.abs(kh * epsSHInf), cem.p5e)) / 1000;
-  const H   = 1 - (1 - hDec) * Math.tanh(Math.sqrt(Math.max(0, tHat - t0T) / tauSH));
-  const tp0 = Math.max(tpHat, t0T);
-  const Hc  = 1 - (1 - hDec) * Math.tanh(Math.sqrt(Math.max(0, tp0 - t0T) / tauSH));
-  const Cd  = tHat >= tp0 ? q5 * Math.sqrt(Math.max(0, Math.exp(-cem.p5H * H) - Math.exp(-cem.p5H * Hc))) : 0;
-  const J   = q1 + RT * C0 + Cd;
-
-  // Shrinkage strain at time t (measured from t0)
-  const tTilde    = (tNum - t0Num) * bTh;
-  const epsilonSH = epsSHInf * kh * Math.tanh(Math.sqrt(Math.max(0, tTilde) / tauSH));
-  const epsilonAUInf = -cem.epsAu * Math.pow(parseFloat(aC)/6, cem.rEpsA) *
-                       Math.pow(parseFloat(wC)/0.38, cem.rEpsW);
-  const tauAU        = cem.tauAu * Math.pow(parseFloat(wC)/0.38, cem.rTauW);
-  const alphaAU      = cem.rAlpha * (parseFloat(wC)/0.38);
-  const epsilonAU    = epsilonAUInf *
-                       Math.pow(1 + Math.pow(tauAU / (tTilde + t0T), alphaAU), cem.rT);
-
-  return { J, epsilonSH, epsilonAU };
-}
-
-/** Single-row version for batch use. */
-export function b4Single(row) {
-  return b4Point(row);
-}
-
-// ─── B4S Model ──────────────────────────────────────────────────────────────
 const B4S_CEMENT = {
-  R:  { tau_au_cem:2.26, r_tau_f:0.27, eps_au_cem:78.2e-6, r_eps_f:1.03, tau_s_cem:0.027, s_tau_f:0.21,  eps_s_cem:590e-6, s_eps_f:-0.51, p1:0.70, p5e:-0.85, p5H:8,  s2:14.2e-3, s3:0.976, s4:4.00e-3, s5:1.54e-3,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
-  RS: { tau_au_cem:2.26, r_tau_f:0.27, eps_au_cem:78.2e-6, r_eps_f:1.03, tau_s_cem:0.027, s_tau_f:1.55,  eps_s_cem:830e-6, s_eps_f:-0.84, p1:0.60, p5e:-0.85, p5H:1,  s2:29.9e-3, s3:0.976, s4:4.00e-3, s5:41.8e-3,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
-  SL: { tau_au_cem:2.26, r_tau_f:0.27, eps_au_cem:78.2e-6, r_eps_f:1.03, tau_s_cem:0.032, s_tau_f:-1.84, eps_s_cem:640e-6, s_eps_f:-0.69, p1:0.80, p5e:-0.85, p5H:8,  s2:11.2e-3, s3:0.976, s4:4.00e-3, s5:150e-3,   s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
-};
-const B4S_AGG = {
-  Quartzite:       { ksτa:0.59,  ksεa:0.71 },
-  Limestone:       { ksτa:1.80,  ksεa:0.95 },
-  Sandstone:       { ksτa:2.30,  ksεa:1.60 },
-  Granite:         { ksτa:4.00,  ksεa:1.05 },
-  Diabase:         { ksτa:0.06,  ksεa:0.76 },
-  'Quartz Diorite':{ ksτa:15.0,  ksεa:2.20 },
-  'No Information':{ ksτa:1.00,  ksεa:1.00 },
+  R:  { tauAuCem:2.26, rTauF:0.27, epsilonAuCem:78.2e-6, rEpsF:1.03, alpha:1.73, rT:-1.73, tauSCem:0.027, sTauF:0.21,  epsilonSCem:590e-6, sEpsF:-0.51, p1:0.70, p5e:-0.85, p5H:8, s2:14.2e-3, s3:0.976, s4:4e-3, s5:1.54e-3, s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
+  RS: { tauAuCem:2.26, rTauF:0.27, epsilonAuCem:78.2e-6, rEpsF:1.03, alpha:1.73, rT:-1.73, tauSCem:0.027, sTauF:1.55,  epsilonSCem:830e-6, sEpsF:-0.84, p1:0.60, p5e:-0.85, p5H:1, s2:29.9e-3, s3:0.976, s4:4e-3, s5:41.8e-6, s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
+  SL: { tauAuCem:2.26, rTauF:0.27, epsilonAuCem:78.2e-6, rEpsF:1.03, alpha:1.73, rT:-1.73, tauSCem:0.032, sTauF:-1.84, epsilonSCem:640e-6, sEpsF:-0.69, p1:0.80, p5e:-0.85, p5H:8, s2:11.2e-3, s3:0.976, s4:4e-3, s5:150e-6,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
 };
 
-/**
- * B4S compliance function J(t, t') in 1/GPa + shrinkage εsh.
- * Simplified variant — uses only fc (no mix design).
- * @returns {{ J: number, epsilonSH: number }}
- */
-export function b4sPoint({ t0, tPrime, T, h, fc, vS, cementType, aggregateType, specimenShape, t }) {
-  const hDec   = parseFloat(h) > 1 ? parseFloat(h) / 100 : parseFloat(h);
-  const cem    = B4S_CEMENT[cementType || 'R'] || B4S_CEMENT.R;
-  const agg    = B4S_AGG[aggregateType || 'Quartzite'] || B4S_AGG.Quartzite;
-  const shape  = B4_SHAPE[String(specimenShape) || '2'] || B4_SHAPE['2'];
-  const tNum   = parseFloat(t), t0Num = parseFloat(t0), tpNum = parseFloat(tPrime);
-  const fcNum  = parseFloat(fc), vSNum = parseFloat(vS), TNum = parseFloat(T);
-  if (isNaN(tNum) || tNum < tpNum) return { J: NaN, epsilonSH: NaN };
+const B4_AGGREGATE = {
+  Diabase: { tau:0.06, epsilon:0.76 },
+  Quartzite: { tau:0.59, epsilon:0.71 },
+  Limestone: { tau:1.8, epsilon:0.95 },
+  Sandstone: { tau:2.3, epsilon:1.6 },
+  Granite: { tau:4, epsilon:1.05 },
+  'Quartz Diorite': { tau:15, epsilon:2.2 },
+  'No Information': { tau:1, epsilon:1 },
+};
+const B4_SHAPE = { '1':1, '2':1.15, '3':1.25, '4':1.3, '5':1.55 };
 
-  const D      = 2 * vSNum;
-  const E28    = (4734 * Math.sqrt(fcNum)) / 1000;
-  const bTh    = Math.exp(4000 * (1 / 293 - 1 / (TNum + 273)));
-  const t0T    = t0Num * bTh;
-  const tpHat  = t0T + (tpNum - t0Num) * bTh;
-  const tHat   = tpHat + (tNum - tpNum) * bTh;
+const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
+const acceleration = (temperature) => Math.exp(4000 * (1 / 293 - 1 / (temperature + 273)));
 
-  const tau0   = cem.tau_s_cem * Math.pow(fcNum / 40, cem.s_tau_f);
-  const tauSH  = tau0 * agg.ksτa * Math.pow(shape.ks * D, 2);
-  const eps0   = cem.eps_s_cem * Math.pow(fcNum / 40, cem.s_eps_f);
-  const E1     = E28 * Math.sqrt((7*bTh + 600*bTh) / (4 + (6/7)*(7*bTh + 600*bTh)));
-  const E2     = E28 * Math.sqrt((t0T + tauSH*bTh) / (4 + (6/7)*(t0T + tauSH*bTh)));
-  const epsSHInf = -eps0 * agg.ksεa * (E1 / E2);
-  const kh     = hDec <= 0.98 ? 1 - Math.pow(hDec, 3) : 12.94 * (1 - hDec) - 0.2;
-
-  const q1  = cem.p1 / (E28 * 1000);
-  const q2  = cem.s2 * Math.pow(fcNum / 40, cem.s2f) / 1000;
-  const q3  = cem.s3 * q2 * Math.pow(fcNum / 40, cem.s3f);
-  const q4  = cem.s4 * Math.pow(fcNum / 40, cem.s4f) / 1000;
-  const rHat= 1.7 * Math.pow(tpHat, 0.12) + 8;
-  const Z   = tHat > tpHat ? Math.pow(tpHat, -0.5) * Math.log(1 + Math.pow(tHat - tpHat, 0.1)) : 0.001;
-  const Qf  = 1 / (0.086 * Math.pow(tpHat, 2/9) + 1.21 * Math.pow(tpHat, 4/9));
-  const Q   = Qf * Math.pow(1 + Math.pow(Qf / Math.max(0.0001, Z), rHat), -1/rHat);
-  const C0  = q2 * Q + q3 * Math.log(1 + Math.pow(Math.max(0, tHat - tpHat), 0.1)) +
-              q4 * Math.log(Math.max(1, tHat / tpHat));
-  const RT  = Math.exp(4000 * (1 / 293 - 1 / (TNum + 273)));
-  const q5  = cem.s5 * Math.pow(fcNum / 40, cem.s5f) *
-              Math.pow(Math.abs(kh * epsSHInf), cem.p5e) / 1000;
-  const H   = 1 - (1 - hDec) * Math.tanh(Math.sqrt(Math.max(0, tHat - t0T) / tauSH));
-  const tp0 = Math.max(tpHat, t0T);
-  const Hc  = 1 - (1 - hDec) * Math.tanh(Math.sqrt(Math.max(0, tp0 - t0T) / tauSH));
-  const Cd  = tHat >= tp0 ? q5 * Math.sqrt(Math.max(0, Math.exp(-cem.p5H * H) - Math.exp(-cem.p5H * Hc))) : 0;
-  const J   = q1 + RT * C0 + Cd;
-
-  const tTilde    = (tNum - t0Num) * bTh;
-  const epsilonSH = epsSHInf * kh * Math.tanh(Math.sqrt(Math.max(0, tTilde) / tauSH));
-  const epsilonAUInf = -cem.eps_au_cem * Math.pow(fcNum / 40, cem.r_eps_f);
-  const tauAU        = cem.tau_au_cem * Math.pow(fcNum / 40, cem.r_tau_f);
-  const epsilonAU    = epsilonAUInf *
-                       Math.pow(1 + Math.pow(tauAU / (tTilde + t0T), 1.73), -1.73);
-
-  return { J, epsilonSH, epsilonAU };
+function normalizeB4Humidity(value) {
+  const numeric = Number(value);
+  const humidity = numeric > 1 ? numeric / 100 : numeric;
+  if (!inRange(humidity, 0, 1)) throw new RangeError('B4 requires relative humidity between 0 and 100%.');
+  return humidity;
 }
 
-/** Single-row version for batch use. */
-export function b4sSingle(row) {
-  return b4sPoint(row);
+function validateB4Common({ t0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t }) {
+  if (!Number.isFinite(t0) || t0 < 1 || !Number.isFinite(tPrime) || tPrime < 1) {
+    throw new RangeError('B4 is not intended for concrete younger than 1 day.');
+  }
+  if (!Number.isFinite(t) || t < 0) throw new RangeError('B4 requires a non-negative concrete age t.');
+  if (!inRange(fc, 15, 70)) throw new RangeError('B4 calibration range is 15 ≤ fc ≤ 70 MPa.');
+  if (!inRange(vS, 12, 120)) throw new RangeError('B4 calibration range is 12 ≤ V/S ≤ 120 mm.');
+  if (!inRange(Tcur, 20, 30)) throw new RangeError('B4 curing-temperature range is 20 ≤ Tcur ≤ 30°C.');
+  if (!inRange(Tsh, -25, 75) || !inRange(Tc, -25, 75)) {
+    throw new RangeError('B4 environmental-temperature range is -25 ≤ T ≤ 75°C.');
+  }
+  normalizeB4Humidity(h);
+  if (!(cementType in B4_CEMENT)) throw new RangeError(`Unsupported B4 cement type: ${cementType}`);
+  if (!(aggregateType in B4_AGGREGATE)) throw new RangeError(`Unsupported B4 aggregate type: ${aggregateType}`);
+  if (!(String(specimenShape) in B4_SHAPE)) throw new RangeError(`Unsupported B4 specimen shape: ${specimenShape}`);
 }
+
+function b4TimeState({ t0, tPrime, Tcur, Tsh, Tc, t }) {
+  const betaTh = acceleration(Tcur);
+  const betaTs = acceleration(Tsh);
+  const betaTc = acceleration(Tc);
+  const t0Tilde = t0 * betaTh;
+  const tPrimeHat = tPrime >= t0
+    ? t0Tilde + (tPrime - t0) * betaTs
+    : tPrime * betaTh;
+  const tHat = t >= tPrime
+    ? tPrimeHat + (t - tPrime) * betaTc
+    : (t >= t0 ? t0Tilde + (t - t0) * betaTs : t * betaTh);
+  const dryingDuration = Math.max(0, t - t0) * betaTs;
+  const equivalentAge = t >= t0 ? t0Tilde + dryingDuration : t * betaTh;
+  return { betaTh, betaTs, betaTc, t0Tilde, tPrimeHat, tHat, dryingDuration, equivalentAge };
+}
+
+function b4CreepTimeTerms(tPrimeHat, tHat) {
+  const elapsed = Math.max(0, tHat - tPrimeHat);
+  if (elapsed === 0) return { Q:0, logElapsed:0, logAge:0 };
+  const r = 1.7 * Math.pow(tPrimeHat, 0.12) + 8;
+  const Z = Math.pow(tPrimeHat, -0.5) * Math.log(1 + Math.pow(elapsed, 0.1));
+  const Qf = 1 / (0.086 * Math.pow(tPrimeHat, 2 / 9) + 1.21 * Math.pow(tPrimeHat, 4 / 9));
+  const Q = Qf * Math.pow(1 + Math.pow(Qf / Z, r), -1 / r);
+  return { Q, logElapsed:Math.log(1 + Math.pow(elapsed, 0.1)), logAge:Math.log(tHat / tPrimeHat) };
+}
+
+function b4AdmixtureFactors({ retarder=0, flyAsh=0, superplasticizer=0, silicaFume=0, airEntrainingAgent=0, waterReducer=0 }) {
+  const re = Number(retarder), fly = Number(flyAsh), superValue = Number(superplasticizer);
+  const silica = Number(silicaFume), aea = Number(airEntrainingAgent), wr = Number(waterReducer);
+  for (const [name, value] of Object.entries({ retarder:re, flyAsh:fly, superplasticizer:superValue, silicaFume:silica, airEntrainingAgent:aea, waterReducer:wr })) {
+    if (!Number.isFinite(value) || value < 0) throw new RangeError(`B4 admixture percentage ${name} must be non-negative.`);
+  }
+
+  let shrinkage = [1, 1, 1, 1];
+  if (re > 0) {
+    if (re <= 0.5 && fly < 15) shrinkage = [6, 0.58, 0.5, 2.6];
+    else if (re <= 0.6 && fly <= 15) shrinkage = [2, 0.43, 0.59, 3.1];
+    else if (re <= 0.6 && fly <= 30) shrinkage = [2.1, 0.72, 0.88, 3.4];
+    else if (re <= 0.6) shrinkage = [2.8, 0.87, 1.6, 5];
+    else if (fly <= 15) shrinkage = [2, 0.26, 0.22, 0.95];
+    else if (fly <= 30) shrinkage = [2.1, 1.1, 1.1, 3.3];
+    else shrinkage = [2.1, 1.1, 0.97, 4];
+  } else if (fly > 0) {
+    if (fly <= 15 && superValue <= 5) shrinkage = [0.32, 0.71, 0.55, 1.71];
+    else if (fly <= 15) shrinkage = [0.32, 0.55, 0.92, 2.3];
+    else if (fly <= 30 && superValue <= 5) shrinkage = [0.5, 0.9, 0.82, 1.25];
+    else if (fly <= 30) shrinkage = [0.5, 0.8, 0.8, 2.81];
+    else if (superValue <= 5) shrinkage = [0.63, 1.38, 0, 1.2];
+    else shrinkage = [0.63, 0.95, 0.76, 3.11];
+  } else if (superValue > 0) {
+    if (superValue <= 5 && silica <= 8) shrinkage = [6, 2.8, 0.29, 0.21];
+    else if (superValue <= 5) shrinkage = [3, 0.96, 0.26, 0.71];
+    else if (silica <= 8) shrinkage = [8, 1.95, 0, 1];
+    else if (silica <= 18) shrinkage = [2.6, 0.82, 0, 1.2];
+    else shrinkage = [1, 1.5, 5, 1];
+  } else if (silica > 0) {
+    if (silica <= 8) shrinkage = [1.9, 0.47, 0, 1.2];
+    else if (silica <= 18) shrinkage = [2.6, 0.82, 0, 1.2];
+    else shrinkage = [1, 1.5, 5, 1];
+  } else if (aea > 0) {
+    shrinkage = aea <= 0.05 ? [2.3, 1.1, 0.28, 0.35] : [0.44, 4.28, 0, 0.36];
+  } else if (wr > 0) {
+    shrinkage = wr <= 2 ? [0.5, 0.38, 0, 1.9] : (wr <= 3 ? [6, 0.45, 1.51, 0.3] : [2.4, 0.4, 0.68, 1.4]);
+  }
+
+  let creep = [1, 1, 1, 1];
+  if (re > 0) creep = re <= 0.5 && fly < 15 ? [0.31, 7.14, 1.35, 0.48] : [1.43, 0.58, 0.9, 0.46];
+  else if (fly > 0) creep = fly >= 15 ? [0.37, 2.33, 0.63, 1.6] : [0.31, 7.14, 1.35, 0.48];
+  else if (superValue > 0) creep = [0.72, 2.19, 1.72, 0.48];
+  else if (silica > 0) creep = [1.12, 3.11, 0.51, 0.61];
+  else if (aea > 0) creep = [0.9, 3.17, 1, 0.1];
+  else if (wr > 0) creep = wr <= 2 ? [1, 2.1, 1.68, 0.45] : (wr <= 3 ? [1.41, 0.72, 1.76, 0.6] : [1.28, 2.58, 0.73, 1.1]);
+
+  return { tauCem:shrinkage[0], epsilonAuCem:shrinkage[1], rEpsW:shrinkage[2], rAlpha:shrinkage[3], p2:creep[0], p3:creep[1], p4:creep[2], p5:creep[3] };
+}
+
+function b4Result({ common, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU, rT, q1, q2, q3, q4, q5, p5H }) {
+  const { t, t0, tPrime, h, time } = common;
+  const humidity = normalizeB4Humidity(h);
+  const kh = humidity <= 0.98 ? 1 - Math.pow(humidity, 3) : 12.94 * (1 - humidity) - 0.2;
+  const shrinkageDevelopment = Math.tanh(Math.sqrt(time.dryingDuration / tauSH));
+  const epsilonSH = epsilonSHInf * kh * shrinkageDevelopment;
+  const epsilonAU = time.equivalentAge > 0
+    ? epsilonAUInf * Math.pow(1 + Math.pow(tauAU / time.equivalentAge, alphaAU), rT)
+    : 0;
+
+  let C0 = 0, Cd = 0, J = 0;
+  if (t >= tPrime) {
+    const terms = b4CreepTimeTerms(time.tPrimeHat, time.tHat);
+    C0 = q2 * terms.Q + q3 * terms.logElapsed + q4 * terms.logAge;
+    const start = Math.max(time.tPrimeHat, time.t0Tilde);
+    if (time.tHat >= start) {
+      const H = 1 - (1 - humidity) * Math.tanh(Math.sqrt(Math.max(0, time.tHat - time.t0Tilde) / tauSH));
+      const Hc = 1 - (1 - humidity) * Math.tanh(Math.sqrt(Math.max(0, start - time.t0Tilde) / tauSH));
+      Cd = q5 * Math.sqrt(Math.max(0, Math.exp(-p5H * H) - Math.exp(-p5H * Hc)));
+    }
+    J = q1 + time.betaTc * C0 + Cd;
+  }
+
+  return { t, J, J_GPa:J * 1000, C0, Cd, epsilonSH, epsilonAU, epsilonTotal:epsilonSH + epsilonAU };
+}
+
+/** RILEM Model B4 composition-based mean prediction. J is returned in 1/MPa. */
+export function b4Point(input) {
+  const numericKeys = ['t0','tPrime','Tcur','Tsh','Tc','h','fc','vS','c','wC','aC','t'];
+  const params = { ...input };
+  for (const key of numericKeys) params[key] = Number(params[key]);
+  validateB4Common(params);
+  if (!inRange(params.c, 200, 1500)) throw new RangeError('B4 calibration range is 200 ≤ c ≤ 1500 kg/m³.');
+  if (!inRange(params.wC, 0.22, 0.87)) throw new RangeError('B4 calibration range is 0.22 ≤ w/c ≤ 0.87.');
+  if (!inRange(params.aC, 1, 13.2)) throw new RangeError('B4 calibration range is 1 ≤ a/c ≤ 13.2.');
+
+  const cement = B4_CEMENT[params.cementType];
+  const aggregate = B4_AGGREGATE[params.aggregateType];
+  const shape = B4_SHAPE[String(params.specimenShape)];
+  const admixture = b4AdmixtureFactors(params);
+  const time = b4TimeState(params);
+  const D = 2 * params.vS;
+  const tau0 = cement.tauCem * admixture.tauCem * Math.pow(params.aC / 6, cement.tauA)
+    * Math.pow(params.wC / 0.38, cement.tauW) * Math.pow(6.5 * params.c / 2350, cement.tauC);
+  const tauSH = tau0 * aggregate.tau * Math.pow(shape * D, 2);
+  const epsilon0 = cement.epsilonCem * Math.pow(params.aC / 6, cement.epsA)
+    * Math.pow(params.wC / 0.38, cement.epsW) * Math.pow(6.5 * params.c / 2350, cement.epsC);
+  const E28 = 4734 * Math.sqrt(params.fc) / 1000;
+  const E1Age = 7 * time.betaTh + 600 * time.betaTs;
+  const E2Age = time.t0Tilde + tauSH * time.betaTs;
+  const E1 = E28 * Math.sqrt(E1Age / (4 + (6 / 7) * E1Age));
+  const E2 = E28 * Math.sqrt(E2Age / (4 + (6 / 7) * E2Age));
+  const epsilonSHInf = -epsilon0 * aggregate.epsilon * E1 / E2;
+  const humidity = normalizeB4Humidity(params.h);
+  const kh = humidity <= 0.98 ? 1 - humidity ** 3 : 12.94 * (1 - humidity) - 0.2;
+  const q1 = cement.p1 / (E28 * 1000);
+  const q2 = cement.p2 * admixture.p2 * Math.pow(params.wC / 0.38, cement.p2w) / 1000;
+  const q3 = cement.p3 * admixture.p3 * q2 * Math.pow(params.aC / 6, cement.p3a) * Math.pow(params.wC / 0.38, cement.p3w);
+  const q4 = cement.p4 * admixture.p4 * Math.pow(params.aC / 6, cement.p4a) * Math.pow(params.wC / 0.38, cement.p4w) / 1000;
+  const q5 = cement.p5 * admixture.p5 * Math.pow(params.aC / 6, cement.p5a)
+    * Math.pow(params.wC / 0.38, cement.p5w) * Math.pow(Math.abs(kh * epsilonSHInf), cement.p5e) / 1000;
+  const epsilonAUInf = -cement.epsilonAuCem * admixture.epsilonAuCem * Math.pow(params.aC / 6, cement.rEpsA)
+    * Math.pow(params.wC / 0.38, cement.rEpsW * admixture.rEpsW);
+  const tauAU = cement.tauAuCem * Math.pow(params.wC / 0.38, cement.rTauW);
+  const alphaAU = cement.rAlpha * admixture.rAlpha * params.wC / 0.38;
+  return b4Result({
+    common:{ ...params, time }, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU,
+    rT:cement.rT, q1, q2, q3, q4, q5, p5H:cement.p5H,
+  });
+}
+
+/** RILEM Model B4s strength-based mean prediction. J is returned in 1/MPa. */
+export function b4sPoint(input) {
+  const numericKeys = ['t0','tPrime','Tcur','Tsh','Tc','h','fc','vS','t'];
+  const params = { ...input };
+  for (const key of numericKeys) params[key] = Number(params[key]);
+  validateB4Common(params);
+  const cement = B4S_CEMENT[params.cementType];
+  const aggregate = B4_AGGREGATE[params.aggregateType];
+  const shape = B4_SHAPE[String(params.specimenShape)];
+  const time = b4TimeState(params);
+  const D = 2 * params.vS;
+  const strength = params.fc / 40;
+  const tau0 = cement.tauSCem * Math.pow(strength, cement.sTauF);
+  const tauSH = tau0 * aggregate.tau * Math.pow(shape * D, 2);
+  const epsilon0 = cement.epsilonSCem * Math.pow(strength, cement.sEpsF);
+  const E28 = 4734 * Math.sqrt(params.fc) / 1000;
+  const E1Age = 7 * time.betaTh + 600 * time.betaTs;
+  const E2Age = time.t0Tilde + tauSH * time.betaTs;
+  const E1 = E28 * Math.sqrt(E1Age / (4 + (6 / 7) * E1Age));
+  const E2 = E28 * Math.sqrt(E2Age / (4 + (6 / 7) * E2Age));
+  const epsilonSHInf = -epsilon0 * aggregate.epsilon * E1 / E2;
+  const humidity = normalizeB4Humidity(params.h);
+  const kh = humidity <= 0.98 ? 1 - humidity ** 3 : 12.94 * (1 - humidity) - 0.2;
+  const q1 = cement.p1 / (E28 * 1000);
+  const q2 = cement.s2 * Math.pow(strength, cement.s2f) / 1000;
+  const q3 = cement.s3 * q2 * Math.pow(strength, cement.s3f);
+  const q4 = cement.s4 * Math.pow(strength, cement.s4f) / 1000;
+  const q5 = cement.s5 * Math.pow(strength, cement.s5f) * Math.pow(Math.abs(kh * epsilonSHInf), cement.p5e) / 1000;
+  const epsilonAUInf = -cement.epsilonAuCem * Math.pow(strength, cement.rEpsF);
+  const tauAU = cement.tauAuCem * Math.pow(strength, cement.rTauF);
+  return b4Result({
+    common:{ ...params, time }, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU:cement.alpha,
+    rT:cement.rT, q1, q2, q3, q4, q5, p5H:cement.p5H,
+  });
+}
+
+export function b4Single(row) { return b4Point(row); }
+export function b4sSingle(row) { return b4sPoint(row); }
+

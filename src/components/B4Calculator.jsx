@@ -9,7 +9,7 @@ const aggregateOptions = [
   ['Sandstone', 'Sandstone'],
   ['Granite', 'Granite'],
   ['Quartz Diorite', 'Quartz Diorite'],
-  ['No Information', 'Unknown'],
+  ['No Information', 'Unknown / no correction'],
 ].map(([value, label]) => ({ value, label }));
 
 const shapeOptions = [
@@ -20,101 +20,90 @@ const shapeOptions = [
   ['5', 'Cube'],
 ].map(([value, label]) => ({ value, label }));
 
-const rustAggregateNames = { Diabase: 'Dolerite', Quartzite: 'Quartz' };
-const rustShapeNames = {
-  1: 'infinite slab',
-  2: 'infinite cylinder',
-  3: 'infinite square prism',
-  4: 'sphere',
-  5: 'cube',
-};
-
 const chartLines = [
-  { dataKey: 'j', stroke: 'var(--green)', name: 'Compliance J (×10⁻⁶ GPa⁻¹)' },
+  { dataKey: 'j_micro_mpa', stroke: 'var(--green)', name: 'Compliance J (10⁻⁶/MPa)' },
+  { dataKey: 'epsilon_total', stroke: 'var(--cyan)', name: 'Total Shrinkage εsh,total (με)' },
   { dataKey: 'epsilon_sh', stroke: 'var(--amber)', name: 'Drying Shrinkage εsh (με)' },
   { dataKey: 'epsilon_au', stroke: '#7fb8c9', name: 'Autogenous Shrinkage εau (με)' },
 ];
 
+function chartPoint(point) {
+  return {
+    t: point.t,
+    j_micro_mpa: point.J * 1e6,
+    epsilon_sh: point.epsilonSH * 1e6,
+    epsilon_au: point.epsilonAU * 1e6,
+    epsilon_total: point.epsilonTotal * 1e6,
+  };
+}
+
+function rustChartPoint(point) {
+  return {
+    t: point.t,
+    j_micro_mpa: point.j * 1e6,
+    epsilon_sh: point.epsilon_sh * 1e6,
+    epsilon_au: point.epsilon_au * 1e6,
+    epsilon_total: point.epsilon_total * 1e6,
+  };
+}
+
 const config = {
-  name: 'B4 Model',
+  name: 'RILEM Model B4',
   descriptions: {
-    js: 'B4 compliance and shrinkage calculation with mix design, aggregate, humidity, temperature, and specimen geometry inputs.',
-    rust: 'B4 compliance and shrinkage calculation using the Rust WASM kernel for long-range response curves.',
+    js: 'RILEM TC-242-MDC composition-based B4 mean prediction with staged temperatures, Tables 4–6 admixture and aggregate corrections, compliance, and both shrinkage components.',
+    rust: 'The complete composition-based B4 mean formulation evaluated by the Rust WASM kernel with absolute concrete-age series.',
   },
   initialParams: {
-    t0: 7, tPrime: 28, T: 20, h: 60, fc: 30, vS: 100, c: 350, wC: 0.5, aC: 4,
-    cementType: 'R', aggregateType: 'Quartzite', specimenShape: '2',
+    t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50, fc: 27.6,
+    vS: 19.05, c: 219.3, wC: 0.6, aC: 7, cementType: 'R',
+    aggregateType: 'No Information', specimenShape: '1', retarder: 0, flyAsh: 0,
+    superplasticizer: 0, silicaFume: 0, airEntrainingAgent: 0, waterReducer: 0,
   },
   paramsConfig: [
-    { name: 't0', label: 'Drying Start Age', min: 1, max: 365, unit: 'Days' },
-    { name: 'tPrime', label: 'Age at Loading', min: 1, max: 365, unit: 'Days' },
-    { name: 'T', label: 'Temperature', min: -20, max: 60, unit: '°C' },
-    { name: 'h', label: 'Relative Humidity', min: 0, max: 100, unit: '%' },
-    { name: 'fc', label: 'Concrete Strength', min: 10, max: 100, unit: 'MPa' },
-    { name: 'vS', label: 'Volume-Surface Ratio', min: 0.1, max: 1000, unit: 'mm' },
-    { name: 'c', label: 'Cement Content', min: 200, max: 600, unit: 'kg/m³' },
-    { name: 'wC', label: 'Water-Cement Ratio', min: 0.2, max: 0.8, unit: '' },
-    { name: 'aC', label: 'Aggregate-Cement Ratio', min: 1, max: 10, unit: '' },
-    {
-      name: 'cementType',
-      label: 'Cement Type',
-      options: [
-        { value: 'R', label: 'R (Ordinary)' },
-        { value: 'RS', label: 'RS (Rapid)' },
-        { value: 'SL', label: 'SL (Slow)' },
-      ],
-    },
+    { name: 't0', label: 'Drying Start Age', min: 1, max: 365, step: 0.1, unit: 'Days' },
+    { name: 'tPrime', label: 'Age at Loading', min: 1, max: 365, step: 0.1, unit: 'Days' },
+    { name: 'Tcur', label: 'Curing Temperature', min: 20, max: 30, step: 0.1, unit: '°C' },
+    { name: 'Tsh', label: 'Drying Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
+    { name: 'Tc', label: 'Post-Loading Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
+    { name: 'h', label: 'Relative Humidity', min: 0, max: 100, step: 0.1, unit: '%' },
+    { name: 'fc', label: 'Mean 28-Day Cylinder Strength', min: 15, max: 70, step: 0.1, unit: 'MPa' },
+    { name: 'vS', label: 'Volume-Surface Ratio', min: 12, max: 120, step: 0.01, unit: 'mm' },
+    { name: 'c', label: 'Cement Content', min: 200, max: 1500, step: 0.1, unit: 'kg/m³' },
+    { name: 'wC', label: 'Water-Cement Ratio', min: 0.22, max: 0.87, step: 0.01, unit: '' },
+    { name: 'aC', label: 'Aggregate-Cement Ratio', min: 1, max: 13.2, step: 0.1, unit: '' },
+    { name: 'cementType', label: 'Cement Reactivity', options: [{ value:'R', label:'R (Regular)' }, { value:'RS', label:'RS (Rapid)' }, { value:'SL', label:'SL (Slow)' }] },
     { name: 'aggregateType', label: 'Aggregate Type', options: aggregateOptions },
     { name: 'specimenShape', label: 'Specimen Shape', options: shapeOptions },
+    { name: 'retarder', label: 'Retarder', min: 0, max: 2, step: 0.01, unit: '% c' },
+    { name: 'flyAsh', label: 'Fly Ash', min: 0, max: 100, step: 0.1, unit: '% c' },
+    { name: 'superplasticizer', label: 'Superplasticizer', min: 0, max: 20, step: 0.1, unit: '% c' },
+    { name: 'silicaFume', label: 'Silica Fume', min: 0, max: 30, step: 0.1, unit: '% c' },
+    { name: 'airEntrainingAgent', label: 'Air-Entraining Agent', min: 0, max: 2, step: 0.01, unit: '% c' },
+    { name: 'waterReducer', label: 'Water Reducer', min: 0, max: 10, step: 0.1, unit: '% c' },
   ],
-  loadingMessage: 'Loading Rust B4 Model WASM Module...',
-  readyMessage: 'Kernel v2.4 (B4-Rust) initialized successfully.',
-  startMessage: (params) => `Initiating B4 calculation with fc=${params.fc}MPa, t0=${params.t0}d`,
+  loadingMessage: 'Loading Rust RILEM B4 WASM Module...',
+  readyMessage: 'RILEM B4 composition-based kernel initialized successfully.',
+  startMessage: (params) => `Initiating B4 with fc=${params.fc}MPa, t′=${params.tPrime}d, RH=${params.h}%`,
   calculateJs(params, maxDays) {
-    const results = new Array(maxDays);
-    for (let day = 1; day <= maxDays; day += 1) {
-      const point = b4Point({ ...params, t: params.tPrime + day });
-      results[day - 1] = {
-        t: day,
-        j: point.J * 1e6,
-        epsilon_sh: point.epsilonSH * 1e6,
-        epsilon_au: point.epsilonAU * 1e6,
-      };
-    }
-    return results;
+    return Array.from({ length:maxDays + 1 }, (_, t) => chartPoint(b4Point({ ...params, t })));
   },
   calculateRust(wasm, params, maxDays) {
-    const rawResults = wasm.calculate_b4_series({
-      t0: params.t0,
-      t_prime: params.tPrime,
-      t_temp: params.T,
-      h: params.h,
-      fc: params.fc,
-      v_s: params.vS,
-      c: params.c,
-      w_c: params.wC,
-      a_c: params.aC,
-      cement_type: params.cementType,
-      aggregate_type: rustAggregateNames[params.aggregateType] ?? params.aggregateType,
-      specimen_shape: rustShapeNames[params.specimenShape],
-    }, maxDays + params.tPrime);
-
-    return rawResults
-      .filter((point) => Number.isFinite(point.j))
-      .map((point) => ({
-        t: point.t,
-        j: point.j * 1e6,
-        epsilon_sh: point.epsilon_sh * 1e6,
-        epsilon_au: point.epsilon_au * 1e6,
-      }));
+    return wasm.calculate_b4_series({
+      t0:params.t0, t_prime:params.tPrime, t_cur:params.Tcur, t_sh:params.Tsh, t_c:params.Tc,
+      h:params.h, fc:params.fc, v_s:params.vS, c:params.c, w_c:params.wC, a_c:params.aC,
+      cement_type:params.cementType, aggregate_type:params.aggregateType, specimen_shape:params.specimenShape,
+      retarder:params.retarder, fly_ash:params.flyAsh, superplasticizer:params.superplasticizer,
+      silica_fume:params.silicaFume, air_entraining_agent:params.airEntrainingAgent, water_reducer:params.waterReducer,
+    }, maxDays).map(rustChartPoint);
   },
   getSummary(results) {
     const current = results.at(-1);
     return {
-      primary: current?.j / 1e6 ?? NaN,
+      primary: current?.j_micro_mpa / 1000 ?? NaN,
       extraResults: current ? [
-        { label: 'Drying Shrinkage εsh (at t_max)', value: current.epsilon_sh / 1e6 },
-        { label: 'Autogenous Shrinkage εau (at t_max)', value: current.epsilon_au / 1e6 },
+        { label:'Drying Shrinkage εsh', value:current.epsilon_sh / 1e6 },
+        { label:'Autogenous Shrinkage εau', value:current.epsilon_au / 1e6 },
+        { label:'Total Shrinkage εsh,total', value:current.epsilon_total / 1e6 },
       ] : [],
     };
   },

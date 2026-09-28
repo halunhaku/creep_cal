@@ -1,10 +1,6 @@
-cementType,t,tPrime,t0,T,h,fc,vS,c,wC,aC,specimenShape,aggregateType
-R,112,28,28,20,50,27.6,19.05,219.3,0.6,7,infinite square prism,No Information
-RS,80,7,7,21,60,42.5,25,220,0.4,5,infinite cylinder,No Information
-SL,300,14,14,22,70,64.9,19.05,440,0.25,3,infinite slab,No Information
-R,220,3,3,23,99,27.6,33,220,0.6,7,infinite square prism,No Information
-RS,50,28,28,24,60,42.5,25,220,0.4,5,infinite cylinder,No Information
-SL,30,7,7,20,90,64.9,19.05,440,0.25,3,infinite slab,No Information
-R,299,14,14,21,50,27.6,33,220,0.6,7,infinite square prism,No Information
-RS,99,3,3,22,99,42.5,25,220,0.4,5,infinite cylinder,No Information
-SL,86,28,28,23,60,64.9,19.05,440,0.25,3,infinite slab,No Information
+t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t
+28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112
+28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,20,0,0,0,0,112
+7,28,25,30,35,60,40,50,350,0.42,5.8,R,Quartzite,2,0,0,2,0,0,0,365
+14,28,20,10,25,70,55,75,420,0.35,6.2,RS,Limestone,3,0,0,0,10,0,0,1000
+3,14,30,5,40,80,65,120,500,0.28,7.5,SL,Granite,5,0,0,0,0,0.08,0,3650

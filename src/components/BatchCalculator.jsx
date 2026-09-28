@@ -12,8 +12,8 @@ import CustomSelect from './ui/CustomSelect';
 const MODELS = [
   { id: 'aci209', name: 'ACI 209R-92',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t', template: ['moist', 28, 70, 100, 100, 50, 8, 365] },
   { id: 'mc2010', name: 'fib MC 2010',  resultKeys: ['result_phi', 'result_phi_bc', 'result_phi_dc', 'result_nonlinear_factor'], labels: ['φ (Total)', 'φbc (Basic)', 'φdc (Drying)', 'Nonlinear Factor'], req: 'fcm, RH, t0, Ac, u, T, Cs, sigma, t', template: [40, 70, 28, 90000, 1200, 20, '42.5 R', 12, 365] },
-  { id: 'b4',     name: 'B4 Model',     resultKeys: ['result_J', 'result_epsilonSH'], labels: ['J (1/GPa)', 'εsh (Shrinkage)'], req: 't0, tPrime, T, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, t' },
-  { id: 'b4s',    name: 'B4S Model',    resultKeys: ['result_J', 'result_epsilonSH'], labels: ['J (1/GPa)', 'εsh (Shrinkage)'], req: 't0, tPrime, T, h, fc, vS, cementType, specimenShape, aggregateType, t' },
+  { id: 'b4', name: 'RILEM B4', resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 219.3, 0.6, 7, 'R', 'No Information', '1', 0, 0, 0, 0, 0, 0, 112] },
+  { id: 'b4s', name: 'RILEM B4s', resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 'R', 'No Information', '1', 112] },
 ];
 
 const SAMPLE_DATA = {
@@ -24,13 +24,14 @@ const SAMPLE_DATA = {
   mc2010: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
     fcm: 38, RH: 70, t0: 28, Ac: 90000, u: 1200, T: 20, Cs: '42.5 R', sigma: 12, t
   })),
-  b4: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
-    t0: 7, tPrime: 28, T: 20, h: 0.7, fc: 40, vS: 100, c: 350, wC: 0.42,
-    aC: 5.8, cementType: 'R', aggregateType: 'Quartzite', specimenShape: '2', t
+  b4: [28, 90, 112, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
+    t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50, fc: 27.6, vS: 19.05,
+    c: 219.3, wC: 0.6, aC: 7, cementType: 'R', aggregateType: 'No Information', specimenShape: '1',
+    retarder: 0, flyAsh: 0, superplasticizer: 0, silicaFume: 0, airEntrainingAgent: 0, waterReducer: 0, t
   })),
-  b4s: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
-    t0: 7, tPrime: 28, T: 20, h: 0.7, fc: 40, vS: 100,
-    cementType: 'R', specimenShape: '2', aggregateType: 'Quartzite', t
+  b4s: [28, 90, 112, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
+    t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50, fc: 27.6, vS: 19.05,
+    cementType: 'R', aggregateType: 'No Information', specimenShape: '1', t
   })),
 };
 
@@ -49,17 +50,21 @@ function computeRow(modelId, row) {
     };
   }
   if (modelId === 'b4') {
-    const { J, epsilonSH } = b4Single(row);
+    const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4Single(row);
     return {
-      result_J:          isNaN(J) ? 'NaN' : J.toFixed(6),
-      result_epsilonSH:  isNaN(epsilonSH) ? 'NaN' : epsilonSH.toFixed(6),
+      result_J_GPa: JGPa.toFixed(6),
+      result_epsilonSH: epsilonSH.toFixed(9),
+      result_epsilonAU: epsilonAU.toFixed(9),
+      result_epsilonTotal: epsilonTotal.toFixed(9),
     };
   }
   if (modelId === 'b4s') {
-    const { J, epsilonSH } = b4sSingle(row);
+    const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4sSingle(row);
     return {
-      result_J:         isNaN(J) ? 'NaN' : J.toFixed(6),
-      result_epsilonSH: isNaN(epsilonSH) ? 'NaN' : epsilonSH.toFixed(6),
+      result_J_GPa: JGPa.toFixed(6),
+      result_epsilonSH: epsilonSH.toFixed(9),
+      result_epsilonAU: epsilonAU.toFixed(9),
+      result_epsilonTotal: epsilonTotal.toFixed(9),
     };
   }
   return {};
