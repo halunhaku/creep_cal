@@ -16,6 +16,7 @@ const config = {
   initialParams: {
     curingType: 'moist',
     t0: 28,
+    targetAge: 365,
     H: 70,
     VS: 100,
     slump: 100,
@@ -25,6 +26,7 @@ const config = {
   paramsConfig: [
     { name: 'curingType', label: 'Curing Type', options: curingOptions },
     { name: 't0', label: 'Age at Loading', min: 1, max: 365, unit: 'Days' },
+    { name: 'targetAge', label: 'Target Age', min: 1, max: 10000, unit: 'Days' },
     { name: 'H', label: 'Relative Humidity', min: 0, max: 100, unit: '%' },
     { name: 'VS', label: 'Volume-Surface Ratio', min: 1, max: 1000, unit: 'mm' },
     { name: 'slump', label: 'Concrete Slump', min: 0, max: 300, unit: 'mm' },
@@ -46,10 +48,11 @@ const config = {
   calculateRust(wasm, params, maxDays) {
     return wasm.calculate_aci209_series(params, maxDays);
   },
-  getSummary(results) {
-    return { primary: results.at(-1)?.phi ?? NaN };
+  getSummary(results, targetAge) {
+    const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
+    return { primary: current?.phi ?? NaN };
   },
-  chartLines: [{ dataKey: 'phi', stroke: 'var(--green)', name: 'Creep Coefficient φ' }],
+  chartLines: [{ dataKey: 'phi', stroke: 'var(--primary)', name: 'Creep Coefficient φ' }],
 };
 
 export default function Aci209Calculator({ engine }) {

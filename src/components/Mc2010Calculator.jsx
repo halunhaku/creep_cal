@@ -12,6 +12,7 @@ const config = {
     fcm: 40,
     RH: 70,
     t0: 28,
+    targetAge: 365,
     Ac: 90000,
     u: 1200,
     T: 20,
@@ -22,6 +23,7 @@ const config = {
     { name: 'fcm', label: 'Mean Compressive Strength', min: 20, max: 130, step: 0.1, unit: 'MPa' },
     { name: 'RH', label: 'Relative Humidity', min: 40, max: 100, step: 0.1, unit: '%' },
     { name: 't0', label: 'Age at Loading', min: 1, max: 1000, step: 0.1, unit: 'Days' },
+    { name: 'targetAge', label: 'Target Age', min: 1, max: 10000, step: 1, unit: 'Days' },
     { name: 'Ac', label: 'Cross Section Area', min: 1, max: 1000000, unit: 'mm²' },
     { name: 'u', label: 'Drying Perimeter', min: 1, max: 10000, unit: 'mm' },
     { name: 'T', label: 'Constant Curing Temperature', min: 5, max: 30, step: 0.1, unit: '°C' },
@@ -57,8 +59,8 @@ const config = {
       sigma: params.sigma,
     }, maxDays);
   },
-  getSummary(results) {
-    const final = results.at(-1);
+  getSummary(results, targetAge) {
+    const final = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
     return {
       primary: final?.phi ?? NaN,
       extraResults: [
@@ -69,9 +71,9 @@ const config = {
     };
   },
   chartLines: [
-    { dataKey: 'phi', stroke: 'var(--green)', name: 'Total Creep Coefficient φ' },
+    { dataKey: 'phi', stroke: 'var(--primary)', name: 'Total Creep Coefficient φ' },
     { dataKey: 'phi_bc', stroke: 'var(--cyan)', name: 'Basic Creep φbc' },
-    { dataKey: 'phi_dc', stroke: 'var(--amber)', name: 'Drying Creep φdc' },
+    { dataKey: 'phi_dc', stroke: 'var(--accent)', name: 'Drying Creep φdc' },
   ],
 };
 

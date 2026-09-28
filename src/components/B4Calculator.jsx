@@ -21,16 +21,18 @@ const shapeOptions = [
 ].map(([value, label]) => ({ value, label }));
 
 const chartLines = [
-  { dataKey: 'j_micro_mpa', stroke: 'var(--green)', name: 'Compliance J (10⁻⁶/MPa)' },
-  { dataKey: 'epsilon_total', stroke: 'var(--cyan)', name: 'Total Shrinkage εsh,total (με)' },
-  { dataKey: 'epsilon_sh', stroke: 'var(--amber)', name: 'Drying Shrinkage εsh (με)' },
-  { dataKey: 'epsilon_au', stroke: '#7fb8c9', name: 'Autogenous Shrinkage εau (με)' },
+  { dataKey: 'j_micro_mpa', stroke: 'var(--primary)', name: 'Compliance J (10⁻⁶/MPa)', kind: 'compliance' },
+  { dataKey: 'epsilon_total', stroke: 'var(--text)', name: 'Total Shrinkage εsh,total (με)', kind: 'shrinkage' },
+  { dataKey: 'epsilon_sh', stroke: 'var(--accent)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
+  { dataKey: 'epsilon_au', stroke: 'var(--cyan)', name: 'Autogenous Shrinkage εau (με)', kind: 'shrinkage' },
 ];
 
 function chartPoint(point) {
   return {
     t: point.t,
     j_micro_mpa: point.J * 1e6,
+    c0: point.C0 * 1e6,
+    cd: point.Cd * 1e6,
     epsilon_sh: point.epsilonSH * 1e6,
     epsilon_au: point.epsilonAU * 1e6,
     epsilon_total: point.epsilonTotal * 1e6,
@@ -41,6 +43,8 @@ function rustChartPoint(point) {
   return {
     t: point.t,
     j_micro_mpa: point.j * 1e6,
+    c0: point.c0 * 1e6,
+    cd: point.cd * 1e6,
     epsilon_sh: point.epsilon_sh * 1e6,
     epsilon_au: point.epsilon_au * 1e6,
     epsilon_total: point.epsilon_total * 1e6,
@@ -54,7 +58,7 @@ const config = {
     rust: 'The complete composition-based B4 mean formulation evaluated by the Rust WASM kernel with absolute concrete-age series.',
   },
   initialParams: {
-    t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50, fc: 27.6,
+    t0: 28, tPrime: 28, targetAge: 112, Tcur: 20, Tsh: 20, Tc: 20, h: 50, fc: 27.6,
     vS: 19.05, c: 219.3, wC: 0.6, aC: 7, cementType: 'R',
     aggregateType: 'No Information', specimenShape: '1', retarder: 0, flyAsh: 0,
     superplasticizer: 0, silicaFume: 0, airEntrainingAgent: 0, waterReducer: 0,
@@ -62,6 +66,7 @@ const config = {
   paramsConfig: [
     { name: 't0', label: 'Drying Start Age', min: 1, max: 365, step: 0.1, unit: 'Days' },
     { name: 'tPrime', label: 'Age at Loading', min: 1, max: 365, step: 0.1, unit: 'Days' },
+    { name: 'targetAge', label: 'Target Age', min: 1, max: 10000, step: 1, unit: 'Days' },
     { name: 'Tcur', label: 'Curing Temperature', min: 20, max: 30, step: 0.1, unit: '°C' },
     { name: 'Tsh', label: 'Drying Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
     { name: 'Tc', label: 'Post-Loading Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
@@ -96,14 +101,17 @@ const config = {
       silica_fume:params.silicaFume, air_entraining_agent:params.airEntrainingAgent, water_reducer:params.waterReducer,
     }, maxDays).map(rustChartPoint);
   },
-  getSummary(results) {
-    const current = results.at(-1);
+  getSummary(results, targetAge) {
+    const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
     return {
       primary: current?.j_micro_mpa / 1000 ?? NaN,
       extraResults: current ? [
-        { label:'Drying Shrinkage εsh', value:current.epsilon_sh / 1e6 },
-        { label:'Autogenous Shrinkage εau', value:current.epsilon_au / 1e6 },
-        { label:'Total Shrinkage εsh,total', value:current.epsilon_total / 1e6 },
+        { label:'Instantaneous q₁', value:current.j_micro_mpa - current.c0 - current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
+        { label:'Basic creep C₀', value:current.c0, unit:'×10⁻⁶/MPa', group:'compliance' },
+        { label:'Drying creep Cd', value:current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
+        { label:'Drying shrinkage εsh', value:current.epsilon_sh, unit:'με', group:'shrinkage' },
+        { label:'Autogenous shrinkage εau', value:current.epsilon_au, unit:'με', group:'shrinkage' },
+        { label:'Total shrinkage εtotal', value:current.epsilon_total, unit:'με', group:'shrinkage', total:true },
       ] : [],
     };
   },

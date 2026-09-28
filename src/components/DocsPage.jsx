@@ -11,7 +11,8 @@ function FormulaExpression({ expr }) {
 
   return (
     <div
-      className="formula-render flex-1 overflow-x-auto rounded-card border border-line/50 bg-surface px-4 py-3 text-primary"
+      className="formula-render flex-1 overflow-x-auto rounded-md border border-line bg-surface px-4 py-4 text-primary"
+      tabIndex={0}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );
@@ -348,209 +349,60 @@ const MODELS = [
 
 
 export default function DocsPage() {
-  const [selected, setSelected] = React.useState('aci209');
-  const model = MODELS.find(m => m.id === selected);
+  const [selected, setSelected] = React.useState('b4');
+  const model = MODELS.find((item) => item.id === selected);
+  const sections = [
+    ['overview','Overview'], ['parameters','Inputs & units'],
+    ...(model.applicability ? [['applicability','Applicability']] : []),
+    ...(model.officialDocuments ? [['documents','Documents']] : []),
+    ...(model.formulas ? [['formulas','Equations']] : []),
+    ...(model.sourceMapping ? [['mapping','Source mapping']] : []),
+    ...(model.sources ? [['sources','Official sources']] : []),
+  ];
 
   return (
-    <div className="max-w-content mx-auto space-y-8 animate-fade-in relative z-10">
-      <header className="mb-6">
-        <div className="mb-1.5 flex items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-green-dark">Reference Library</span>
-          <span className="h-px w-8 bg-green-border" aria-hidden="true" />
-        </div>
-        <h1 className="font-mono text-xl font-bold uppercase tracking-[0.08em] text-primary md:text-2xl">
-          Model <span className="text-green-dark">library</span>
-        </h1>
-        <p className="mt-1.5 max-w-[65ch] text-sm leading-relaxed text-muted">
-          Reference documentation for all supported concrete creep & shrinkage prediction models.
-        </p>
+    <div className="animate-fade-in">
+      <header className="mb-6 border-b border-line pb-5">
+        <div className="eyebrow">Reference library</div>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-[28px]">Model standards and equations</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted">Implementation scope, calibrated ranges, formula mapping, and primary sources for every prediction model.</p>
       </header>
 
-      {/* Model Tabs — segmented */}
-      <div className="mb-6 flex flex-wrap gap-1.5 rounded-md border border-line bg-surface-2 p-1">
-        {MODELS.map((m, idx) => (
-          <button
-            key={m.id}
-            onClick={() => setSelected(m.id)}
-            aria-pressed={selected === m.id}
-            className={`rounded px-3.5 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors duration-150 ${
-              selected === m.id
-                ? 'active-pill'
-                : 'text-muted hover:bg-surface-3 hover:text-primary'
-            }`}
-          >
-            <span className="mr-1.5 text-faint">DOC-{String(idx + 1).padStart(2, '0')}</span>
-            {m.name}
-          </button>
-        ))}
-      </div>
+      <div className="grid items-start gap-6 lg:grid-cols-[210px_minmax(0,1fr)] 2xl:grid-cols-[210px_minmax(0,1fr)_180px]">
+        <aside className="workbench-panel overflow-hidden lg:sticky lg:top-[88px]">
+          <div className="border-b border-line px-4 py-3"><div className="eyebrow">Prediction models</div></div>
+          <nav className="flex gap-1 overflow-x-auto p-2 lg:block lg:space-y-1" aria-label="Model references">
+            {MODELS.map((item,index)=><button key={item.id} onClick={()=>setSelected(item.id)} aria-pressed={item.id===selected} className={`relative min-w-[180px] rounded-md px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id===selected?'bg-green-soft text-primary':'text-muted hover:bg-surface-2 hover:text-primary'}`}>{item.id===selected&&<span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green"/>}<div className="flex gap-2"><span className="font-mono text-[9px] text-faint">{String(index+1).padStart(2,'0')}</span><span className="text-[12px] font-semibold">{item.name}</span></div><div className="mt-1 pl-5 font-mono text-[8px] uppercase tracking-[.06em] text-faint">{item.category}</div></button>)}
+          </nav>
+        </aside>
 
-      {/* Model Detail Panel */}
-      <div className="card p-5 relative overflow-hidden max-w-[1040px] mx-auto md:p-6">
-        <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-          <div>
-            <div className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-green-dark font-bold">{model.category}</div>
-            <h2 className="font-mono text-lg font-bold uppercase tracking-[0.08em] text-primary md:text-xl">{model.name}</h2>
-          </div>
-          <div className="flex gap-2">
-            {model.engine.map(e => (
-              <span key={e} className="tag">{e} Engine</span>
-            ))}
-          </div>
-        </div>
-
-        <p className="mb-8 max-w-[92ch] text-sm leading-relaxed text-muted">{model.description}</p>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {/* Parameters Table */}
-          <div className="doc-section">
-            <div className="mb-5 flex items-center justify-between gap-3 border-b border-line pb-3">
-              <h3 className="font-sans text-sm uppercase doc-section-title">Input Parameters</h3>
-              <span className="tag text-[10px]">{model.params.length} fields</span>
+        <article className="min-w-0 workbench-panel overflow-hidden">
+          <div id="overview" className="border-b border-line p-5 md:p-7">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div><div className="eyebrow">{model.category}</div><h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-primary">{model.name}</h2><p className="mt-3 max-w-[75ch] text-[14px] leading-7 text-muted">{model.description}</p></div>
+              <div className="flex shrink-0 gap-1.5">{model.engine.map((engine)=><span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>)}</div>
             </div>
-            <div className="space-y-2">
-              {model.params.map(p => (
-                <div key={p.name} className="flex items-start gap-3 p-3 rounded-card bg-surface border border-line">
-                  <code className="text-xs font-mono font-bold text-green shrink-0 w-24 pt-0.5">{p.name}</code>
-                  <span className="text-primary text-sm leading-relaxed">{p.description}</span>
-                </div>
-              ))}
-            </div>
+            <div className="mt-6 grid gap-4 border-t border-line pt-5 md:grid-cols-2"><div><div className="eyebrow">Implementation output</div><p className="mt-2 text-sm leading-6 text-primary">{model.output}</p></div><div><div className="eyebrow">Primary reference</div><p className="mt-2 text-xs leading-5 text-muted">{model.reference}</p></div></div>
           </div>
 
-          {/* Output & Reference */}
-          <div className="doc-section space-y-6">
-            <div>
-              <h3 className="font-sans text-sm uppercase doc-section-title mb-4">Output</h3>
-              <div className="p-4 rounded-card bg-green-soft border border-green-border shadow-sm">
-                <p className="font-mono text-sm text-green-dark">{model.output}</p>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-sans text-sm uppercase doc-section-title mb-4">Reference</h3>
-              <div className="p-4 rounded-card bg-surface border border-line">
-                <p className="text-primary text-sm leading-relaxed italic">{model.reference}</p>
-              </div>
-            </div>
-
-            {model.officialDocuments && (
-              <div>
-                <h3 className="font-sans text-sm uppercase doc-section-title mb-4">Official Documents</h3>
-                <div className="space-y-2">
-                  {model.officialDocuments.map((document) => (
-                    <div key={document.designation} className="p-4 rounded-card bg-surface border border-line">
-                      <div className="font-mono text-xs font-bold text-green-dark">{document.designation}</div>
-                      <div className="mt-1 text-sm font-medium text-primary">{document.title}</div>
-                      <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.08em] text-faint">{document.status}</div>
-                      <p className="mt-2 text-xs leading-relaxed text-muted">{document.coverage}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h3 className="font-sans text-sm uppercase doc-section-title mb-4">Computation Engine</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-3 p-3 rounded-card bg-surface border border-green-border">
-                  <span className="material-symbols-outlined text-green text-[18px]" aria-hidden="true">memory</span>
-                  <div>
-                    <div className="text-xs font-label uppercase tracking-[0.12em] text-green-dark font-bold">RUST WASM Kernel</div>
-                    <div className="text-[11px] text-muted mt-0.5">High-performance WebAssembly, ~10k points in &lt;50ms</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3 rounded-card bg-surface border border-line">
-                  <span className="material-symbols-outlined text-muted text-[18px]" aria-hidden="true">javascript</span>
-                  <div>
-                    <div className="text-xs font-label uppercase tracking-[0.12em] text-muted font-bold">Standard JS Engine</div>
-                    <div className="text-[11px] text-muted mt-0.5">Pure JavaScript reference implementation</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {(model.applicability || model.limitations) && (
-          <div className="mb-8 grid grid-cols-1 gap-6 border-t border-line/20 pt-8 md:grid-cols-2">
-            {model.applicability && (
-              <section>
-                <h3 className="mb-4 font-sans text-sm uppercase doc-section-title">Applicability</h3>
-                <ul className="space-y-2 text-sm leading-relaxed text-muted">
-                  {model.applicability.map((item) => (
-                    <li key={item} className="rounded-card border border-line bg-surface p-3">{item}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-            {model.limitations && (
-              <section>
-                <h3 className="mb-4 font-sans text-sm uppercase doc-section-title">Limitations</h3>
-                <ul className="space-y-2 text-sm leading-relaxed text-muted">
-                  {model.limitations.map((item) => (
-                    <li key={item} className="rounded-card border border-line bg-surface p-3">{item}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        )}
-
-        {model.sourceMapping && (
-          <section className="mb-8 border-t border-line/20 pt-8">
-            <h3 className="mb-4 font-sans text-sm uppercase doc-section-title">Formula Source Mapping</h3>
-            <div className="space-y-2">
-              {model.sourceMapping.map((item) => (
-                <div key={item} className="rounded-card border border-line bg-surface px-4 py-3 text-sm text-primary">{item}</div>
-              ))}
-            </div>
+          <section id="parameters" className="border-b border-line p-5 md:p-7">
+            <div className="mb-4 flex items-end justify-between"><div><div className="eyebrow">Inputs & units</div><h3 className="mt-1 text-lg font-semibold text-primary">Parameter contract</h3></div><span className="font-mono text-[9px] text-faint">{model.params.length} parameters</span></div>
+            <div className="overflow-hidden rounded-lg border border-line"><table className="w-full text-left"><thead className="bg-surface-2"><tr><th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Parameter</th><th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Definition</th></tr></thead><tbody className="divide-y divide-line">{model.params.map((param)=><tr key={param.name}><td className="w-32 px-4 py-3 align-top font-mono text-[11px] font-semibold text-green">{param.name}</td><td className="px-4 py-3 text-[13px] leading-5 text-muted">{param.description}</td></tr>)}</tbody></table></div>
           </section>
-        )}
 
-        {model.sources && (
-          <section className="mb-8 border-t border-line/20 pt-8">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="font-sans text-sm uppercase doc-section-title">Official Sources</h3>
-              <span className="tag text-[10px]">ACI links</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {model.sources.map((source) => (
-                <a
-                  key={source.url}
-                  href={source.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="rounded-card border border-green-border bg-green-soft p-4 transition-colors hover:bg-surface-3"
-                >
-                  <div className="font-mono text-xs font-bold text-green-dark">{source.label}</div>
-                  <p className="mt-1 text-xs leading-relaxed text-muted">{source.note}</p>
-                  <span className="mt-2 block break-all font-mono text-[10px] text-faint">{source.url}</span>
-                </a>
-              ))}
-            </div>
-          </section>
-        )}
+          {model.applicability&&<section id="applicability" className="border-b border-line p-5 md:p-7"><div className="eyebrow">Applicability</div><h3 className="mt-1 text-lg font-semibold text-primary">Calibrated use and limitations</h3><div className="mt-5 grid gap-5 md:grid-cols-2"><div><div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--success)]">Recommended domain</div><ul className="space-y-2">{model.applicability.map((item)=><li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]"/>{item}</li>)}</ul></div>{model.limitations&&<div><div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--warning)]">Limitations</div><ul className="space-y-2">{model.limitations.map((item)=><li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]"/>{item}</li>)}</ul></div>}</div></section>}
 
-        {/* Formulas Section */}
-        {model.formulas && (
-          <div className="border-t border-line/20 pt-8 mt-2">
-            <div className="mb-6 flex items-center justify-between gap-3">
-              <h3 className="font-sans text-sm uppercase doc-section-title">Core Calculation Formulas</h3>
-              <span className="tag text-[10px]">{model.formulas.length} formulas</span>
-            </div>
-            <div className="space-y-3">
-              {model.formulas.map((f, i) => (
-                <div key={i} className="flex flex-col gap-3 p-4 md:p-5 rounded-card bg-surface-soft border border-line">
-                  <span className="text-[10px] font-label uppercase tracking-[0.13em] shrink-0 sm:w-52 text-green-dark font-bold">{f.label}</span>
-                  <FormulaExpression expr={f.expr} />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          {model.officialDocuments&&<section id="documents" className="border-b border-line p-5 md:p-7"><div className="eyebrow">Official documents</div><div className="mt-4 space-y-3">{model.officialDocuments.map((doc)=><div key={doc.designation} className="rounded-lg border border-line bg-surface-2 p-4"><div className="font-mono text-[9px] font-semibold uppercase tracking-[.07em] text-green">{doc.designation}</div><h4 className="mt-1.5 text-sm font-semibold text-primary">{doc.title}</h4><p className="mt-1 text-xs text-muted">{doc.status}</p><p className="mt-2 text-[13px] leading-5 text-muted">{doc.coverage}</p></div>)}</div></section>}
+
+          {model.formulas&&<section id="formulas" className="border-b border-line p-5 md:p-7"><div className="mb-5 flex items-end justify-between"><div><div className="eyebrow">Core equations</div><h3 className="mt-1 text-lg font-semibold text-primary">Implemented formulation</h3></div><span className="font-mono text-[9px] text-faint">{model.formulas.length} equations</span></div><div className="space-y-3">{model.formulas.map((formula,index)=><div key={formula.label} className="grid gap-3 rounded-lg border border-line bg-surface-2 p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-center"><div><span className="font-mono text-[9px] text-faint">EQ {String(index+1).padStart(2,'0')}</span><div className="mt-1 text-xs font-semibold text-primary">{formula.label}</div></div><FormulaExpression expr={formula.expr}/></div>)}</div></section>}
+
+          {model.sourceMapping&&<section id="mapping" className="border-b border-line p-5 md:p-7"><div className="eyebrow">Formula source mapping</div><div className="mt-4 divide-y divide-line rounded-lg border border-line">{model.sourceMapping.map((item,index)=><div key={item} className="grid grid-cols-[32px_1fr] gap-3 px-4 py-3 text-[13px] leading-5 text-muted"><span className="font-mono text-[9px] text-faint">{String(index+1).padStart(2,'0')}</span><span>{item}</span></div>)}</div></section>}
+
+          {model.sources&&<section id="sources" className="p-5 md:p-7"><div className="eyebrow">Official sources</div><div className="mt-4 grid gap-3 md:grid-cols-2">{model.sources.map((source)=><a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="group rounded-lg border border-line p-4 transition-colors hover:border-green-border hover:bg-green-soft"><div className="text-sm font-semibold text-primary group-hover:text-green">{source.label}</div><p className="mt-1 text-xs leading-5 text-muted">{source.note}</p><span className="mt-3 block truncate font-mono text-[8px] text-faint">{source.url}</span></a>)}</div></section>}
+        </article>
+
+        <aside className="sticky top-[88px] hidden 2xl:block"><div className="eyebrow">On this page</div><nav className="mt-3 border-l border-line">{sections.map(([id,label])=><a key={id} href={`#${id}`} className="block border-l border-transparent px-3 py-1.5 text-xs text-muted hover:border-green hover:text-primary">{label}</a>)}</nav></aside>
       </div>
-
     </div>
   );
 }

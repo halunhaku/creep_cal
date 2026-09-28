@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 
 const CALCULATORS = {
@@ -8,88 +8,74 @@ const CALCULATORS = {
   b4s: lazy(() => import('./B4sCalculator')),
 };
 
+const MODELS = [
+  { id:'aci209', index:'01', name:'ACI 209R-92', type:'Empirical · Design', note:'Established correction-factor method', range:'Normal-strength concrete' },
+  { id:'mc2010', index:'02', name:'fib MC 2010', type:'Code-based · Nonlinear', note:'Basic and drying creep components', range:'20–130 MPa' },
+  { id:'b4', index:'03', name:'RILEM Model B4', type:'Composition-based · Long-term', note:'Mix proportions and staged temperature', range:'15–70 MPa' },
+  { id:'b4s', index:'04', name:'RILEM Model B4s', type:'Strength-based · Preliminary', note:'No mix proportions required', range:'15–70 MPa' },
+];
+
 export default function SingleCalculationDashboard() {
-  const [engine, setEngine] = useState('rust'); // 'rust' | 'js'
-  const [algorithm, setAlgorithm] = useState('aci209'); // 'aci209' | 'mc2010' | 'b4' | 'b4s'
-
+  const [engine, setEngine] = useState('rust');
+  const [algorithm, setAlgorithm] = useState('b4');
   const ActiveComponent = CALCULATORS[algorithm];
-  const algorithms = [
-    { id: 'aci209', label: 'ACI 209R-92', shortLabel: 'ACI 209' },
-    { id: 'mc2010', label: 'fib MC 2010', shortLabel: 'MC 2010' },
-    { id: 'b4', label: 'B4', shortLabel: 'B4' },
-    { id: 'b4s', label: 'B4S', shortLabel: 'B4S' }
-  ];
+  const active = MODELS.find((model) => model.id === algorithm);
+  const activeModelRef = useRef(null);
 
-  const segmentBase = 'rounded px-3 py-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors duration-150 whitespace-nowrap';
+  useEffect(() => {
+    const element = activeModelRef.current;
+    const scroller = element?.parentElement;
+    if (element && scroller) scroller.scrollLeft = element.offsetLeft - (scroller.clientWidth - element.clientWidth) / 2;
+  }, [algorithm]);
 
   return (
-    <div className="animate-fade-in relative z-10">
-      {/* Instrument control bar */}
-      <div className="card mb-6 flex flex-col gap-3 p-2 xl:flex-row xl:items-center xl:justify-between">
-        {/* Model selection */}
-        <div className="flex overflow-x-auto rounded-md border border-line bg-surface-2 p-0.5">
-          {algorithms.map((algo, idx) => (
-            <button
-              key={algo.id}
-              onClick={() => setAlgorithm(algo.id)}
-              aria-pressed={algorithm === algo.id}
-              className={`${segmentBase} ${
-                algorithm === algo.id
-                  ? 'bg-green-soft font-bold text-green-dark'
-                  : 'text-muted hover:bg-surface-3 hover:text-primary'
-              }`}
-            >
-              <span className="mr-1.5 text-faint">MOD-{String(idx + 1).padStart(2, '0')}</span>
-              <span className="md:hidden">{algo.shortLabel}</span>
-              <span className="hidden md:inline">{algo.label}</span>
-            </button>
-          ))}
+    <div className="animate-fade-in">
+      <header className="mb-6 flex flex-col gap-2 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="eyebrow">Calculation workspace</div>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-[28px]">Time-dependent concrete analysis</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted">Select a prediction model, define calibrated inputs, then explicitly calculate the complete 10,000-day response.</p>
         </div>
+        <div className="font-mono text-[9px] uppercase tracking-[0.1em] text-faint">Float64 · 0–10,000 days</div>
+      </header>
 
-        {/* Engine selection */}
-        <div className="flex items-center gap-3 px-1 xl:px-2">
-          <span className="hidden font-mono text-[10px] uppercase tracking-[0.16em] text-faint lg:block">
-            Kernel
-          </span>
-          <div className="flex rounded-md border border-line bg-surface-2 p-0.5">
-            <button
-              onClick={() => setEngine('rust')}
-              aria-pressed={engine === 'rust'}
-              className={`${segmentBase} ${
-                engine === 'rust'
-                  ? 'bg-green-soft font-bold text-green-dark'
-                  : 'text-muted hover:bg-surface-3 hover:text-primary'
-              }`}
-            >
-              Rust WASM
-            </button>
-            <button
-              onClick={() => setEngine('js')}
-              aria-pressed={engine === 'js'}
-              className={`${segmentBase} ${
-                engine === 'js'
-                  ? 'bg-green-soft font-bold text-green-dark'
-                  : 'text-muted hover:bg-surface-3 hover:text-primary'
-              }`}
-            >
-              JS Reference
-            </button>
+      <div className="grid items-start gap-5 xl:grid-cols-[216px_minmax(0,1fr)]">
+        <aside className="workbench-panel overflow-hidden xl:sticky xl:top-[88px]">
+          <div className="border-b border-line px-3.5 py-3"><div className="eyebrow">Prediction model</div></div>
+          <div className="flex gap-1 overflow-x-auto p-2 xl:block xl:space-y-1">
+            {MODELS.map((model) => {
+              const selected = model.id === algorithm;
+              return (
+                <button
+                  key={model.id} ref={selected ? activeModelRef : null} onClick={() => setAlgorithm(model.id)} aria-pressed={selected}
+                  className={`relative min-w-[190px] rounded-md px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full ${selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
+                >
+                  {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green" aria-hidden="true" />}
+                  <div className="flex items-baseline gap-2"><span className="font-mono text-[9px] text-faint">{model.index}</span><span className="text-[13px] font-semibold">{model.name}</span></div>
+                  <div className="mt-1.5 pl-[22px] font-mono text-[8px] uppercase tracking-[0.07em] text-faint">{model.type}</div>
+                </button>
+              );
+            })}
           </div>
-          <span
-            className="hidden h-1.5 w-1.5 rounded-full sm:block"
-            style={{
-              background: 'var(--green)',
-              boxShadow: '0 0 5px var(--green)',
-            }}
-            aria-hidden="true"
-          />
-        </div>
-      </div>
+          <div className="border-t border-line px-3.5 py-4">
+            <div className="eyebrow">Active model</div>
+            <p className="mt-2 text-xs font-medium text-primary">{active.note}</p>
+            <p className="mt-1 text-[11px] text-muted">Calibrated · {active.range}</p>
+          </div>
+          <div className="border-t border-line px-3.5 py-4">
+            <div className="mb-2.5 flex items-center justify-between"><span className="eyebrow">Kernel</span><span className="status-dot" /></div>
+            <div className="grid grid-cols-2 rounded-md border border-line bg-surface-2 p-0.5">
+              {[['rust','Rust WASM'],['js','JS Ref.']].map(([id,label]) => (
+                <button key={id} onClick={() => setEngine(id)} aria-pressed={engine === id} className={`rounded-[4px] px-2 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.05em] ${engine === id ? 'bg-surface text-primary shadow-sm' : 'text-faint hover:text-primary'}`}>{label}</button>
+              ))}
+            </div>
+          </div>
+        </aside>
 
-      {/* Render the selected calculator */}
-      <Suspense fallback={<LoadingSpinner message="Loading model..." />}>
-        <ActiveComponent engine={engine} />
-      </Suspense>
+        <Suspense fallback={<LoadingSpinner message="Loading model…" />}>
+          <ActiveComponent engine={engine} />
+        </Suspense>
+      </div>
     </div>
   );
 }

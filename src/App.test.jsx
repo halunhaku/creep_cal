@@ -1,15 +1,14 @@
-import { render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import App from './App';
 
-vi.mock('./components/Aci209Calculator', () => ({
-  default: function MockAci209Calculator() {
-    return <div>Mocked calculator panel</div>;
-  },
-}));
-
-test('renders the app shell', () => {
+test('switches between calculation, batch, and reference workspaces', async () => {
   render(<App />);
-  expect(screen.getByText((_, node) => node?.textContent === 'CREEP_LAB')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /single analysis/i })).toBeInTheDocument();
+
+  await screen.findByRole('heading', { name: /time-dependent concrete analysis/i });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
+  await screen.findByRole('heading', { name: /dataset pipeline/i });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Reference' }));
+  await screen.findByRole('heading', { name: /model standards and equations/i });
 });

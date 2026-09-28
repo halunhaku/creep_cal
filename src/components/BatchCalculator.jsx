@@ -71,395 +71,149 @@ function computeRow(modelId, row) {
 }
 
 export default function BatchCalculator() {
-  const [activeModel, setActiveModel] = useState('aci209');
+  const [activeModel, setActiveModel] = useState('b4');
   const [batchResults, setBatchResults] = useState([]);
   const [batchHeaders, setBatchHeaders] = useState([]);
+  const [issues, setIssues] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [batchError, setBatchError] = useState('');
-  const [xKey, setXKey]           = useState('');
-  const [yKey, setYKey]           = useState('result_phi');
+  const [fileName, setFileName] = useState('');
+  const [xKey, setXKey] = useState('');
+  const [yKey, setYKey] = useState('result_J_GPa');
   const [chartType, setChartType] = useState('scatter');
+  const model = MODELS.find((item) => item.id === activeModel);
 
-  const model = MODELS.find(m => m.id === activeModel);
+  const processData = (data, preferredXKey = 't') => {
+    if (!data?.length) { setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。'); setIsProcessing(false); return; }
+    const inputHeaders = Object.keys(data[0]);
+    const required = model.req.split(', ');
+    const missing = required.filter((key) => !inputHeaders.includes(key));
+    setBatchHeaders(inputHeaders);
+    if (missing.length) {
+      setIssues(missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' })));
+      setBatchResults([]);
+      setBatchError(`Missing required columns: ${missing.join(', ')}`);
+      setIsProcessing(false);
+      return;
+    }
 
-  const handleBatchFile = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setIsProcessing(true);
+    const nextIssues = [];
+    const nextResults = data.map((row, index) => {
+      try { return { ...row, ...computeRow(activeModel, row), __status:'valid' }; }
+      catch (error) {
+        nextIssues.push({ row:index + 2, field:'Input', value:'—', message:error.message });
+        return { ...row, __status:'invalid' };
+      }
+    });
+    setBatchResults(nextResults);
+    setIssues(nextIssues);
     setBatchError('');
+    setXKey(inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '');
+    setYKey(model.resultKeys[0]);
+    setIsProcessing(false);
+  };
+
+  const readFile = async (file) => {
+    if (!file) return;
+    setFileName(file.name); setIsProcessing(true); setBatchError(''); setIssues([]);
     const name = file.name.toLowerCase();
     if (name.endsWith('.csv')) {
-      Papa.parse(file, {
-        header: true, skipEmptyLines: true,
-        complete: (r) => processData(r.data),
-        error: (error) => {
-          setBatchError(`Could not parse CSV: ${error.message}`);
-          setIsProcessing(false);
-        },
-      });
-    } else if (name.endsWith('.xlsx')) {
+      Papa.parse(file, { header:true, skipEmptyLines:true, complete:(result) => processData(result.data), error:(error) => { setBatchError(`Could not parse CSV: ${error.message}`); setIsProcessing(false); } });
+      return;
+    }
+    if (name.endsWith('.xlsx')) {
       try {
         const rows = await readXlsxFile(file);
         const [headerRow, ...dataRows] = rows;
         const headers = (headerRow || []).map((value) => String(value ?? '').trim());
-        if (!headers.some(Boolean)) {
-          setBatchError('Excel file needs a header row.');
-          setIsProcessing(false);
-          return;
-        }
-        const records = dataRows
-          .filter((row) => row.some((value) => value !== null && value !== undefined && value !== ''))
-          .map((row) => Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] ?? ''])));
+        const records = dataRows.filter((row) => row.some((value) => value !== null && value !== undefined && value !== '')).map((row) => Object.fromEntries(headers.map((header,index) => [header || `column_${index + 1}`, row[index] ?? ''])));
         processData(records);
-      } catch (error) {
-        setBatchError(`Could not parse XLSX: ${error.message}`);
-        setIsProcessing(false);
-      }
-    } else if (name.endsWith('.xls')) {
-      setBatchError('Legacy .xls files are not supported. Please save the file as .xlsx or CSV.');
-      setIsProcessing(false);
-    } else {
-      setBatchError('Unsupported format. Use CSV or XLSX.');
-      setIsProcessing(false);
-    }
-  };
-
-  const processData = (data, preferredXKey = 't') => {
-    if (!data?.length) {
-      setBatchError('File is empty. Please upload a CSV or Excel file with column headers.');
-      setIsProcessing(false);
+      } catch (error) { setBatchError(`Could not parse XLSX: ${error.message}`); setIsProcessing(false); }
       return;
     }
-    const inputHeaders = Object.keys(data[0]);
-    setBatchHeaders(inputHeaders);
-
-    setTimeout(() => {
-      try {
-        const results = data.map((row, index) => {
-          try {
-            return { ...row, ...computeRow(activeModel, row) };
-          } catch (error) {
-            throw new Error(`Row ${index + 2}: ${error.message}`);
-          }
-        });
-        setBatchResults(results);
-        setBatchError('');
-        const firstResult = model.resultKeys[0];
-        setYKey(firstResult);
-        setXKey(inputHeaders.includes(preferredXKey) ? preferredXKey : (inputHeaders[0] || ''));
-      } catch (error) {
-        setBatchResults([]);
-        setBatchError(error.message);
-      } finally {
-        setIsProcessing(false);
-      }
-    }, 100);
+    setBatchError('Unsupported format. Use CSV or XLSX.'); setIsProcessing(false);
   };
 
-  const loadSampleDataset = () => {
-    setIsProcessing(true);
-    setBatchError('');
-    processData(SAMPLE_DATA[activeModel], 't');
+  const resetForModel = (id) => {
+    setActiveModel(id); setBatchResults([]); setBatchHeaders([]); setIssues([]); setBatchError(''); setFileName(''); setXKey('');
+    setYKey(MODELS.find((item) => item.id === id)?.resultKeys[0] || '');
   };
 
-  const exportCSV = () => {
-    if (!batchResults.length) return;
-    const allKeys = [...batchHeaders, ...model.resultKeys];
-    const csv = Papa.unparse(batchResults.map(r => Object.fromEntries(allKeys.map(k => [k, r[k] ?? '']))));
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${activeModel}_batch_results.csv`;
-    link.click();
-  };
-
+  const loadSampleDataset = () => { setFileName(`${activeModel}_official_sample.csv`); setIsProcessing(true); processData(SAMPLE_DATA[activeModel], 't'); };
   const downloadTemplate = () => {
-    const cols = model.req.split(', ');
-    const csv = Papa.unparse([cols, model.template ?? cols.map(() => '0')]);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${activeModel}_template.csv`;
-    link.click();
+    const columns = model.req.split(', ');
+    const csv = Papa.unparse([columns, model.template ?? columns.map(() => '0')]);
+    const link=document.createElement('a'); link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); link.download=`${activeModel}_template.csv`; link.click(); URL.revokeObjectURL(link.href);
+  };
+  const exportCSV = () => {
+    const keys=[...batchHeaders,...model.resultKeys];
+    const csv=Papa.unparse(batchResults.map((row)=>Object.fromEntries(keys.map((key)=>[key,row[key]??'']))));
+    const link=document.createElement('a'); link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); link.download=`${activeModel}_batch_results.csv`; link.click(); URL.revokeObjectURL(link.href);
   };
 
-  const chartData = batchResults
-    .map(r => ({ x: parseFloat(r[xKey]), y: parseFloat(r[yKey]) }))
-    .filter(d => !isNaN(d.x) && !isNaN(d.y));
-
-  const allResultKeys = model.resultKeys;
-  const greenHex = 'var(--green)';
+  const chartData = batchResults.map((row)=>({x:Number(row[xKey]),y:Number(row[yKey])})).filter((point)=>Number.isFinite(point.x)&&Number.isFinite(point.y));
+  const validCount=batchResults.filter((row)=>row.__status==='valid').length;
+  const stage=batchResults.length ? 3 : issues.length ? 2 : 1;
 
   return (
-    <div className="max-w-content mx-auto space-y-8 animate-fade-in relative z-10">
-      <header className="mb-6">
-        <div className="mb-1.5 flex items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-green-dark">Data Pipeline</span>
-          <span className="h-px w-8 bg-green-border" aria-hidden="true" />
-        </div>
-        <h1 className="font-mono text-xl font-bold uppercase tracking-[0.08em] text-primary md:text-2xl">
-          Batch <span className="text-green-dark">matrix</span>
-        </h1>
-        <p className="mt-1.5 max-w-[65ch] text-sm leading-relaxed text-muted">
-          Import CSV or Excel datasets, compute model outputs in batch, then inspect and export the resulting table.
-        </p>
+    <div className="animate-fade-in">
+      <header className="mb-6 border-b border-line pb-5">
+        <div className="eyebrow">Batch calculation</div>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-[28px]">Dataset pipeline</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted">Upload a calibrated input table, validate every row, calculate model outputs, and export a reproducible result matrix.</p>
       </header>
 
-      {/* Config panel */}
-      <div className="card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-line bg-surface-2 px-4 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[16px] text-green" aria-hidden="true">settings</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">Pipeline Configuration</span>
-          </div>
-        </div>
-        <div className="p-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="min-w-0">
-            <label className="block text-xs font-label uppercase label-strong mb-2">Target algorithm</label>
-            <CustomSelect
-              name="activeModel"
-              value={activeModel}
-              onChange={(e) => {
-                setActiveModel(e.target.value);
-                setBatchResults([]);
-                setBatchHeaders([]);
-                setBatchError('');
-                setXKey('');
-                setYKey(MODELS.find(m => m.id === e.target.value)?.resultKeys[0] || '');
-              }}
-              options={MODELS.map(m => ({ value: m.id, label: m.name }))}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-label uppercase label-strong mb-2">Required columns</label>
-            <div className="w-full bg-surface-soft border border-line/60 text-primary rounded-card px-4 py-3 font-mono text-xs break-words leading-relaxed">
-              {model.req}
-            </div>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-3 items-center border-t border-line pt-5 mt-5">
-          <label className="btn-secondary px-6 py-3 cursor-pointer flex items-center gap-2 text-sm">
-            <span className="material-symbols-outlined text-green" aria-hidden="true">upload_file</span>
-            <span className="font-label tracking-[0.10em]">{isProcessing ? 'Processing file' : 'Upload CSV / XLSX'}</span>
-            <input type="file" className="hidden" accept=".csv,.xlsx" onChange={handleBatchFile} disabled={isProcessing} />
-          </label>
-          <button onClick={downloadTemplate} className="btn-secondary px-6 py-3 flex items-center gap-2 text-sm">
-            <span className="material-symbols-outlined text-sm" aria-hidden="true">download</span>
-            <span className="font-label tracking-[0.10em] uppercase">Download template</span>
-          </button>
-          <button onClick={loadSampleDataset} disabled={isProcessing} className="btn-primary px-6 py-3 flex items-center gap-2 text-sm disabled:opacity-60">
-            <span className="material-symbols-outlined text-sm" aria-hidden="true">auto_graph</span>
-            <span className="font-label tracking-[0.10em] uppercase">Load sample dataset</span>
-          </button>
-        </div>
-        {batchError && (
-          <div className="mt-5 rounded-card border border-error-border bg-error-soft px-4 py-3 text-sm text-error">
-            {batchError}
-          </div>
-        )}
-        </div>
+      <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-lg border border-line bg-surface">
+        {[['01','Upload','上传数据'],['02','Validate','校验字段'],['03','Results','计算结果']].map(([number,label,zh],index)=><div key={label} className={`border-r border-line px-4 py-3 last:border-r-0 ${stage===index+1?'bg-green-soft':''}`}><div className={`font-mono text-[9px] font-semibold ${stage>=index+1?'text-green':'text-faint'}`}>{number}</div><div className="mt-1 text-xs font-semibold text-primary">{label}</div><div className="text-[10px] text-muted">{zh}</div></div>)}
       </div>
 
-      {/* Empty state */}
-      {batchResults.length === 0 && !batchError && (
-        <div className="card p-6">
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-green-dark mb-2">Ready for dataset</div>
-              <h3 className="font-mono text-lg font-bold uppercase tracking-[0.06em] text-primary">Upload a table to generate the output matrix</h3>
-              <p className="mt-3 max-w-[62ch] text-sm leading-relaxed text-muted">
-                Use the template for exact column names, or load the sample dataset to preview the computed table and chart immediately.
-              </p>
-            </div>
-            <div className="grid min-w-52 grid-cols-2 gap-3 text-center">
-              <div className="rounded-card border border-line bg-surface-2 p-3">
-                <div className="font-mono text-lg text-green-dark">{model.resultKeys.length}</div>
-                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">outputs</div>
-              </div>
-              <div className="rounded-card border border-line bg-surface-2 p-3">
-                <div className="font-mono text-lg text-muted">{model.req.split(', ').length}</div>
-                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.14em] text-faint">columns</div>
-              </div>
-            </div>
+      <section className="workbench-panel overflow-hidden">
+        <div className="grid lg:grid-cols-[300px_1fr]">
+          <div className="border-b border-line p-5 lg:border-b-0 lg:border-r">
+            <label className="eyebrow" htmlFor="batch-model">Prediction model</label>
+            <div className="mt-2"><CustomSelect id="batch-model" name="activeModel" value={activeModel} onChange={(event)=>resetForModel(event.target.value)} options={MODELS.map((item)=>({value:item.id,label:item.name}))}/></div>
+            <div className="mt-5"><div className="eyebrow">Required schema</div><div className="mt-2 flex flex-wrap gap-1.5">{model.req.split(', ').map((column)=><code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-[9px] text-muted">{column}</code>)}</div></div>
+            <button onClick={downloadTemplate} className="button-secondary mt-5 w-full">Download template</button>
+          </div>
+
+          <div className="p-5">
+            <label
+              onDragOver={(event)=>event.preventDefault()} onDrop={(event)=>{event.preventDefault(); readFile(event.dataTransfer.files[0]);}}
+              className="flex min-h-[205px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface-2 px-6 text-center transition-colors hover:border-green-border hover:bg-green-soft"
+            >
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current text-green" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span className="mt-3 text-sm font-semibold text-primary">Drop CSV or XLSX here</span>
+              <span className="mt-1 text-xs text-muted">拖入文件，或点击选择本地数据表</span>
+              <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.06em] text-muted">{isProcessing?'Processing…':'Choose file'}</span>
+              <input type="file" className="hidden" accept=".csv,.xlsx" disabled={isProcessing} onChange={(event)=>readFile(event.target.files[0])}/>
+            </label>
+            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted"><span>{fileName || 'No dataset selected'}</span><button onClick={loadSampleDataset} disabled={isProcessing} className="font-semibold text-green hover:underline">Load official sample</button></div>
           </div>
         </div>
-      )}
+      </section>
 
-      {batchResults.length > 0 && (
-        <>
-          {/* Table */}
-          <div className="card overflow-hidden animate-fade-in-up">
-            <div className="flex justify-between items-center flex-wrap gap-3 border-b border-line bg-surface-2 px-4 py-2.5">
-              <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-                Output Matrix <span className="text-faint">({batchResults.length} records)</span>
-              </h3>
-              <button onClick={exportCSV} className="btn-primary px-3 py-1.5 text-[10px]">
-                Export CSV
-              </button>
-            </div>
-            <div className="overflow-x-auto max-h-[400px]">
-              <table className="data-table w-full text-left border-collapse min-w-max">
-                <thead className="sticky top-0 bg-surface-soft shadow-sm z-10">
-                  <tr>
-                    {batchHeaders.map(h => (
-                      <th key={h} className="px-4 py-3.5 text-xs font-label uppercase tracking-[0.11em] whitespace-nowrap">{h}</th>
-                    ))}
-                    {allResultKeys.map((k, i) => (
-                      <th key={k} className="px-4 py-3.5 text-xs font-label uppercase tracking-[0.11em] whitespace-nowrap bg-green-soft/60 text-green-dark">
-                        {model.labels[i] || k}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {batchResults.slice(0, 100).map((row, idx) => (
-                    <tr key={idx} className="transition-colors">
-                      {batchHeaders.map(h => (
-                        <td key={h} className="px-4 py-3.5 font-mono text-[13px] md:text-sm">{row[h]}</td>
-                      ))}
-                      {allResultKeys.map(k => (
-                        <td key={k} className="result-cell px-4 py-3.5 font-mono text-[13px] md:text-sm">{row[k]}</td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {batchResults.length > 100 && (
-              <div className="p-4 text-center text-faint text-xs tracking-wider uppercase bg-surface-soft/30">
-                Showing 100 of {batchResults.length} records. Export to view full dataset.
-              </div>
-            )}
-          </div>
+      {(batchError || issues.length>0 || batchResults.length>0) && <section className="mt-5 workbench-panel overflow-hidden">
+        <div className="grid grid-cols-3 border-b border-line bg-surface-2">
+          <div className="p-4"><div className="eyebrow">Rows detected</div><div className="mt-1 font-mono text-xl text-primary">{batchResults.length}</div></div>
+          <div className="border-x border-line p-4"><div className="eyebrow">Valid</div><div className="mt-1 font-mono text-xl text-[var(--success)]">{validCount}</div></div>
+          <div className="p-4"><div className="eyebrow">Issues</div><div className="mt-1 font-mono text-xl text-error">{issues.length}</div></div>
+        </div>
+        {batchError && <div className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error">{batchError}</div>}
+        {issues.length>0 && <div className="max-h-56 overflow-auto"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-surface"><tr>{['Row','Field','Value','Issue'].map((head)=><th key={head} className="border-b border-line px-4 py-2 font-mono text-[9px] uppercase tracking-[.08em] text-faint">{head}</th>)}</tr></thead><tbody className="divide-y divide-line">{issues.slice(0,100).map((issue,index)=><tr key={index}><td className="px-4 py-2 font-mono">{issue.row}</td><td className="px-4 py-2 font-mono">{issue.field}</td><td className="px-4 py-2 font-mono">{issue.value}</td><td className="px-4 py-2 text-error">{issue.message}</td></tr>)}</tbody></table></div>}
+      </section>}
 
-          {/* Visualization */}
-          <div className="card p-5">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px] text-green" aria-hidden="true">scatter_plot</span>
-                <h3 className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-                  Result <span className="text-green-dark">visualizer</span>
-                </h3>
-              </div>
-              <div className="flex gap-1.5 items-center">
-                {['scatter', 'line'].map(t => (
-                  <button key={t} onClick={() => setChartType(t)}
-                    className={`rounded border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] transition-colors duration-150 ${
-                      chartType === t ? 'active-pill' : 'text-muted border-line-strong hover:bg-surface-3 hover:text-primary'
-                    }`}>
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
+      {batchResults.length>0 && <>
+        <section className="mt-5 workbench-panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3"><div><div className="eyebrow">Result matrix</div><div className="mt-1 text-xs text-muted">{batchResults.length} rows · {model.resultKeys.length} output fields</div></div><button onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button></div>
+          <div className="max-h-[470px] overflow-auto"><table className="min-w-max w-full border-collapse text-left"><thead className="sticky top-0 z-10 bg-surface-2"><tr><th className="sticky left-0 z-20 border-b border-r border-line bg-surface-2 px-3 py-2.5 font-mono text-[9px] text-faint">#</th>{batchHeaders.map((header)=><th key={header} className="border-b border-line px-3 py-2.5 font-mono text-[9px] uppercase tracking-[.05em] text-faint">{header}</th>)}{model.resultKeys.map((key,index)=><th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 font-mono text-[9px] uppercase tracking-[.05em] text-green">{model.labels[index]}</th>)}</tr></thead><tbody className="divide-y divide-line">{batchResults.slice(0,100).map((row,index)=><tr key={index} className={row.__status==='invalid'?'bg-[var(--error-soft)]':''}><td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-[10px] text-faint">{index+1}</td>{batchHeaders.map((header)=><td key={header} className="px-3 py-2 font-mono text-[11px] text-muted">{row[header]}</td>)}{model.resultKeys.map((key)=><td key={key} className="bg-green-soft/30 px-3 py-2 font-mono text-[11px] font-medium text-primary">{row[key]??'—'}</td>)}</tr>)}</tbody></table></div>
+        </section>
 
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-faint">X Axis (Input Parameter)</label>
-                <CustomSelect
-                  name="xKey"
-                  value={xKey}
-                  onChange={e => setXKey(e.target.value)}
-                  options={batchHeaders.map(h => ({ value: h, label: h }))}
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block font-mono text-[10px] uppercase tracking-[0.12em] text-faint">Y Axis (Result)</label>
-                <CustomSelect
-                  name="yKey"
-                  value={yKey}
-                  onChange={e => setYKey(e.target.value)}
-                  options={allResultKeys.map((k, i) => ({ value: k, label: model.labels[i] || k }))}
-                />
-              </div>
-            </div>
-
-            {chartData.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-48 text-faint gap-3">
-                <span className="material-symbols-outlined text-4xl" aria-hidden="true">scatter_plot</span>
-                <p className="font-mono text-[10px] uppercase tracking-[0.16em]">Select numeric X column to visualize</p>
-              </div>
-            ) : (
-              <div className="chart-stage" style={{ width: '100%', height: 380 }}>
-                <ResponsiveContainer width="100%" height={380}>
-                  {chartType === 'scatter' ? (
-                    <ScatterChart margin={{ top: 10, right: 24, left: 18, bottom: 34 }}>
-                      <CartesianGrid strokeDasharray="4 6" stroke="var(--line)" />
-                      <XAxis dataKey="x" name={xKey} stroke="var(--text-faint)" tick={{ fill: 'var(--text)', fontSize: 12, fontWeight: 520 }}
-                        tickCount={6} minTickGap={28}
-                        label={{ value: xKey, position: 'insideBottomRight', offset: -8, fill: 'var(--text-muted)', fontSize: 11, fontWeight: 650 }} type="number" />
-                      <YAxis dataKey="y" name={yKey} stroke="var(--text-faint)" tick={{ fill: 'var(--text)', fontSize: 12, fontWeight: 520 }} width={56}
-                        label={{ value: yKey, angle: -90, position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 11, fontWeight: 650 }} />
-                      <Tooltip
-                        cursor={{ stroke: 'var(--green)', strokeDasharray: '4 4', strokeOpacity: 0.32, strokeWidth: 1.5 }}
-                        contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--green-border)', borderRadius: '10px', color: 'var(--text)', boxShadow: 'var(--shadow-sm)' }}
-                        formatter={(v, n) => [v?.toFixed(5), n]}
-                      />
-                      <Scatter
-                        data={chartData}
-                        fill={greenHex}
-                        fillOpacity={0.86}
-                        stroke={greenHex}
-                        strokeWidth={1.4}
-                        shape={(props) => (
-                          <circle
-                            cx={props.cx}
-                            cy={props.cy}
-                            r={5}
-                            fill={greenHex}
-                            fillOpacity={0.90}
-                            stroke="var(--surface)"
-                            strokeWidth={1.6}
-                          />
-                        )}
-                        activeShape={(props) => (
-                          <circle
-                            cx={props.cx}
-                            cy={props.cy}
-                            r={7}
-                            fill={greenHex}
-                            stroke="var(--surface)"
-                            strokeWidth={2}
-                          />
-                        )}
-                        isAnimationActive="auto"
-                        animationDuration={900}
-                        animationEasing="ease-out"
-                      />
-                    </ScatterChart>
-                  ) : (
-                    <LineChart data={chartData} margin={{ top: 10, right: 24, left: 18, bottom: 34 }}>
-                      <CartesianGrid strokeDasharray="4 6" stroke="var(--line)" />
-                      <XAxis dataKey="x" stroke="var(--text-faint)" tick={{ fill: 'var(--text)', fontSize: 12, fontWeight: 520 }}
-                        tickCount={6} minTickGap={28}
-                        label={{ value: xKey, position: 'insideBottomRight', offset: -8, fill: 'var(--text-muted)', fontSize: 11, fontWeight: 650 }} />
-                      <YAxis stroke="var(--text-faint)" tick={{ fill: 'var(--text)', fontSize: 12, fontWeight: 520 }} width={56}
-                        label={{ value: yKey, angle: -90, position: 'insideLeft', fill: 'var(--text-muted)', fontSize: 11, fontWeight: 650 }} />
-                      <Tooltip
-                        cursor={{ stroke: 'var(--green)', strokeOpacity: 0.26, strokeWidth: 1.5 }}
-                        contentStyle={{ backgroundColor: 'var(--surface)', border: '1px solid var(--green-border)', borderRadius: '10px', color: 'var(--text)', boxShadow: 'var(--shadow-sm)' }}
-                        formatter={(v) => [v?.toFixed(5), yKey]}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="y"
-                        stroke={greenHex}
-                        strokeWidth={2.6}
-                        dot={false}
-                        activeDot={{ r: 6, stroke: greenHex, strokeWidth: 2.5, fill: 'var(--surface)' }}
-                        isAnimationActive="auto"
-                        animationDuration={1200}
-                        animationEasing="ease-out"
-                      />
-                    </LineChart>
-                  )}
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-        </>
-      )}
+        <section className="mt-5 workbench-panel overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-end md:justify-between"><div><div className="eyebrow">Result visualizer</div><div className="mt-1 text-xs text-muted">选择输入列与结果列进行快速关系检查</div></div><div className="flex gap-1 rounded-md border border-line bg-surface-2 p-0.5">{['scatter','line'].map((type)=><button key={type} onClick={()=>setChartType(type)} className={`rounded px-3 py-1.5 font-mono text-[9px] uppercase ${chartType===type?'bg-surface text-primary':'text-faint'}`}>{type}</button>)}</div></div>
+          <div className="grid gap-4 border-b border-line p-4 sm:grid-cols-2"><div><label className="eyebrow">X axis · input</label><div className="mt-2"><CustomSelect name="xKey" value={xKey} onChange={(event)=>setXKey(event.target.value)} options={batchHeaders.map((key)=>({value:key,label:key}))}/></div></div><div><label className="eyebrow">Y axis · output</label><div className="mt-2"><CustomSelect name="yKey" value={yKey} onChange={(event)=>setYKey(event.target.value)} options={model.resultKeys.map((key,index)=>({value:key,label:model.labels[index]}))}/></div></div></div>
+          <div className="h-[380px] p-4"><ResponsiveContainer width="100%" height="100%">{chartType==='scatter'?<ScatterChart margin={{top:10,right:20,left:8,bottom:28}}><CartesianGrid stroke="var(--chart-grid)" vertical={false}/><XAxis dataKey="x" type="number" tick={{fontSize:10}} label={{value:xKey,position:'insideBottomRight',offset:-14,fill:'var(--text-faint)',fontSize:9}}/><YAxis dataKey="y" tick={{fontSize:10}} width={60}/><Tooltip contentStyle={{background:'var(--surface)',border:'1px solid var(--line-strong)',borderRadius:6}}/><Scatter data={chartData} fill="var(--primary)" isAnimationActive={false}/></ScatterChart>:<LineChart data={chartData} margin={{top:10,right:20,left:8,bottom:28}}><CartesianGrid stroke="var(--chart-grid)" vertical={false}/><XAxis dataKey="x" tick={{fontSize:10}} label={{value:xKey,position:'insideBottomRight',offset:-14,fill:'var(--text-faint)',fontSize:9}}/><YAxis tick={{fontSize:10}} width={60}/><Tooltip contentStyle={{background:'var(--surface)',border:'1px solid var(--line-strong)',borderRadius:6}}/><Line dataKey="y" stroke="var(--primary)" strokeWidth={2} dot={false} isAnimationActive={false}/></LineChart>}</ResponsiveContainer></div>
+        </section>
+      </>}
     </div>
   );
 }

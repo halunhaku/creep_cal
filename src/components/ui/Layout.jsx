@@ -1,36 +1,17 @@
 import React from 'react';
 import Header from './Header';
-import BackgroundElements from './BackgroundElements';
 
-export default function Layout({ 
-  activeMode, 
-  onModeChange, 
-  onOpenDocs,
-  children 
-}) {
+export default function Layout({ activeMode, onModeChange, onOpenDocs, children }) {
   return (
-    <div className="min-h-[100dvh] bg-background text-primary font-body selection:bg-green selection:text-[var(--on-green)] overflow-x-hidden">
-      <BackgroundElements />
-      <Header 
-        activeMode={activeMode} 
-        onModeChange={onModeChange}
-        onOpenDocs={onOpenDocs}
-      />
-
-      <main id="main-content" className="relative z-[2] px-4 pb-16 pt-24 md:px-8 lg:px-10 max-w-content mx-auto min-h-[100dvh]">
+    <div className="min-h-[100dvh] bg-background text-primary font-body">
+      <Header activeMode={activeMode} onModeChange={onModeChange} onOpenDocs={onOpenDocs} />
+      <main id="main-content" className="mx-auto min-h-[calc(100dvh-65px)] max-w-content px-4 py-6 md:px-7 lg:px-9 lg:py-8">
         {children}
       </main>
-
-      <footer className="relative z-[2] w-full border-t border-line bg-surface/70 px-4 py-4 md:px-10">
-        <div className="max-w-content mx-auto flex flex-col gap-3 font-mono text-[10px] uppercase tracking-[0.16em] text-faint md:flex-row md:items-center md:justify-between">
-          <div className="text-muted">
-            © 2026 halunhaku — concrete creep calculation workspace
-          </div>
-          <div className="flex flex-wrap gap-4 md:gap-8">
-            <span>Vite build</span>
-            <span>Rust WASM</span>
-            <span>CSV / XLSX</span>
-          </div>
+      <footer className="border-t border-line bg-surface">
+        <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-4 text-xs text-muted sm:flex-row sm:items-center sm:justify-between md:px-7 lg:px-9">
+          <span>Concrete creep calculation workspace</span>
+          <span className="font-mono text-[9px] uppercase tracking-[0.09em] text-faint">Float64 · Rust WASM · JS reference</span>
         </div>
       </footer>
     </div>

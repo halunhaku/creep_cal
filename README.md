@@ -21,7 +21,7 @@
 
 ## Overview
 
-CREEP_LAB is a professional concrete creep and shrinkage calculation platform. It integrates ACI 209R-92, fib Model Code 2010, B4, and B4S prediction models, with a restrained research-document interface built around pale green surfaces, white cards, fine borders, soft shadows, serif headings, and deep green emphasis.
+CREEP_LAB is a professional concrete creep and shrinkage calculation platform. It integrates ACI 209R-92, fib Model Code 2010, RILEM B4, and RILEM B4s behind a Scientific Workbench interface: precise grouped inputs, explicit calculation state, engineering-blue emphasis, decomposition readouts, model-aware charts, and standards-oriented reference pages.
 
 The app is designed for local engineering exploration: tune model parameters, calculate long-term curves, import batch datasets, compare outputs, and read model documentation without leaving the workspace.
 
@@ -35,10 +35,10 @@ $$
 
 | Area | What it does |
 | --- | --- |
-| Single analysis | Select a model and engine, tune parameters, and generate a time-series calculation. |
-| Batch matrix | Import CSV / XLSX rows as calculation cases and export the resulting matrix. |
-| Result visualizer | Inspect scatter or line charts using the same quiet green visual language. |
-| Model library | Read model descriptions, inputs, outputs, references, and core formulas. |
+| Calculation workspace | Select a model and engine, edit calibrated parameters, explicitly calculate, and inspect a target age within the 10,000-day series. |
+| Batch pipeline | Upload CSV / XLSX cases, validate the schema and rows, inspect the result matrix, and export calculated outputs. |
+| Result visualizer | Separate compliance and shrinkage curves, inspect decomposed values, switch linear/log time, and export chart data. |
+| Reference library | Read implementation scope, calibrated ranges, equations, source mapping, limitations, and official references. |
 | Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels. |
 
 ---
@@ -148,17 +148,17 @@ build.bat
 
 ## Design Language
 
-CREEP_LAB uses a laboratory-instrument theme with dark and light variants:
+CREEP_LAB uses a Scientific Workbench system with a light-default and persistent dark variant:
 
-| Token | Dark (default) | Light |
+| Token | Light (default) | Dark |
 | --- | --- | --- |
-| Background | Graphite chassis `#0c0f12` + coordinate grid | Warm white `#f3f5f3` + grid |
-| Emphasis | Phosphor green `#41d98a`, amber `#e8a84c` | Forest green `#0e7a4e`, amber `#a8731a` |
-| Surfaces | Dark panels, 1px hairline borders, 8px radius | White panels, same borders |
-| Type | Uppercase mono labels and readouts, sans body, no serif | Same |
-| Motion | Fast ease-out micro-interactions only (<300ms) | Same |
+| Background | Warm paper `#f4f2ed` | Warm graphite `#101412` |
+| Emphasis | Engineering blue `#2457d6`, oxide orange `#c9532d` | Soft blue `#7f9fff`, warm orange `#f18a5b` |
+| Surfaces | Paper-white panels, 1px borders, restrained 6–10px radii | Graphite panels with the same hierarchy |
+| Type | Hanken Grotesk UI, Azeret Mono engineering data, KaTeX equations | Same |
+| Interaction | Explicit calculation, stale-result state, keyboard shortcut, grouped calibrated inputs | Same |
 
-Theme cycles through `system → light → dark` via the header toggle.
+The header toggle switches between light and dark and stores the choice in `localStorage`. Both themes meet WCAG AA contrast checks on the calculation workspace.
 
 ---
 
