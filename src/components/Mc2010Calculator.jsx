@@ -1,38 +1,47 @@
 import React from 'react';
-import { mc2010Phi } from '../math/creepModels';
+import { mc2010Point } from '../math/creepModels';
 import ModelCalculator from './ModelCalculator';
 
 const config = {
-  name: 'fib MC 2010',
+  name: 'fib Model Code 2010',
   descriptions: {
-    js: 'fib Model Code 2010 calculation for basic and drying creep with strength, humidity, section size, temperature, and cement class inputs.',
-    rust: 'fib Model Code 2010 calculation using the Rust WASM kernel for rapid 10000-day creep coefficient series.',
+    js: 'Published fib Model Code 2010 creep formulation with basic creep, drying creep, and the nonlinear stress correction of Eq. 5.1-74.',
+    rust: 'Published fib Model Code 2010 creep formulation evaluated by the Rust WASM kernel, including component and nonlinear results.',
   },
-  initialParams: { fcm: 40, RH: 70, t0: 28, Ac: 1000, u: 400, T: 20, Cs: '42.5R' },
+  initialParams: {
+    fcm: 40,
+    RH: 70,
+    t0: 28,
+    Ac: 90000,
+    u: 1200,
+    T: 20,
+    Cs: '42.5 R',
+    sigma: 12,
+  },
   paramsConfig: [
-    { name: 'fcm', label: 'Concrete Strength', min: 10, max: 150, unit: 'MPa' },
-    { name: 'RH', label: 'Relative Humidity', min: 0, max: 100, unit: '%' },
-    { name: 't0', label: 'Age at Loading', min: 1, max: 1000, unit: 'Days' },
+    { name: 'fcm', label: 'Mean Compressive Strength', min: 20, max: 130, step: 0.1, unit: 'MPa' },
+    { name: 'RH', label: 'Relative Humidity', min: 40, max: 100, step: 0.1, unit: '%' },
+    { name: 't0', label: 'Age at Loading', min: 1, max: 1000, step: 0.1, unit: 'Days' },
     { name: 'Ac', label: 'Cross Section Area', min: 1, max: 1000000, unit: 'mm²' },
-    { name: 'u', label: 'Perimeter', min: 1, max: 10000, unit: 'mm' },
-    { name: 'T', label: 'Temperature', min: -20, max: 100, unit: '°C' },
+    { name: 'u', label: 'Drying Perimeter', min: 1, max: 10000, unit: 'mm' },
+    { name: 'T', label: 'Constant Curing Temperature', min: 5, max: 30, step: 0.1, unit: '°C' },
     {
       name: 'Cs',
-      label: 'Cement Class',
-      options: ['32.5N', '32.5R', '42.5N', '42.5R', '52.5N', '52.5R']
+      label: 'Cement Strength Class',
+      options: ['32.5 N', '32.5 R', '42.5 N', '42.5 R', '52.5 N', '52.5 R']
         .map((value) => ({ value, label: value })),
     },
+    { name: 'sigma', label: 'Initial Concrete Stress', min: -78, max: 78, step: 0.1, unit: 'MPa' },
   ],
-  loadingMessage: 'Loading Rust fib MC 2010 WASM Module...',
-  readyMessage: 'Kernel v2.4 (MC2010-Rust) initialized successfully.',
-  startMessage: (params) => `Initiating calculation with fcm=${params.fcm}MPa, t0=${params.t0}d`,
+  loadingMessage: 'Loading Rust fib MC2010 WASM Module...',
+  readyMessage: 'Published MC2010 creep kernel initialized successfully.',
+  startMessage: (params) => (
+    `Initiating MC2010 calculation with fcm=${params.fcm}MPa, t0=${params.t0}d, sigma=${params.sigma}MPa`
+  ),
   calculateJs(params, maxDays) {
     const results = new Array(maxDays + 1);
     for (let t = 0; t <= maxDays; t += 1) {
-      results[t] = {
-        t,
-        phi: mc2010Phi(params.fcm, params.RH, params.t0, params.Ac, params.u, params.T, params.Cs, t),
-      };
+      results[t] = mc2010Point({ ...params, t });
     }
     return results;
   },
@@ -45,12 +54,25 @@ const config = {
       u: params.u,
       t: params.T,
       cement_type: params.Cs,
+      sigma: params.sigma,
     }, maxDays);
   },
   getSummary(results) {
-    return { primary: results.at(-1)?.phi ?? NaN };
+    const final = results.at(-1);
+    return {
+      primary: final?.phi ?? NaN,
+      extraResults: [
+        { label: 'Basic Creep φbc', value: final?.phi_bc },
+        { label: 'Drying Creep φdc', value: final?.phi_dc },
+        { label: 'Nonlinear Factor', value: final?.nonlinear_factor },
+      ],
+    };
   },
-  chartLines: [{ dataKey: 'phi', stroke: 'var(--green)', name: 'Creep Coefficient φ' }],
+  chartLines: [
+    { dataKey: 'phi', stroke: 'var(--green)', name: 'Total Creep Coefficient φ' },
+    { dataKey: 'phi_bc', stroke: 'var(--cyan)', name: 'Basic Creep φbc' },
+    { dataKey: 'phi_dc', stroke: 'var(--amber)', name: 'Drying Creep φdc' },
+  ],
 };
 
 export default function Mc2010Calculator({ engine }) {

@@ -11,7 +11,7 @@ import CustomSelect from './ui/CustomSelect';
 // ─── Model Registry ──────────────────────────────────────────────────────────
 const MODELS = [
   { id: 'aci209', name: 'ACI 209R-92',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t', template: ['moist', 28, 70, 100, 100, 50, 8, 365] },
-  { id: 'mc2010', name: 'fib MC 2010',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'fcm, RH, t0, Ac, u, T, Cs, t' },
+  { id: 'mc2010', name: 'fib MC 2010',  resultKeys: ['result_phi', 'result_phi_bc', 'result_phi_dc', 'result_nonlinear_factor'], labels: ['φ (Total)', 'φbc (Basic)', 'φdc (Drying)', 'Nonlinear Factor'], req: 'fcm, RH, t0, Ac, u, T, Cs, sigma, t', template: [40, 70, 28, 90000, 1200, 20, '42.5 R', 12, 365] },
   { id: 'b4',     name: 'B4 Model',     resultKeys: ['result_J', 'result_epsilonSH'], labels: ['J (1/GPa)', 'εsh (Shrinkage)'], req: 't0, tPrime, T, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, t' },
   { id: 'b4s',    name: 'B4S Model',    resultKeys: ['result_J', 'result_epsilonSH'], labels: ['J (1/GPa)', 'εsh (Shrinkage)'], req: 't0, tPrime, T, h, fc, vS, cementType, specimenShape, aggregateType, t' },
 ];
@@ -22,7 +22,7 @@ const SAMPLE_DATA = {
     fineAggregate: 50, airContent: 8, t
   })),
   mc2010: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
-    fcm: 38, RH: 70, t0: 28, Ac: 90000, u: 1200, T: 20, Cs: '42.5R', t
+    fcm: 38, RH: 70, t0: 28, Ac: 90000, u: 1200, T: 20, Cs: '42.5 R', sigma: 12, t
   })),
   b4: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
     t0: 7, tPrime: 28, T: 20, h: 0.7, fc: 40, vS: 100, c: 350, wC: 0.42,
@@ -40,8 +40,13 @@ function computeRow(modelId, row) {
     return { result_phi: isNaN(v) ? 'NaN' : v.toFixed(4) };
   }
   if (modelId === 'mc2010') {
-    const v = mc2010Single(row);
-    return { result_phi: isNaN(v) ? 'NaN' : v.toFixed(4) };
+    const { phi, phi_bc: phiBc, phi_dc: phiDc, nonlinear_factor: nonlinearFactor } = mc2010Single(row);
+    return {
+      result_phi: phi.toFixed(4),
+      result_phi_bc: phiBc.toFixed(4),
+      result_phi_dc: phiDc.toFixed(4),
+      result_nonlinear_factor: nonlinearFactor.toFixed(4),
+    };
   }
   if (modelId === 'b4') {
     const { J, epsilonSH } = b4Single(row);
@@ -124,13 +129,25 @@ export default function BatchCalculator() {
     setBatchHeaders(inputHeaders);
 
     setTimeout(() => {
-      const results = data.map(row => ({ ...row, ...computeRow(activeModel, row) }));
-      setBatchResults(results);
-      setBatchError('');
-      const firstResult = model.resultKeys[0];
-      setYKey(firstResult);
-      setXKey(inputHeaders.includes(preferredXKey) ? preferredXKey : (inputHeaders[0] || ''));
-      setIsProcessing(false);
+      try {
+        const results = data.map((row, index) => {
+          try {
+            return { ...row, ...computeRow(activeModel, row) };
+          } catch (error) {
+            throw new Error(`Row ${index + 2}: ${error.message}`);
+          }
+        });
+        setBatchResults(results);
+        setBatchError('');
+        const firstResult = model.resultKeys[0];
+        setYKey(firstResult);
+        setXKey(inputHeaders.includes(preferredXKey) ? preferredXKey : (inputHeaders[0] || ''));
+      } catch (error) {
+        setBatchResults([]);
+        setBatchError(error.message);
+      } finally {
+        setIsProcessing(false);
+      }
     }, 100);
   };
 

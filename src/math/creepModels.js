@@ -62,47 +62,114 @@ export function aci209Single({ curingType, t0, H, VS, slump, fineAggregate, airC
   });
 }
 
-// ─── fib MC 2010 ────────────────────────────────────────────────────────────
-const CEMENT_ALPHA = { '32.5N': -1, '32.5R': 0, '42.5N': 0, '42.5R': 1, '52.5N': 1, '52.5R': 1 };
+// ─── fib Model Code 2010 ────────────────────────────────────────────────────
+const MC2010_CEMENT_ALPHA = {
+  '32.5 N': -1,
+  '32.5 R': 0,
+  '42.5 N': 0,
+  '42.5 R': 1,
+  '52.5 N': 1,
+  '52.5 R': 1,
+};
 
-/**
- * fib MC 2010 creep coefficient.
- * @param {number} fcm   Mean compressive strength (MPa)
- * @param {number} RH    Relative humidity (%)
- * @param {number} t0    Age at loading (days)
- * @param {number} Ac    Cross-section area (mm²)
- * @param {number} u     Exposed perimeter (mm)
- * @param {number} T     Temperature (°C)
- * @param {string} Cs    Cement class ('32.5N' | '32.5R' | '42.5N' | '42.5R' | '52.5N' | '52.5R')
- * @param {number} t     Elapsed time (days)
- * @returns {number} φ(t, t₀) = φ_bc + φ_dc
- */
-export function mc2010Phi(fcm, RH, t0, Ac, u, T, Cs, t) {
-  const a     = CEMENT_ALPHA[Cs] ?? 0;
-  const t0T   = t0 * Math.exp(13.65 - 4000 / (273 + T));
-  const t0adj = t0T * Math.pow((9 / (2 + Math.pow(t0T, 1.2))) + 1, a);
-  const h     = (2 * Ac) / u;
-  const af    = Math.sqrt(35 / fcm);
-  const bh    = Math.min(1.5 * h + 250 * af, 1500 * af);
-  const dt    = t - t0;
-  if (dt <= 0) return 0;
-  const phi_bc = (1.8 / Math.pow(fcm, 0.7)) *
-    Math.log(Math.pow((30 / t0adj + 0.035), 2) * dt + 1);
-  const g_t0   = 1 / (2.3 + 3.5 / Math.sqrt(t0adj));
-  const phi_dc = (412 / Math.pow(fcm, 1.4)) *
-    ((1 - RH / 100) / Math.pow(0.1 * (h / 100), 1 / 3)) *
-    (1 / (0.1 + Math.pow(t0adj, 0.2))) *
-    Math.pow(dt / (bh + dt), g_t0);
-  return phi_bc + phi_dc;
+function validateMc2010({ fcm, RH, t0, Ac, u, T, Cs, sigma }) {
+  if (!Number.isFinite(fcm) || fcm < 20 || fcm > 130) {
+    throw new RangeError('MC2010 requires 20 ≤ fcm ≤ 130 MPa.');
+  }
+  if (!Number.isFinite(RH) || RH < 40 || RH > 100) {
+    throw new RangeError('MC2010 requires 40 ≤ RH ≤ 100%.');
+  }
+  if (!Number.isFinite(t0) || t0 < 1) {
+    throw new RangeError('MC2010 requires t0 ≥ 1 day.');
+  }
+  if (!Number.isFinite(Ac) || Ac <= 0 || !Number.isFinite(u) || u <= 0) {
+    throw new RangeError('MC2010 requires positive Ac and u values.');
+  }
+  if (!Number.isFinite(T) || T < 5 || T > 30) {
+    throw new RangeError('MC2010 standard creep model requires 5 ≤ T ≤ 30°C.');
+  }
+  if (!(Cs in MC2010_CEMENT_ALPHA)) {
+    throw new RangeError(`Unsupported MC2010 cement class: ${Cs}`);
+  }
+  if (!Number.isFinite(sigma) || Math.abs(sigma) > 0.6 * fcm) {
+    throw new RangeError('MC2010 requires |sigma| ≤ 0.6 fcm.');
+  }
 }
 
-/** Single-row version for batch use. */
-export function mc2010Single({ fcm, RH, t0, Ac, u, T, Cs, t }) {
-  return mc2010Phi(
-    parseFloat(fcm), parseFloat(RH), parseFloat(t0),
-    parseFloat(Ac), parseFloat(u), parseFloat(T),
-    Cs || '42.5R', parseFloat(t)
+/**
+ * Published fib Model Code 2010 creep formulation, Eqs. 5.1-63–5.1-74.
+ * T is the constant curing temperature before loading; t is concrete age.
+ *
+ * @returns {{t:number, phi:number, phi_bc:number, phi_dc:number,
+ *   nonlinear_factor:number, t0_adjusted:number}}
+ */
+export function mc2010Point({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
+  validateMc2010({ fcm, RH, t0, Ac, u, T, Cs, sigma });
+  if (!Number.isFinite(t)) {
+    throw new RangeError('MC2010 requires a finite concrete age t.');
+  }
+
+  const alpha = MC2010_CEMENT_ALPHA[Cs];
+  const temperatureAdjustedAge = t0 * Math.exp(13.65 - 4000 / (273 + T));
+  const t0Adjusted = Math.max(
+    temperatureAdjustedAge
+      * Math.pow((9 / (2 + Math.pow(temperatureAdjustedAge, 1.2))) + 1, alpha),
+    0.5,
   );
+  const stressRatio = Math.abs(sigma / fcm);
+  const nonlinearFactor = stressRatio > 0.4
+    ? Math.exp(1.5 * (stressRatio - 0.4))
+    : 1;
+  const elapsed = t - t0;
+
+  if (elapsed <= 0) {
+    return {
+      t,
+      phi: 0,
+      phi_bc: 0,
+      phi_dc: 0,
+      nonlinear_factor: nonlinearFactor,
+      t0_adjusted: t0Adjusted,
+    };
+  }
+
+  const notionalSize = (2 * Ac) / u;
+  const alphaFcm = Math.sqrt(35 / fcm);
+  const betaH = Math.min(
+    1.5 * notionalSize + 250 * alphaFcm,
+    1500 * alphaFcm,
+  );
+  const phiBc = (1.8 / Math.pow(fcm, 0.7))
+    * Math.log(Math.pow((30 / t0Adjusted) + 0.035, 2) * elapsed + 1);
+  const gammaT0 = 1 / (2.3 + 3.5 / Math.sqrt(t0Adjusted));
+  const phiDc = (412 / Math.pow(fcm, 1.4))
+    * ((1 - RH / 100) / Math.pow(0.1 * (notionalSize / 100), 1 / 3))
+    * (1 / (0.1 + Math.pow(t0Adjusted, 0.2)))
+    * Math.pow(elapsed / (betaH + elapsed), gammaT0);
+
+  return {
+    t,
+    phi: (phiBc + phiDc) * nonlinearFactor,
+    phi_bc: phiBc,
+    phi_dc: phiDc,
+    nonlinear_factor: nonlinearFactor,
+    t0_adjusted: t0Adjusted,
+  };
+}
+
+/** Single-row version for batch use (accepts row object). */
+export function mc2010Single({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
+  return mc2010Point({
+    fcm: parseFloat(fcm),
+    RH: parseFloat(RH),
+    t0: parseFloat(t0),
+    Ac: parseFloat(Ac),
+    u: parseFloat(u),
+    T: parseFloat(T),
+    Cs: String(Cs).trim(),
+    sigma: parseFloat(sigma),
+    t: parseFloat(t),
+  });
 }
 
 // ─── B4 Model ───────────────────────────────────────────────────────────────

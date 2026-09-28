@@ -143,7 +143,7 @@ export function calculate_b4s_single(params, t) {
 }
 
 /**
- * MC2010模型批量计算
+ * Published fib Model Code 2010 batch calculation.
  * @param {any} batch_data
  * @returns {any}
  */
@@ -156,7 +156,7 @@ export function calculate_mc2010_batch(batch_data) {
 }
 
 /**
- * MC2010模型时间序列计算
+ * Published fib Model Code 2010 series indexed by concrete age from casting.
  * @param {any} params
  * @param {number} max_time
  * @returns {any}
@@ -170,17 +170,17 @@ export function calculate_mc2010_series(params, max_time) {
 }
 
 /**
- * MC2010模型单点计算 - 接受实际时间 t，内部计算 t_diff
+ * Published fib Model Code 2010 creep result at concrete age t.
  * @param {any} params
  * @param {number} t
- * @returns {number}
+ * @returns {any}
  */
 export function calculate_mc2010_single(params, t) {
     const ret = wasm.calculate_mc2010_single(params, t);
     if (ret[2]) {
         throw takeFromExternrefTable0(ret[1]);
     }
-    return ret[0];
+    return takeFromExternrefTable0(ret[0]);
 }
 
 /**

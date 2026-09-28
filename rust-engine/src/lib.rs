@@ -70,6 +70,7 @@ pub struct Mc2010Params {
     pub u: f64,
     pub t: f64,
     pub cement_type: String,
+    pub sigma: f64,
 }
 
 // 模块声明

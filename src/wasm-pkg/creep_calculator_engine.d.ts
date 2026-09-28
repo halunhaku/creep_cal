@@ -50,19 +50,19 @@ export function calculate_b4s_series(params: any, days: number): any;
 export function calculate_b4s_single(params: any, t: number): any;
 
 /**
- * MC2010模型批量计算
+ * Published fib Model Code 2010 batch calculation.
  */
 export function calculate_mc2010_batch(batch_data: any): any;
 
 /**
- * MC2010模型时间序列计算
+ * Published fib Model Code 2010 series indexed by concrete age from casting.
  */
 export function calculate_mc2010_series(params: any, max_time: number): any;
 
 /**
- * MC2010模型单点计算 - 接受实际时间 t，内部计算 t_diff
+ * Published fib Model Code 2010 creep result at concrete age t.
  */
-export function calculate_mc2010_single(params: any, t: number): number;
+export function calculate_mc2010_single(params: any, t: number): any;
 
 /**
  * 内存使用情况（WebAssembly特定）
