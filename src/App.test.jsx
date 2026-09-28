@@ -5,6 +5,7 @@ test('switches between calculation, batch, and reference workspaces', async () =
   render(<App />);
 
   await screen.findByRole('heading', { name: /time-dependent concrete analysis/i });
+  expect(screen.getByRole('button', { name: /ACI 209R-92/i })).toHaveAttribute('aria-pressed', 'true');
 
   fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
   await screen.findByRole('heading', { name: /dataset pipeline/i });

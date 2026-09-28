@@ -17,7 +17,7 @@ const MODELS = [
 
 export default function SingleCalculationDashboard() {
   const [engine, setEngine] = useState('rust');
-  const [algorithm, setAlgorithm] = useState('b4');
+  const [algorithm, setAlgorithm] = useState('aci209');
   const ActiveComponent = CALCULATORS[algorithm];
   const active = MODELS.find((model) => model.id === algorithm);
   const activeModelRef = useRef(null);
