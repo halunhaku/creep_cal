@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Papa from 'papaparse';
-import readXlsxFile from 'read-excel-file/browser';
+// read-excel-file v9 changed the default export to return `[{ sheet, data }]`.
+// `readSheet()` is the API that still returns plain rows for a single sheet.
+import { readSheet } from 'read-excel-file/browser';
 import {
   ScatterChart, Scatter, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -9,11 +11,12 @@ import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepMo
 import CustomSelect from './ui/CustomSelect';
 
 // ─── Model Registry ──────────────────────────────────────────────────────────
-const MODELS = [
-  { id: 'aci209', name: 'ACI 209R-92',  resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t', template: ['moist', 28, 70, 100, 100, 50, 8, 365] },
-  { id: 'mc2010', name: 'fib MC 2010',  resultKeys: ['result_phi', 'result_phi_bc', 'result_phi_dc', 'result_nonlinear_factor'], labels: ['φ (Total)', 'φbc (Basic)', 'φdc (Drying)', 'Nonlinear Factor'], req: 'fcm, RH, t0, Ac, u, T, Cs, sigma, t', template: [40, 70, 28, 90000, 1200, 20, '42.5 R', 12, 365] },
-  { id: 'b4', name: 'RILEM B4', resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 219.3, 0.6, 7, 'R', 'No Information', '1', 0, 0, 0, 0, 0, 0, 112] },
-  { id: 'b4s', name: 'RILEM B4s', resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 'R', 'No Information', '1', 112] },
+// Exported so tests can assert the registry against the shipped sample files.
+export const MODELS = [
+  { id: 'aci209', name: 'ACI 209R-92',  sampleFiles: ['aci209示例.csv', 'aci209示例.xlsx'], resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t', template: ['moist', 28, 70, 100, 100, 50, 8, 365] },
+  { id: 'mc2010', name: 'fib MC 2010',  sampleFiles: ['mc2010示例.csv', 'mc2010示例.xlsx'], resultKeys: ['result_phi', 'result_phi_bc', 'result_phi_dc', 'result_nonlinear_factor'], labels: ['φ (Total)', 'φbc (Basic)', 'φdc (Drying)', 'Nonlinear Factor'], req: 'fcm, RH, t0, Ac, u, T, Cs, sigma, t', template: [40, 70, 28, 90000, 1200, 20, '42.5 R', 12, 365] },
+  { id: 'b4', name: 'RILEM B4', sampleFiles: ['B4示例.csv', 'B4示例.xlsx'], resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 219.3, 0.6, 7, 'R', 'No Information', '1', 0, 0, 0, 0, 0, 0, 112] },
+  { id: 'b4s', name: 'RILEM B4s', sampleFiles: ['B4s示例.csv', 'B4s示例.xlsx'], resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 'R', 'No Information', '1', 112] },
 ];
 
 const SAMPLE_DATA = {
@@ -35,36 +38,44 @@ const SAMPLE_DATA = {
   })),
 };
 
+// A row is only "valid" when every output is a finite number. Silently writing
+// the literal string "NaN" into the result matrix hides broken input rows.
+function formatResult(value, digits, label) {
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`${label} could not be evaluated from these inputs · 输入无法产生有效结果`);
+  }
+  return value.toFixed(digits);
+}
+
 function computeRow(modelId, row) {
   if (modelId === 'aci209') {
-    const v = aci209Single(row);
-    return { result_phi: isNaN(v) ? 'NaN' : v.toFixed(4) };
+    return { result_phi: formatResult(aci209Single(row), 4, 'φ (Creep Coeff.)') };
   }
   if (modelId === 'mc2010') {
     const { phi, phi_bc: phiBc, phi_dc: phiDc, nonlinear_factor: nonlinearFactor } = mc2010Single(row);
     return {
-      result_phi: phi.toFixed(4),
-      result_phi_bc: phiBc.toFixed(4),
-      result_phi_dc: phiDc.toFixed(4),
-      result_nonlinear_factor: nonlinearFactor.toFixed(4),
+      result_phi: formatResult(phi, 4, 'φ (Total)'),
+      result_phi_bc: formatResult(phiBc, 4, 'φbc (Basic)'),
+      result_phi_dc: formatResult(phiDc, 4, 'φdc (Drying)'),
+      result_nonlinear_factor: formatResult(nonlinearFactor, 4, 'Nonlinear Factor'),
     };
   }
   if (modelId === 'b4') {
     const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4Single(row);
     return {
-      result_J_GPa: JGPa.toFixed(6),
-      result_epsilonSH: epsilonSH.toFixed(9),
-      result_epsilonAU: epsilonAU.toFixed(9),
-      result_epsilonTotal: epsilonTotal.toFixed(9),
+      result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
+      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
+      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
+      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
     };
   }
   if (modelId === 'b4s') {
     const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4sSingle(row);
     return {
-      result_J_GPa: JGPa.toFixed(6),
-      result_epsilonSH: epsilonSH.toFixed(9),
-      result_epsilonAU: epsilonAU.toFixed(9),
-      result_epsilonTotal: epsilonTotal.toFixed(9),
+      result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
+      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
+      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
+      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
     };
   }
   return {};
@@ -83,21 +94,29 @@ export default function BatchCalculator() {
   const [chartType, setChartType] = useState('scatter');
   const model = MODELS.find((item) => item.id === activeModel);
 
-  const processData = (data, preferredXKey = 't') => {
-    if (!data?.length) { setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。'); setIsProcessing(false); return; }
+  // Every failure path must clear the previous dataset, otherwise stale results
+  // stay on screen under the new file name.
+  const clearDataset = () => { setBatchResults([]); setBatchHeaders([]); };
+
+  const processData = (data, preferredXKey = 't', parseIssues = []) => {
+    if (!data?.length) {
+      clearDataset(); setIssues(parseIssues);
+      setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
+      setIsProcessing(false); return;
+    }
     const inputHeaders = Object.keys(data[0]);
     const required = model.req.split(', ');
     const missing = required.filter((key) => !inputHeaders.includes(key));
     setBatchHeaders(inputHeaders);
     if (missing.length) {
-      setIssues(missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' })));
       setBatchResults([]);
+      setIssues([...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' }))]);
       setBatchError(`Missing required columns: ${missing.join(', ')}`);
       setIsProcessing(false);
       return;
     }
 
-    const nextIssues = [];
+    const nextIssues = [...parseIssues];
     const nextResults = data.map((row, index) => {
       try { return { ...row, ...computeRow(activeModel, row), __status:'valid' }; }
       catch (error) {
@@ -115,18 +134,30 @@ export default function BatchCalculator() {
 
   const readFile = async (file) => {
     if (!file) return;
-    setFileName(file.name); setIsProcessing(true); setBatchError(''); setIssues([]);
+    setFileName(file.name); setIsProcessing(true); setBatchError(''); setIssues([]); clearDataset();
     const name = file.name.toLowerCase();
     if (name.endsWith('.csv')) {
-      Papa.parse(file, { header:true, skipEmptyLines:true, complete:(result) => processData(result.data), error:(error) => { setBatchError(`Could not parse CSV: ${error.message}`); setIsProcessing(false); } });
+      Papa.parse(file, {
+        header:true,
+        skipEmptyLines:true,
+        complete:(result) => processData(result.data, 't', (result.errors ?? []).map((error) => ({
+          row: Number.isInteger(error.row) ? error.row + 2 : 'File',
+          field: 'CSV',
+          value: '—',
+          message: `${error.message}${error.code ? ` (${error.code})` : ''}`,
+        }))),
+        error:(error) => { setBatchError(`Could not parse CSV: ${error.message}`); setIsProcessing(false); },
+      });
       return;
     }
     if (name.endsWith('.xlsx')) {
       try {
-        const rows = await readXlsxFile(file);
+        const rows = await readSheet(file);
         const [headerRow, ...dataRows] = rows;
         const headers = (headerRow || []).map((value) => String(value ?? '').trim());
-        const records = dataRows.filter((row) => row.some((value) => value !== null && value !== undefined && value !== '')).map((row) => Object.fromEntries(headers.map((header,index) => [header || `column_${index + 1}`, row[index] ?? ''])));
+        const records = dataRows
+          .filter((row) => Array.isArray(row) && row.some((value) => value !== null && value !== undefined && value !== ''))
+          .map((row) => Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] ?? ''])));
         processData(records);
       } catch (error) { setBatchError(`Could not parse XLSX: ${error.message}`); setIsProcessing(false); }
       return;
@@ -139,7 +170,7 @@ export default function BatchCalculator() {
     setYKey(MODELS.find((item) => item.id === id)?.resultKeys[0] || '');
   };
 
-  const loadSampleDataset = () => { setFileName(`${activeModel}_official_sample.csv`); setIsProcessing(true); processData(SAMPLE_DATA[activeModel], 't'); };
+  const loadSampleDataset = () => { setFileName(`${activeModel}_demo_sweep.csv`); setIsProcessing(true); processData(SAMPLE_DATA[activeModel], 't'); };
   const downloadTemplate = () => {
     const columns = model.req.split(', ');
     const csv = Papa.unparse([columns, model.template ?? columns.map(() => '0')]);
@@ -174,6 +205,12 @@ export default function BatchCalculator() {
             <div className="mt-2"><CustomSelect id="batch-model" name="activeModel" value={activeModel} onChange={(event)=>resetForModel(event.target.value)} options={MODELS.map((item)=>({value:item.id,label:item.name}))}/></div>
             <div className="mt-5"><div className="eyebrow">Required schema</div><div className="mt-2 flex flex-wrap gap-1.5">{model.req.split(', ').map((column)=><code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-[9px] text-muted">{column}</code>)}</div></div>
             <button onClick={downloadTemplate} className="button-secondary mt-5 w-full">Download template</button>
+            {model.sampleFiles && <div className="mt-5">
+              <div className="eyebrow">Shipped samples · 官方示例</div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {model.sampleFiles.map((file) => <a key={file} href={encodeURI(`/模型示例/${file}`)} download className="button-secondary !min-h-8 !px-2.5 !text-[9px]">{file.endsWith('.csv') ? 'CSV' : 'XLSX'}</a>)}
+              </div>
+            </div>}
           </div>
 
           <div className="p-5">
@@ -187,7 +224,7 @@ export default function BatchCalculator() {
               <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.06em] text-muted">{isProcessing?'Processing…':'Choose file'}</span>
               <input type="file" className="hidden" accept=".csv,.xlsx" disabled={isProcessing} onChange={(event)=>readFile(event.target.files[0])}/>
             </label>
-            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted"><span>{fileName || 'No dataset selected'}</span><button onClick={loadSampleDataset} disabled={isProcessing} className="font-semibold text-green hover:underline">Load official sample</button></div>
+            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted"><span>{fileName || 'No dataset selected'}</span><button onClick={loadSampleDataset} disabled={isProcessing} className="font-semibold text-green hover:underline">Load demo sweep</button></div>
           </div>
         </div>
       </section>
@@ -204,7 +241,7 @@ export default function BatchCalculator() {
 
       {batchResults.length>0 && <>
         <section className="mt-5 workbench-panel overflow-hidden">
-          <div className="flex items-center justify-between border-b border-line px-4 py-3"><div><div className="eyebrow">Result matrix</div><div className="mt-1 text-xs text-muted">{batchResults.length} rows · {model.resultKeys.length} output fields</div></div><button onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button></div>
+          <div className="flex items-center justify-between border-b border-line px-4 py-3"><div><div className="eyebrow">Result matrix</div><div className="mt-1 text-xs text-muted">{batchResults.length} rows · {model.resultKeys.length} output fields{batchResults.length > 100 ? ` · 表格显示前 100 行，导出包含全部 ${batchResults.length} 行` : ''}</div></div><button onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button></div>
           <div className="max-h-[470px] overflow-auto"><table className="min-w-max w-full border-collapse text-left"><thead className="sticky top-0 z-10 bg-surface-2"><tr><th className="sticky left-0 z-20 border-b border-r border-line bg-surface-2 px-3 py-2.5 font-mono text-[9px] text-faint">#</th>{batchHeaders.map((header)=><th key={header} className="border-b border-line px-3 py-2.5 font-mono text-[9px] uppercase tracking-[.05em] text-faint">{header}</th>)}{model.resultKeys.map((key,index)=><th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 font-mono text-[9px] uppercase tracking-[.05em] text-green">{model.labels[index]}</th>)}</tr></thead><tbody className="divide-y divide-line">{batchResults.slice(0,100).map((row,index)=><tr key={index} className={row.__status==='invalid'?'bg-[var(--error-soft)]':''}><td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-[10px] text-faint">{index+1}</td>{batchHeaders.map((header)=><td key={header} className="px-3 py-2 font-mono text-[11px] text-muted">{row[header]}</td>)}{model.resultKeys.map((key)=><td key={key} className="bg-green-soft/30 px-3 py-2 font-mono text-[11px] font-medium text-primary">{row[key]??'—'}</td>)}</tr>)}</tbody></table></div>
         </section>
 
