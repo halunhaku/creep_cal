@@ -2,7 +2,7 @@
 /* eslint-disable */
 
 /**
- * 性能计时器
+ * Performance timer
  */
 export class PerformanceTimer {
     free(): void;
@@ -53,7 +53,10 @@ export function calculate_mc2010_series(params: any, max_time: number): any;
 export function calculate_mc2010_single(params: any, t: number): any;
 
 /**
- * 内存使用情况（WebAssembly特定）
+ * Size of the wasm linear memory in bytes.
+ *
+ * This used to return a hardcoded 1 MiB placeholder while the real instance
+ * memory was ~130 MiB, so any caller got a fabricated number.
  */
 export function get_memory_usage(): number;
 
@@ -64,7 +67,7 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_performancetimer_free: (a: number, b: number) => void;
-    readonly benchmark_calculation: (a: number, b: number, c: number) => number;
+    readonly benchmark_calculation: (a: number, b: number, c: number) => [number, number, number];
     readonly calculate_aci209_batch: (a: any) => [number, number, number];
     readonly calculate_aci209_series: (a: any, b: number) => [number, number, number];
     readonly calculate_aci209_single: (a: any, b: number) => [number, number, number];

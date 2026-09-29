@@ -130,12 +130,20 @@ npm test
 
 The WASM package is prebuilt in `src/wasm-pkg/`, so the app can run without rebuilding Rust.
 
-When changing Rust source:
+When changing Rust source, regenerate the committed package:
 
 ```bash
 cd rust-engine
 wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
 ```
+
+`src/wasm-pkg/` is a build artifact that ships with the app, so it must be
+regenerated in the same commit as any Rust change — the JavaScript/Rust parity
+tests in `src/wasm/kernelParity.test.js` fail if the two drift apart.
+
+`rust-engine/Cargo.lock` is committed because the `wasm-bindgen` version in it
+must match the CLI that produced the generated JavaScript glue. Without the
+lockfile a rebuild can pick a newer `wasm-bindgen` and rewrite the glue.
 
 On Windows:
 

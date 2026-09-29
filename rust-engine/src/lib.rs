@@ -90,7 +90,9 @@ pub fn main() {
 
 // 性能测试函数
 #[wasm_bindgen]
-pub fn benchmark_calculation(model: &str, iterations: usize) -> f64 {
+pub fn benchmark_calculation(model: &str, iterations: usize) -> Result<f64, JsValue> {
+    // Same unvalidated-`usize` hazard as the series endpoints.
+    crate::validate_max_time(iterations).map_err(|error| crate::js_error(&error))?;
     let start = js_sys::Date::now();
 
     match model {
@@ -112,5 +114,5 @@ pub fn benchmark_calculation(model: &str, iterations: usize) -> f64 {
         _ => console_log!("未知模型: {}", model),
     }
 
-    js_sys::Date::now() - start
+    Ok(js_sys::Date::now() - start)
 }

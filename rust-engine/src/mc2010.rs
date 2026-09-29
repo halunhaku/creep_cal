@@ -99,23 +99,24 @@ fn calculate_point(params: &Mc2010Params, concrete_age: f64) -> Result<Mc2010Poi
 #[wasm_bindgen]
 pub fn calculate_mc2010_single(params: &JsValue, t: f64) -> Result<JsValue, JsValue> {
     let params: Mc2010Params = serde_wasm_bindgen::from_value(params.clone())?;
-    let point = calculate_point(&params, t).map_err(|error| js_sys::Error::new(&error).into())?;
-    serde_wasm_bindgen::to_value(&point).map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    let point = calculate_point(&params, t).map_err(|error| crate::js_error(&error))?;
+    serde_wasm_bindgen::to_value(&point).map_err(|error| crate::js_error(&error.to_string()))
 }
 
 /// Published fib Model Code 2010 series indexed by concrete age from casting.
 #[wasm_bindgen]
 pub fn calculate_mc2010_series(params: &JsValue, max_time: usize) -> Result<JsValue, JsValue> {
+    crate::validate_max_time(max_time).map_err(|error| crate::js_error(&error))?;
     let params: Mc2010Params = serde_wasm_bindgen::from_value(params.clone())?;
-    validate(&params).map_err(|error| js_sys::Error::new(&error).into())?;
-    let mut results = Vec::with_capacity(max_time + 1);
+    validate(&params).map_err(|error| crate::js_error(&error))?;
+    let mut results = Vec::with_capacity(max_time.saturating_add(1));
 
     for t in 0..=max_time {
         results
-            .push(calculate_point(&params, t as f64).map_err(|error| js_sys::Error::new(&error).into())?);
+            .push(calculate_point(&params, t as f64).map_err(|error| crate::js_error(&error))?);
     }
 
-    serde_wasm_bindgen::to_value(&results).map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    serde_wasm_bindgen::to_value(&results).map_err(|error| crate::js_error(&error.to_string()))
 }
 
 /// Published fib Model Code 2010 batch calculation.
@@ -163,7 +164,7 @@ pub fn calculate_mc2010_batch(batch_data: &JsValue) -> Result<JsValue, JsValue> 
                 sigma: item.sigma,
             };
             let point =
-                calculate_point(&params, item.t).map_err(|error| js_sys::Error::new(&error).into())?;
+                calculate_point(&params, item.t).map_err(|error| crate::js_error(&error))?;
             Ok(BatchResult {
                 phi: point.phi,
                 phi_bc: point.phi_bc,
@@ -175,7 +176,10 @@ pub fn calculate_mc2010_batch(batch_data: &JsValue) -> Result<JsValue, JsValue> 
         })
         .collect();
 
-    serde_wasm_bindgen::to_value(&results?).map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    // See calculate_aci209_batch: flatten + the default serializer produced ES Maps.
+    results?
+        .serialize(&serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true))
+        .map_err(|error| crate::js_error(&error.to_string()))
 }
 
 pub fn calculate_mc2010_single_internal(

@@ -44,7 +44,9 @@ $RECYCLE.BIN/
 /rust-engine/target/
 rust-engine/target/
 target/
-Cargo.lock
+# Cargo.lock is committed on purpose: src/wasm-pkg/* is a build artifact, and the
+# wasm-bindgen version in the lockfile must match the CLI that generated its JS
+# glue. See README "Rust WebAssembly".
 
 # Keep WASM files for deployment
 !src/wasm-pkg/

@@ -1,7 +1,7 @@
 /* @ts-self-types="./creep_calculator_engine.d.ts" */
 
 /**
- * 性能计时器
+ * Performance timer
  */
 export class PerformanceTimer {
     __destroy_into_raw() {
@@ -42,7 +42,10 @@ export function benchmark_calculation(model, iterations) {
     const ptr0 = passStringToWasm0(model, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
     const len0 = WASM_VECTOR_LEN;
     const ret = wasm.benchmark_calculation(ptr0, len0, iterations);
-    return ret;
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return ret[0];
 }
 
 /**
@@ -180,7 +183,10 @@ export function calculate_mc2010_single(params, t) {
 }
 
 /**
- * 内存使用情况（WebAssembly特定）
+ * Size of the wasm linear memory in bytes.
+ *
+ * This used to return a hardcoded 1 MiB placeholder while the real instance
+ * memory was ~130 MiB, so any caller got a fabricated number.
  * @returns {number}
  */
 export function get_memory_usage() {
@@ -332,6 +338,10 @@ function __wbg_get_imports() {
         },
         __wbg_new_28744009d011f847: function() {
             const ret = new Map();
+            return ret;
+        },
+        __wbg_new_343a093a3c2ffb4e: function(arg0, arg1) {
+            const ret = new Error(getStringFromWasm0(arg0, arg1));
             return ret;
         },
         __wbg_new_617a8cdb8bb1130e: function() {

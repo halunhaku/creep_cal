@@ -588,18 +588,19 @@ pub fn calculate_b4_point(params: &B4Params, t: f64) -> Result<B4Result, String>
 #[wasm_bindgen]
 pub fn calculate_b4_single(params: &JsValue, t: f64) -> Result<JsValue, JsValue> {
     let params: B4Params = serde_wasm_bindgen::from_value(params.clone())?;
-    let result = calculate_b4_point(&params, t).map_err(|error| js_sys::Error::new(&error).into())?;
-    serde_wasm_bindgen::to_value(&result).map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    let result = calculate_b4_point(&params, t).map_err(|error| crate::js_error(&error))?;
+    serde_wasm_bindgen::to_value(&result).map_err(|error| crate::js_error(&error.to_string()))
 }
 
 #[wasm_bindgen]
 pub fn calculate_b4_series(params: &JsValue, max_time: usize) -> Result<JsValue, JsValue> {
+    crate::validate_max_time(max_time).map_err(|error| crate::js_error(&error))?;
     let params: B4Params = serde_wasm_bindgen::from_value(params.clone())?;
     let results: Result<Vec<_>, _> = (0..=max_time)
         .map(|t| calculate_b4_point(&params, t as f64))
         .collect();
-    serde_wasm_bindgen::to_value(&results.map_err(|error| js_sys::Error::new(&error).into())?)
-        .map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    serde_wasm_bindgen::to_value(&results.map_err(|error| crate::js_error(&error))?)
+        .map_err(|error| crate::js_error(&error.to_string()))
 }
 
 pub fn calculate_b4_single_internal(params: &B4Params, t: f64) -> Result<B4Result, String> {

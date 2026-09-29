@@ -62,17 +62,18 @@ fn ultimate_creep(params: &Aci209Params) -> f64 {
 #[wasm_bindgen]
 pub fn calculate_aci209_single(params: &JsValue, t: f64) -> Result<f64, JsValue> {
     let params: Aci209Params = serde_wasm_bindgen::from_value(params.clone())?;
-    validate(&params, t).map_err(|error| js_sys::Error::new(&error).into())?;
+    validate(&params, t).map_err(|error| crate::js_error(&error))?;
     Ok(calculate_aci209_single_internal(&params, t))
 }
 
 /// ACI 209R-92 time series indexed by concrete age from casting.
 #[wasm_bindgen]
 pub fn calculate_aci209_series(params: &JsValue, max_time: usize) -> Result<JsValue, JsValue> {
+    crate::validate_max_time(max_time).map_err(|error| crate::js_error(&error))?;
     let params: Aci209Params = serde_wasm_bindgen::from_value(params.clone())?;
-    validate(&params, 0.0).map_err(|error| js_sys::Error::new(&error).into())?;
+    validate(&params, 0.0).map_err(|error| crate::js_error(&error))?;
     let phi_infinity = ultimate_creep(&params);
-    let mut results = Vec::with_capacity(max_time + 1);
+    let mut results = Vec::with_capacity(max_time.saturating_add(1));
 
     for t in 0..=max_time {
         let concrete_age = t as f64;
@@ -89,7 +90,7 @@ pub fn calculate_aci209_series(params: &JsValue, max_time: usize) -> Result<JsVa
         });
     }
 
-    serde_wasm_bindgen::to_value(&results).map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    serde_wasm_bindgen::to_value(&results).map_err(|error| crate::js_error(&error.to_string()))
 }
 
 /// ACI 209R-92 batch calculation using the official input units.
@@ -132,7 +133,7 @@ pub fn calculate_aci209_batch(batch_data: &JsValue) -> Result<JsValue, JsValue> 
                 fine_aggregate: item.fine_aggregate,
                 air_content: item.air_content,
             };
-            validate(&params, item.t).map_err(|error| js_sys::Error::new(&error).into())?;
+            validate(&params, item.t).map_err(|error| crate::js_error(&error))?;
             Ok(BatchResult {
                 phi: calculate_aci209_single_internal(&params, item.t),
                 original: serde_json::to_value(&item).expect("serializing a valid batch item"),
@@ -140,7 +141,12 @@ pub fn calculate_aci209_batch(batch_data: &JsValue) -> Result<JsValue, JsValue> 
         })
         .collect::<Result<Vec<_>, JsValue>>()?;
 
-    serde_wasm_bindgen::to_value(&results).map_err(|error| js_sys::Error::new(&error.to_string()).into())
+    // `#[serde(flatten)]` makes serde use `serialize_map`, which
+    // serde-wasm-bindgen emits as an ES `Map` by default: the batch API used to
+    // return `rows[0].phi === undefined` and `JSON.stringify(rows) === "[{}]"`.
+    results
+        .serialize(&serde_wasm_bindgen::Serializer::new().serialize_maps_as_objects(true))
+        .map_err(|error| crate::js_error(&error.to_string()))
 }
 
 pub fn calculate_aci209_single_internal(params: &Aci209Params, t: f64) -> f64 {
