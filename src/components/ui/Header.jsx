@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import { getKernelStatus, subscribeKernelStatus } from '../../wasm/creepEngine';
 
 function ThemeIcon({ dark }) {
   return dark ? (
@@ -10,6 +11,21 @@ function ThemeIcon({ dark }) {
 
 export default function Header({ activeMode, onModeChange, onOpenDocs }) {
   const [theme, setTheme] = useState(() => typeof document === 'undefined' ? 'light' : document.body.dataset.theme || 'light');
+  const kernel = useSyncExternalStore(subscribeKernelStatus, getKernelStatus);
+  const kernelBadge = kernel.failure
+    ? {
+      label: 'WASM unavailable',
+      warn: true,
+      title: `Rust kernel failed: ${kernel.failure} — the JavaScript reference kernel is in use.`,
+    }
+    : {
+      idle: { label: 'Kernel idle', title: 'No calculation has run in this session yet.' },
+      loading: { label: 'Loading WASM…', title: 'Loading the Rust WebAssembly kernel.' },
+      ready: kernel.engine === 'rust'
+        ? { label: 'WASM ready', title: 'The Rust WebAssembly kernel is loaded and active.' }
+        : { label: 'JS kernel ready', title: 'The JavaScript reference kernel is active.' },
+      failed: { label: 'WASM unavailable', warn: true, title: 'The Rust kernel failed to load.' },
+    }[kernel.state] ?? { label: 'Kernel idle', title: '' };
   const navItems = [
     { id: 'single', label: 'Calculate' },
     { id: 'batch', label: 'Batch' },
@@ -52,10 +68,15 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
         </nav>
 
         <div className="flex flex-1 items-center justify-end gap-2">
-          <button className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 sm:flex" title="Rust WebAssembly engine ready">
-            <span className="status-dot" aria-hidden="true" />
-            <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.1em] text-muted">WASM ready</span>
-          </button>
+          <div
+            className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 sm:flex"
+            title={kernelBadge.title}
+            role="status"
+            aria-live="polite"
+          >
+            <span className="status-dot" aria-hidden="true" style={kernelBadge.warn ? { background: 'var(--warning)' } : undefined} />
+            <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ${kernelBadge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>{kernelBadge.label}</span>
+          </div>
           <button
             onClick={() => window.toggleTheme?.()}
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}

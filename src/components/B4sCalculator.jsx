@@ -1,5 +1,6 @@
 import React from 'react';
 import { b4sPoint } from '../math/creepModels';
+import { buildB4sParams } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 const aggregateOptions = [
@@ -65,7 +66,7 @@ const config = {
     { name: 'Tcur', label: 'Curing Temperature', min: 20, max: 30, step: 0.1, unit: '°C' },
     { name: 'Tsh', label: 'Drying Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
     { name: 'Tc', label: 'Post-Loading Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
-    { name: 'h', label: 'Relative Humidity', min: 0, max: 100, step: 0.1, unit: '%' },
+    { name: 'h', label: 'Relative Humidity', min: 0, max: 98.4, step: 0.1, unit: '%' },
     { name: 'fc', label: 'Mean 28-Day Cylinder Strength', min: 15, max: 70, step: 0.1, unit: 'MPa' },
     { name: 'vS', label: 'Volume-Surface Ratio', min: 12, max: 120, step: 0.01, unit: 'mm' },
     { name: 'cementType', label: 'Cement Reactivity', options: [{ value:'R', label:'R (Regular)' }, { value:'RS', label:'RS (Rapid)' }, { value:'SL', label:'SL (Slow)' }] },
@@ -79,11 +80,7 @@ const config = {
     return Array.from({ length:maxDays + 1 }, (_, t) => chartPoint(b4sPoint({ ...params, t })));
   },
   calculateRust(wasm, params, maxDays) {
-    return wasm.calculate_b4s_series({
-      t0:params.t0, t_prime:params.tPrime, t_cur:params.Tcur, t_sh:params.Tsh, t_c:params.Tc,
-      h:params.h, fc:params.fc, v_s:params.vS, cement_type:params.cementType,
-      aggregate_type:params.aggregateType, specimen_shape:params.specimenShape,
-    }, maxDays).map(rustChartPoint);
+    return wasm.calculate_b4s_series(buildB4sParams(params), maxDays).map(rustChartPoint);
   },
   getSummary(results, targetAge) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
@@ -103,6 +100,6 @@ const config = {
   resultLabel: 'Compliance J(t,t′) · 1/GPa',
 };
 
-export default function B4sCalculator({ engine }) {
-  return <ModelCalculator engine={engine} config={config} />;
+export default function B4sCalculator({ engine, onEngineFallback }) {
+  return <ModelCalculator engine={engine} config={config} onEngineFallback={onEngineFallback} />;
 }

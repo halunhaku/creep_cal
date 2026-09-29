@@ -1,5 +1,6 @@
 import React from 'react';
 import { aci209Phi } from '../math/creepModels';
+import { buildAci209Params } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 const curingOptions = [
@@ -46,7 +47,7 @@ const config = {
     return results;
   },
   calculateRust(wasm, params, maxDays) {
-    return wasm.calculate_aci209_series(params, maxDays);
+    return wasm.calculate_aci209_series(buildAci209Params(params), maxDays);
   },
   getSummary(results, targetAge) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
@@ -55,6 +56,6 @@ const config = {
   chartLines: [{ dataKey: 'phi', stroke: 'var(--primary)', name: 'Creep Coefficient φ' }],
 };
 
-export default function Aci209Calculator({ engine }) {
-  return <ModelCalculator engine={engine} config={config} />;
+export default function Aci209Calculator({ engine, onEngineFallback }) {
+  return <ModelCalculator engine={engine} config={config} onEngineFallback={onEngineFallback} />;
 }

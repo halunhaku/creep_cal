@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 
 const CALCULATORS = {
@@ -21,6 +21,9 @@ export default function SingleCalculationDashboard() {
   const ActiveComponent = CALCULATORS[algorithm];
   const active = MODELS.find((model) => model.id === algorithm);
   const activeModelRef = useRef(null);
+  // Stable identity: ModelCalculator keeps this in a ref and must not re-run its
+  // kernel-loading effect on every parent render.
+  const handleEngineFallback = useCallback(() => setEngine('js'), []);
 
   useEffect(() => {
     const element = activeModelRef.current;
@@ -73,7 +76,7 @@ export default function SingleCalculationDashboard() {
         </aside>
 
         <Suspense fallback={<LoadingSpinner message="Loading model…" />}>
-          <ActiveComponent engine={engine} />
+          <ActiveComponent engine={engine} onEngineFallback={handleEngineFallback} />
         </Suspense>
       </div>
     </div>

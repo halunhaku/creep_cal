@@ -1,5 +1,6 @@
 import React from 'react';
 import { b4Point } from '../math/creepModels';
+import { buildB4Params } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 const aggregateOptions = [
@@ -70,7 +71,7 @@ const config = {
     { name: 'Tcur', label: 'Curing Temperature', min: 20, max: 30, step: 0.1, unit: '°C' },
     { name: 'Tsh', label: 'Drying Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
     { name: 'Tc', label: 'Post-Loading Temperature', min: -25, max: 75, step: 0.1, unit: '°C' },
-    { name: 'h', label: 'Relative Humidity', min: 0, max: 100, step: 0.1, unit: '%' },
+    { name: 'h', label: 'Relative Humidity', min: 0, max: 98.4, step: 0.1, unit: '%' },
     { name: 'fc', label: 'Mean 28-Day Cylinder Strength', min: 15, max: 70, step: 0.1, unit: 'MPa' },
     { name: 'vS', label: 'Volume-Surface Ratio', min: 12, max: 120, step: 0.01, unit: 'mm' },
     { name: 'c', label: 'Cement Content', min: 200, max: 1500, step: 0.1, unit: 'kg/m³' },
@@ -93,13 +94,7 @@ const config = {
     return Array.from({ length:maxDays + 1 }, (_, t) => chartPoint(b4Point({ ...params, t })));
   },
   calculateRust(wasm, params, maxDays) {
-    return wasm.calculate_b4_series({
-      t0:params.t0, t_prime:params.tPrime, t_cur:params.Tcur, t_sh:params.Tsh, t_c:params.Tc,
-      h:params.h, fc:params.fc, v_s:params.vS, c:params.c, w_c:params.wC, a_c:params.aC,
-      cement_type:params.cementType, aggregate_type:params.aggregateType, specimen_shape:params.specimenShape,
-      retarder:params.retarder, fly_ash:params.flyAsh, superplasticizer:params.superplasticizer,
-      silica_fume:params.silicaFume, air_entraining_agent:params.airEntrainingAgent, water_reducer:params.waterReducer,
-    }, maxDays).map(rustChartPoint);
+    return wasm.calculate_b4_series(buildB4Params(params), maxDays).map(rustChartPoint);
   },
   getSummary(results, targetAge) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
@@ -119,6 +114,6 @@ const config = {
   resultLabel: 'Compliance J(t,t′) · 1/GPa',
 };
 
-export default function B4Calculator({ engine }) {
-  return <ModelCalculator engine={engine} config={config} />;
+export default function B4Calculator({ engine, onEngineFallback }) {
+  return <ModelCalculator engine={engine} config={config} onEngineFallback={onEngineFallback} />;
 }

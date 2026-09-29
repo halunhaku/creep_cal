@@ -1,5 +1,6 @@
 import React from 'react';
 import { mc2010Point } from '../math/creepModels';
+import { buildMc2010Params } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 const config = {
@@ -48,16 +49,7 @@ const config = {
     return results;
   },
   calculateRust(wasm, params, maxDays) {
-    return wasm.calculate_mc2010_series({
-      fcm: params.fcm,
-      rh: params.RH,
-      t0: params.t0,
-      ac: params.Ac,
-      u: params.u,
-      t: params.T,
-      cement_type: params.Cs,
-      sigma: params.sigma,
-    }, maxDays);
+    return wasm.calculate_mc2010_series(buildMc2010Params(params), maxDays);
   },
   getSummary(results, targetAge) {
     const final = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
@@ -77,6 +69,6 @@ const config = {
   ],
 };
 
-export default function Mc2010Calculator({ engine }) {
-  return <ModelCalculator engine={engine} config={config} />;
+export default function Mc2010Calculator({ engine, onEngineFallback }) {
+  return <ModelCalculator engine={engine} config={config} onEngineFallback={onEngineFallback} />;
 }

@@ -10,11 +10,31 @@ function downloadFile(filename, content, type = 'text/csv;charset=utf-8') {
   URL.revokeObjectURL(link.href);
 }
 
+function csvCell(value) {
+  const text = value === null || value === undefined ? '' : String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+/**
+ * Export the analysed series in the same column layout the batch importer expects
+ * — every input parameter, then `t`, then the result columns — so an exported
+ * file can be fed straight back into the batch pipeline (for the matching model).
+ *
+ * Earlier revisions wrote a `# key,value` metadata block as the first line and
+ * named the time column `t_days`; the importer read the comment as the header row
+ * and rejected the app's own export with "Missing required columns".
+ */
 function exportSeries(modelName, params, data, lines) {
-  const keys = lines.map((line) => line.dataKey);
-  const metadata = Object.entries(params).map(([key, value]) => `# ${key},${value}`).join('\n');
-  const rows = data.map((row) => [row.t, ...keys.map((key) => row[key] ?? '')].join(',')).join('\n');
-  downloadFile(`${modelName.replace(/\s+/g, '_')}_series.csv`, `${metadata}\n\nt_days,${keys.join(',')}\n${rows}`);
+  const inputs = Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'targetAge'));
+  const inputKeys = Object.keys(inputs);
+  const resultKeys = lines.map((line) => line.dataKey);
+  const header = [...inputKeys, 't', ...resultKeys];
+  const rows = data.map((row) => [
+    ...inputKeys.map((key) => inputs[key]),
+    row.t,
+    ...resultKeys.map((key) => row[key] ?? ''),
+  ].map(csvCell).join(','));
+  downloadFile(`${modelName.replace(/\s+/g, '_')}_series.csv`, [header.join(','), ...rows].join('\n'));
 }
 
 function formatValue(value, digits = 6) {
@@ -96,11 +116,16 @@ function AnalysisChart({ data, lines, params, modelName }) {
       </div>
 
       {view === 'data' ? (
-        <div className="max-h-[430px] overflow-auto">
+        <div>
+          <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-[9px] text-faint">
+            Showing {dataRows.length} of {data.length} computed points · every 250 days, plus the target age. Export CSV contains the full series.
+          </div>
+          <div className="max-h-[430px] overflow-auto">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-surface-2"><tr><th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Time · days</th>{lines.map((line) => <th key={line.dataKey} className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">{line.name}</th>)}</tr></thead>
             <tbody className="divide-y divide-line">{dataRows.map((row) => <tr key={row.t} className={row.t === Math.round(params.targetAge) ? 'bg-green-soft' : ''}><td className="px-4 py-2 font-mono text-muted">{row.t}</td>{lines.map((line) => <td key={line.dataKey} className="px-4 py-2 font-mono text-primary">{formatValue(row[line.dataKey], 5)}</td>)}</tr>)}</tbody>
           </table>
+          </div>
         </div>
       ) : (
         <div className="h-[430px] p-2 sm:p-4">
@@ -123,7 +148,24 @@ function AnalysisChart({ data, lines, params, modelName }) {
   );
 }
 
-export default function CalculatorWrapper({ modelName, modelDescription, engine, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, phiResult, feedLogs, chartData, chartLines, extraResults, resultLabel, dirty, duration }) {
+function NoticeBanner({ notices, onDismiss }) {
+  if (!notices?.length) return null;
+  return (
+    <div className="mb-5 space-y-3">
+      {notices.map((notice) => (
+        <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="font-mono text-[10px] font-semibold uppercase tracking-[.08em] text-[var(--warning)]">{notice.title}</div>
+            <p className="mt-1.5 max-w-[80ch] text-[13px] leading-5 text-[var(--warning)]">{notice.message}</p>
+          </div>
+          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-[9px]">Dismiss</button>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default function CalculatorWrapper({ modelName, modelDescription, engine, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, phiResult, feedLogs, chartData, chartLines, extraResults, resultLabel, dirty, duration, notices, onDismissNotice }) {
   const hasResults = chartData?.length > 0;
   const [resultName, explicitUnit] = (resultLabel || 'Creep coefficient φ').split('·').map((part) => part.trim());
   const primaryUnit = explicitUnit || 'dimensionless';
@@ -147,6 +189,8 @@ export default function CalculatorWrapper({ modelName, modelDescription, engine,
         </div>
         {duration != null && <div className="rounded-md border border-line bg-surface px-3 py-2 text-right"><div className="eyebrow">Last compute</div><div className="mt-1 font-mono text-[11px] text-primary">{duration.toFixed(2)} ms</div></div>}
       </header>
+
+      <NoticeBanner notices={notices} onDismiss={onDismissNotice} />
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:pr-1">
