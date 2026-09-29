@@ -17,7 +17,9 @@ function App() {
       onModeChange={setActiveMode}
       onOpenDocs={() => setActiveMode('docs')}
     >
-      <ErrorBoundary>
+      {/* Keyed by mode so a crash in one workspace cannot trap the others:
+          switching tabs remounts the boundary and clears the error state. */}
+      <ErrorBoundary key={activeMode}>
         <Suspense fallback={<LoadingSpinner message="Loading workspace..." />}>
           {activeMode === 'single' && <SingleCalculationDashboard />}
           {activeMode === 'batch' && <BatchCalculator />}
