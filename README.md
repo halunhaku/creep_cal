@@ -73,7 +73,7 @@ flowchart LR
   Batch["CSV / XLSX import"] --> Shared
   JS --> Viz["Recharts visualizer"]
   WASM --> Viz
-  Docs["Model documentation"] --> Markdown["Markdown + KaTeX"]
+  Docs["Model documentation"] --> Markdown["KaTeX + Markdown downloads"]
 
   classDef surface fill:#ffffff,stroke:#d7e5dc,color:#1f2722
   classDef green fill:#e7f1ea,stroke:#2f6f4e,color:#1f5138
@@ -134,7 +134,7 @@ When changing Rust source:
 
 ```bash
 cd rust-engine
-wasm-pack build --target web --out-dir ../src/wasm-pkg
+wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
 ```
 
 On Windows:
@@ -187,10 +187,12 @@ creep_cal/
       BatchCalculator.jsx
       DocsPage.jsx
       SingleCalculationDashboard.jsx
+      *.test.jsx            # component-level regression tests
     math/
       creepModels.js
+      *.test.js             # kernel benchmarks and validation tests
     wasm/
-      creepEngine.js
+      creepEngine.js        # loader, error normalisation, parameter contracts
     wasm-pkg/
 ```
 

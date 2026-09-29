@@ -9,7 +9,7 @@ CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。�
 - 单点计算：选择模型和计算引擎，调整模型参数，生成指定时间范围内的徐变或收缩结果。
 - 批量计算：导入 CSV 或 XLSX 数据表，每行作为一组工况自动计算，并输出结果矩阵。
 - 结果可视化：批量结果支持散点图和折线图，便于观察参数与计算结果之间的趋势关系。
-- 模型文档：内置模型说明、输入参数、输出量、参考文献和核心公式。
+- 模型文档：内置模型说明、输入参数、输出量、参考文献和核心公式，并可下载各模型的 Markdown 说明文件。
 - WASM 内核：Rust 计算模块已预编译到 `src/wasm-pkg/`，前端通过动态加载方式调用。
 
 ## 技术结构
@@ -19,7 +19,7 @@ CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。�
 | 前端框架 | React 19、Vite |
 | 样式系统 | Tailwind CSS、CSS 变量、HALUNHAKU Design System |
 | 图表 | Recharts |
-| 文档公式 | React Markdown、KaTeX |
+| 文档公式 | KaTeX 渲染 + 模型说明 Markdown 下载 |
 | 数据导入 | PapaParse、read-excel-file |
 | 计算内核 | JavaScript shared kernels、Rust WebAssembly |
 | 部署配置 | Cloudflare Pages / Wrangler |

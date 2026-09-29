@@ -10,19 +10,7 @@ export default defineConfig({
           if (!id.includes('node_modules')) return undefined;
           if (id.includes('/react/') || id.includes('/react-dom/')) return 'react';
           if (id.includes('/recharts/') || id.includes('/d3-')) return 'charts';
-          if (
-            id.includes('/react-markdown/') ||
-            id.includes('/remark-') ||
-            id.includes('/rehype-') ||
-            id.includes('/katex/') ||
-            id.includes('/micromark') ||
-            id.includes('/mdast') ||
-            id.includes('/hast') ||
-            id.includes('/unified/') ||
-            id.includes('/unist-')
-          ) {
-            return 'markdown';
-          }
+          if (id.includes('/katex/')) return 'equations';
           if (id.includes('/papaparse/') || id.includes('/read-excel-file/') || id.includes('/fflate/')) {
             return 'spreadsheet';
           }

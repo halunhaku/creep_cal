@@ -1,1 +1,7 @@
-*
+# wasm-pack writes a bare `*` into its output directory, which would silently
+# ignore every rebuilt artifact. This package is committed on purpose (README:
+# "the WASM package is prebuilt so the app can run without rebuilding Rust"),
+# and the root .gitignore already has an explicit `!src/wasm-pkg/` exception,
+# so nothing is ignored here on purpose.
+#
+# If you regenerate the package, `git add -f src/wasm-pkg` to be safe.

@@ -1,6 +1,6 @@
 {
-  "short_name": "徐变平台",
-  "name": "混凝土徐变多模型平台",
+  "short_name": "CREEP LAB",
+  "name": "CREEP LAB · 混凝土徐变多模型平台",
   "description": "集成ACI209、MC2010、B4、B4S等主流混凝土徐变模型，支持批量导入导出、可视化、深色模式。",
   "icons": [
     {
@@ -16,6 +16,6 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#1976d2",
-  "background_color": "#f4f6fa"
+  "theme_color": "#2457d6",
+  "background_color": "#f4f2ed"
 }

@@ -5,9 +5,11 @@
 echo "🦀 开始构建 Rust WebAssembly 模块..."
 
 # 检查 wasm-pack 是否安装
+# 不再自动执行 `curl ... | sh`：请自行安装（cargo install wasm-pack 或
+# https://rustwasm.github.io/wasm-pack/installer/）。
 if ! command -v wasm-pack &> /dev/null; then
-    echo "❌ wasm-pack 未安装，正在安装..."
-    curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+    echo "❌ wasm-pack 未安装，请先安装：cargo install wasm-pack"
+    exit 1
 fi
 
 # 检查 Rust 工具链

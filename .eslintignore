@@ -1,9 +1,0 @@
-# WebAssembly 生成的文件
-src/wasm-pkg/
-
-# 构建输出
-build/
-dist/
-
-# 依赖
-node_modules/

@@ -197,7 +197,7 @@ const MODELS = [
       { name: 'Tcur', description: 'Curing temperature (°C), calibrated for 20–30°C' },
       { name: 'Tsh', description: 'Drying temperature before loading (°C), -25 to 75°C' },
       { name: 'Tc', description: 'Temperature after loading (°C), -25 to 75°C' },
-      { name: 'h', description: 'Ambient relative humidity (0–1 or %)' },
+      { name: 'h', description: 'Ambient relative humidity (%), 0–98.4%' },
       { name: 'fc', description: 'Mean 28-day cylinder compressive strength (MPa), 15–70 MPa' },
       { name: 'vS', description: 'Volume-to-surface ratio V/S (mm), 12–120 mm' },
       { name: 'c', description: 'Cement content (kg/m³), 200–1500 kg/m³' },
@@ -295,7 +295,7 @@ const MODELS = [
       { name: 'Tcur', description: 'Curing temperature (°C), calibrated for 20–30°C' },
       { name: 'Tsh', description: 'Drying temperature before loading (°C), -25 to 75°C' },
       { name: 'Tc', description: 'Temperature after loading (°C), -25 to 75°C' },
-      { name: 'h', description: 'Ambient relative humidity (0–1 or %)' },
+      { name: 'h', description: 'Ambient relative humidity (%), 0–98.4%' },
       { name: 'fc', description: 'Mean 28-day cylinder compressive strength (MPa), 15–70 MPa' },
       { name: 'vS', description: 'Volume-to-surface ratio V/S (mm), 12–120 mm' },
       { name: 'cementType', description: 'Cement reactivity class: R (regular), RS (rapid), SL (slow)' },
@@ -380,7 +380,10 @@ export default function DocsPage() {
           <div id="overview" className="border-b border-line p-5 md:p-7">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div><div className="eyebrow">{model.category}</div><h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-primary">{model.name}</h2><p className="mt-3 max-w-[75ch] text-[14px] leading-7 text-muted">{model.description}</p></div>
-              <div className="flex shrink-0 gap-1.5">{model.engine.map((engine)=><span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>)}</div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <div className="flex gap-1.5">{model.engine.map((engine)=><span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>)}</div>
+                <a href={encodeURI(`/模型说明/${model.id}.md`)} download className="button-secondary !min-h-8 !px-2.5 !text-[9px]">Markdown 说明</a>
+              </div>
             </div>
             <div className="mt-6 grid gap-4 border-t border-line pt-5 md:grid-cols-2"><div><div className="eyebrow">Implementation output</div><p className="mt-2 text-sm leading-6 text-primary">{model.output}</p></div><div><div className="eyebrow">Primary reference</div><p className="mt-2 text-xs leading-5 text-muted">{model.reference}</p></div></div>
           </div>
