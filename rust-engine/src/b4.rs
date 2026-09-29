@@ -146,13 +146,30 @@ pub(crate) fn shape(code: &str) -> Result<f64, String> {
     }
 }
 
+/// B4 humidity is always a percentage (0-100); the accepted range stops at 98.4 %
+/// because B4 Eq. (21) reaches zero at 98.4544 % and `q5` uses the negative
+/// exponent `p5e`, which is singular where the humidity factor vanishes.
 pub(crate) fn normalize_humidity(value: f64) -> Result<f64, String> {
-    let humidity = if value > 1.0 { value / 100.0 } else { value };
-    if humidity.is_finite() && (0.0..=1.0).contains(&humidity) {
-        Ok(humidity)
+    if value.is_finite() && (0.0..=98.4).contains(&value) {
+        Ok(value / 100.0)
     } else {
-        Err("B4 requires relative humidity between 0 and 100%.".into())
+        Err("B4 requires relative humidity between 0 and 100% (the drying formulation is only usable up to 98.4%).".into())
     }
+}
+
+/// B4 Eq. (21) humidity factor, clamped at zero so a saturated section cannot
+/// produce expansive "shrinkage".
+pub(crate) fn humidity_factor(humidity: f64) -> f64 {
+    if humidity <= 0.98 {
+        1.0 - humidity.powi(3)
+    } else {
+        (12.94 * (1.0 - humidity) - 0.2).max(0.0)
+    }
+}
+
+/// `q5` uses the negative exponent `p5e`, so its base must stay positive.
+pub(crate) fn drying_creep_scale(kh: f64, shrinkage_infinity: f64) -> f64 {
+    (kh * shrinkage_infinity).abs().max(1e-9)
 }
 
 pub(crate) fn validate_common(
@@ -275,11 +292,7 @@ pub(crate) struct FinishInput {
 }
 
 pub(crate) fn finish(input: FinishInput) -> B4Result {
-    let kh = if input.humidity <= 0.98 {
-        1.0 - input.humidity.powi(3)
-    } else {
-        12.94 * (1.0 - input.humidity) - 0.2
-    };
+    let kh = humidity_factor(input.humidity);
     let epsilon_sh =
         input.epsilon_sh_inf * kh * (input.time.drying_duration / input.tau_sh).sqrt().tanh();
     let epsilon_au = if input.time.equivalent_age > 0.0 {
@@ -511,11 +524,7 @@ pub fn calculate_b4_point(params: &B4Params, t: f64) -> Result<B4Result, String>
         t,
     );
     let humidity = normalize_humidity(params.h)?;
-    let kh = if humidity <= 0.98 {
-        1.0 - humidity.powi(3)
-    } else {
-        12.94 * (1.0 - humidity) - 0.2
-    };
+    let kh = humidity_factor(humidity);
     let tau0 = cement.tau_cem
         * admixture.tau_cem
         * (params.a_c / 6.0).powf(cement.tau_a)
@@ -548,7 +557,7 @@ pub fn calculate_b4_point(params: &B4Params, t: f64) -> Result<B4Result, String>
         * admixture.p5
         * (params.a_c / 6.0).powf(cement.p5a)
         * (params.w_c / 0.38).powf(cement.p5w)
-        * (kh * epsilon_sh_inf).abs().powf(cement.p5e)
+        * drying_creep_scale(kh, epsilon_sh_inf).powf(cement.p5e)
         / 1000.0;
     let epsilon_au_inf = -cement.epsilon_au_cem
         * admixture.epsilon_au_cem
@@ -579,8 +588,8 @@ pub fn calculate_b4_point(params: &B4Params, t: f64) -> Result<B4Result, String>
 #[wasm_bindgen]
 pub fn calculate_b4_single(params: &JsValue, t: f64) -> Result<JsValue, JsValue> {
     let params: B4Params = serde_wasm_bindgen::from_value(params.clone())?;
-    let result = calculate_b4_point(&params, t).map_err(|error| JsValue::from_str(&error))?;
-    serde_wasm_bindgen::to_value(&result).map_err(|error| JsValue::from_str(&error.to_string()))
+    let result = calculate_b4_point(&params, t).map_err(|error| js_sys::Error::new(&error).into())?;
+    serde_wasm_bindgen::to_value(&result).map_err(|error| js_sys::Error::new(&error.to_string()).into())
 }
 
 #[wasm_bindgen]
@@ -589,8 +598,8 @@ pub fn calculate_b4_series(params: &JsValue, max_time: usize) -> Result<JsValue,
     let results: Result<Vec<_>, _> = (0..=max_time)
         .map(|t| calculate_b4_point(&params, t as f64))
         .collect();
-    serde_wasm_bindgen::to_value(&results.map_err(|error| JsValue::from_str(&error))?)
-        .map_err(|error| JsValue::from_str(&error.to_string()))
+    serde_wasm_bindgen::to_value(&results.map_err(|error| js_sys::Error::new(&error).into())?)
+        .map_err(|error| js_sys::Error::new(&error.to_string()).into())
 }
 
 pub fn calculate_b4_single_internal(params: &B4Params, t: f64) -> Result<B4Result, String> {

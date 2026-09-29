@@ -1,5 +1,5 @@
 use crate::b4::{
-    aggregate, finish, normalize_humidity, shape, time_state, validate_common, FinishInput,
+    aggregate, drying_creep_scale, finish, humidity_factor, normalize_humidity, shape, time_state, validate_common, FinishInput,
 };
 use crate::B4Result;
 use serde::{Deserialize, Serialize};
@@ -110,11 +110,7 @@ pub fn calculate_b4s_point(params: &B4sParams, t: f64) -> Result<B4Result, Strin
         t,
     );
     let humidity = normalize_humidity(params.h)?;
-    let kh = if humidity <= 0.98 {
-        1.0 - humidity.powi(3)
-    } else {
-        12.94 * (1.0 - humidity) - 0.2
-    };
+    let kh = humidity_factor(humidity);
     let strength = params.fc / 40.0;
     let tau0 = cement.tau_s_cem * strength.powf(cement.s_tau_f);
     let tau_sh = tau0 * aggregate.0 * (shape * 2.0 * params.v_s).powi(2);
@@ -129,7 +125,7 @@ pub fn calculate_b4s_point(params: &B4sParams, t: f64) -> Result<B4Result, Strin
     let q2 = cement.s2 * strength.powf(cement.s2f) / 1000.0;
     let q3 = cement.s3 * q2 * strength.powf(cement.s3f);
     let q4 = cement.s4 * strength.powf(cement.s4f) / 1000.0;
-    let q5 = cement.s5 * strength.powf(cement.s5f) * (kh * epsilon_sh_inf).abs().powf(cement.p5e)
+    let q5 = cement.s5 * strength.powf(cement.s5f) * drying_creep_scale(kh, epsilon_sh_inf).powf(cement.p5e)
         / 1000.0;
     let epsilon_au_inf = -cement.epsilon_au_cem * strength.powf(cement.r_eps_f);
     let tau_au = cement.tau_au_cem * strength.powf(cement.r_tau_f);
@@ -156,8 +152,8 @@ pub fn calculate_b4s_point(params: &B4sParams, t: f64) -> Result<B4Result, Strin
 #[wasm_bindgen]
 pub fn calculate_b4s_single(params: &JsValue, t: f64) -> Result<JsValue, JsValue> {
     let params: B4sParams = serde_wasm_bindgen::from_value(params.clone())?;
-    let result = calculate_b4s_point(&params, t).map_err(|error| JsValue::from_str(&error))?;
-    serde_wasm_bindgen::to_value(&result).map_err(|error| JsValue::from_str(&error.to_string()))
+    let result = calculate_b4s_point(&params, t).map_err(|error| js_sys::Error::new(&error).into())?;
+    serde_wasm_bindgen::to_value(&result).map_err(|error| js_sys::Error::new(&error.to_string()).into())
 }
 
 #[wasm_bindgen]
@@ -166,8 +162,8 @@ pub fn calculate_b4s_series(params: &JsValue, max_time: usize) -> Result<JsValue
     let results: Result<Vec<_>, _> = (0..=max_time)
         .map(|t| calculate_b4s_point(&params, t as f64))
         .collect();
-    serde_wasm_bindgen::to_value(&results.map_err(|error| JsValue::from_str(&error))?)
-        .map_err(|error| JsValue::from_str(&error.to_string()))
+    serde_wasm_bindgen::to_value(&results.map_err(|error| js_sys::Error::new(&error).into())?)
+        .map_err(|error| js_sys::Error::new(&error.to_string()).into())
 }
 
 pub fn calculate_b4s_single_internal(params: &B4sParams, t: f64) -> Result<B4Result, String> {

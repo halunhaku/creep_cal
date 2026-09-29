@@ -4,7 +4,43 @@
  * Used by: BatchCalculator, individual JS calculators, and any future tools.
  */
 
+// Shared range guard used by every kernel's validation.
+const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
+
 // ─── ACI 209R-92 ────────────────────────────────────────────────────────────
+/**
+ * ACI 209R-92 correction factors are only defined over the calibration domain
+ * below. Without these checks an out-of-domain row silently produces nonsense —
+ * e.g. H = 500 % returns a *negative* creep coefficient — and the batch pipeline
+ * reports the row as valid. The other three kernels already validate.
+ */
+function validateAci209({ curingType, t0, H, VS, slump, fineAggregate, airContent, t }) {
+  if (curingType !== 'moist' && curingType !== 'steam') {
+    throw new RangeError(`Unsupported ACI 209R-92 curing type: ${curingType}`);
+  }
+  if (!Number.isFinite(t0) || t0 < 1) {
+    throw new RangeError('ACI 209R-92 requires t0 ≥ 1 day.');
+  }
+  if (!Number.isFinite(t) || t < 0) {
+    throw new RangeError('ACI 209R-92 requires a non-negative finite concrete age t.');
+  }
+  if (!inRange(H, 0, 100)) {
+    throw new RangeError('ACI 209R-92 requires 0 ≤ H ≤ 100%.');
+  }
+  if (!Number.isFinite(VS) || VS <= 0) {
+    throw new RangeError('ACI 209R-92 requires a positive volume-surface ratio V/S.');
+  }
+  if (!Number.isFinite(slump) || slump < 0) {
+    throw new RangeError('ACI 209R-92 requires a non-negative slump.');
+  }
+  if (!inRange(fineAggregate, 0, 100)) {
+    throw new RangeError('ACI 209R-92 requires 0 ≤ fine aggregate ≤ 100%.');
+  }
+  if (!Number.isFinite(airContent) || airContent < 0) {
+    throw new RangeError('ACI 209R-92 requires a non-negative air content.');
+  }
+}
+
 /**
  * ACI 209R-92 creep coefficient for moist- or steam-cured concrete.
  *
@@ -20,17 +56,13 @@
  * @returns {number} φ(t, t₀) — creep coefficient
  */
 export function aci209Phi({ curingType, t0, H, VS, slump, fineAggregate, airContent, t }) {
+  validateAci209({ curingType, t0, H, VS, slump, fineAggregate, airContent, t });
   const dt = t - t0;
   if (dt <= 0) return 0;
 
-  let loadingAgeFactor;
-  if (curingType === 'moist') {
-    loadingAgeFactor = t0 <= 7 ? 1 : 1.25 * Math.pow(t0, -0.118);
-  } else if (curingType === 'steam') {
-    loadingAgeFactor = t0 <= 3 ? 1 : 1.13 * Math.pow(t0, -0.094);
-  } else {
-    throw new RangeError(`Unsupported ACI 209R-92 curing type: ${curingType}`);
-  }
+  const loadingAgeFactor = curingType === 'moist'
+    ? (t0 <= 7 ? 1 : 1.25 * Math.pow(t0, -0.118))
+    : (t0 <= 3 ? 1 : 1.13 * Math.pow(t0, -0.094));
 
   const humidityFactor = H <= 40 ? 1 : 1.27 - 0.0067 * H;
   const sizeFactor = (2 * (1 + 1.13 * Math.exp(-0.0213 * VS))) / 3;
@@ -196,14 +228,46 @@ const B4_AGGREGATE = {
 };
 const B4_SHAPE = { '1':1, '2':1.15, '3':1.25, '4':1.3, '5':1.55 };
 
-const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 const acceleration = (temperature) => Math.exp(4000 * (1 / 293 - 1 / (temperature + 273)));
 
+/**
+ * B4 humidity is always a percentage (0–100) — earlier revisions also accepted a
+ * 0–1 fraction, which made `h = 1` mean 100 % RH while the UI labels the field
+ * "%", silently returning a wrong result for anyone typing 1–99.
+ *
+ * The accepted range stops at 98.4 %: B4 Eq. (21) uses `12.94(1 − h) − 0.2` above
+ * h = 98 %, which reaches zero at 98.4544 %, and `q₅ ∝ |k_h·ε_sh∞|^{p5ε}` is
+ * singular there (p5ε ≈ −0.85). Between 98.4 % and that zero the drying-creep
+ * term is amplified by orders of magnitude — measured Cd rises from 50 µε at
+ * 98 % to 2.8 × 10⁵ µε at 98.4544 % — so the model is not usable in that band.
+ */
 function normalizeB4Humidity(value) {
-  const numeric = Number(value);
-  const humidity = numeric > 1 ? numeric / 100 : numeric;
-  if (!inRange(humidity, 0, 1)) throw new RangeError('B4 requires relative humidity between 0 and 100%.');
-  return humidity;
+  const percent = Number(value);
+  if (!inRange(percent, 0, 98.4)) {
+    throw new RangeError('B4 requires relative humidity between 0 and 100% (the drying formulation is only usable up to 98.4%).');
+  }
+  return percent / 100;
+}
+
+/**
+ * B4 Eq. (21) humidity factor, clamped at zero. Within the validated range
+ * (h ≤ 98.4 %) the value is already positive; the clamp only protects direct
+ * kernel calls that bypass validation.
+ */
+function b4HumidityFactor(humidity) {
+  if (humidity <= 0.98) return 1 - humidity ** 3;
+  return Math.max(0, 12.94 * (1 - humidity) - 0.2);
+}
+
+/**
+ * `q₅ ∝ |k_h·ε_sh∞|^{p5ε}` uses the *negative* exponent p5ε ≈ −0.85, so it is
+ * singular when the humidity factor vanishes. Flooring the base keeps the
+ * drying-creep term finite; it is multiplied by a vanishing
+ * `e^{−p5H·H} − e^{−p5H·Hc}` term, so a saturated section still yields Cd = 0.
+ * Unreachable through `b4Point`/`b4sPoint` after the 98.4 % cap.
+ */
+function b4DryingCreepScale(humidityFactor, shrinkageInfinity) {
+  return Math.max(Math.abs(humidityFactor * shrinkageInfinity), 1e-9);
 }
 
 function validateB4Common({ t0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t }) {
@@ -302,7 +366,7 @@ function b4AdmixtureFactors({ retarder=0, flyAsh=0, superplasticizer=0, silicaFu
 function b4Result({ common, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU, rT, q1, q2, q3, q4, q5, p5H }) {
   const { t, t0, tPrime, h, time } = common;
   const humidity = normalizeB4Humidity(h);
-  const kh = humidity <= 0.98 ? 1 - Math.pow(humidity, 3) : 12.94 * (1 - humidity) - 0.2;
+  const kh = b4HumidityFactor(humidity);
   const shrinkageDevelopment = Math.tanh(Math.sqrt(time.dryingDuration / tauSH));
   const epsilonSH = epsilonSHInf * kh * shrinkageDevelopment;
   const epsilonAU = time.equivalentAge > 0
@@ -353,13 +417,13 @@ export function b4Point(input) {
   const E2 = E28 * Math.sqrt(E2Age / (4 + (6 / 7) * E2Age));
   const epsilonSHInf = -epsilon0 * aggregate.epsilon * E1 / E2;
   const humidity = normalizeB4Humidity(params.h);
-  const kh = humidity <= 0.98 ? 1 - humidity ** 3 : 12.94 * (1 - humidity) - 0.2;
+  const kh = b4HumidityFactor(humidity);
   const q1 = cement.p1 / (E28 * 1000);
   const q2 = cement.p2 * admixture.p2 * Math.pow(params.wC / 0.38, cement.p2w) / 1000;
   const q3 = cement.p3 * admixture.p3 * q2 * Math.pow(params.aC / 6, cement.p3a) * Math.pow(params.wC / 0.38, cement.p3w);
   const q4 = cement.p4 * admixture.p4 * Math.pow(params.aC / 6, cement.p4a) * Math.pow(params.wC / 0.38, cement.p4w) / 1000;
   const q5 = cement.p5 * admixture.p5 * Math.pow(params.aC / 6, cement.p5a)
-    * Math.pow(params.wC / 0.38, cement.p5w) * Math.pow(Math.abs(kh * epsilonSHInf), cement.p5e) / 1000;
+    * Math.pow(params.wC / 0.38, cement.p5w) * Math.pow(b4DryingCreepScale(kh, epsilonSHInf), cement.p5e) / 1000;
   const epsilonAUInf = -cement.epsilonAuCem * admixture.epsilonAuCem * Math.pow(params.aC / 6, cement.rEpsA)
     * Math.pow(params.wC / 0.38, cement.rEpsW * admixture.rEpsW);
   const tauAU = cement.tauAuCem * Math.pow(params.wC / 0.38, cement.rTauW);
@@ -392,12 +456,12 @@ export function b4sPoint(input) {
   const E2 = E28 * Math.sqrt(E2Age / (4 + (6 / 7) * E2Age));
   const epsilonSHInf = -epsilon0 * aggregate.epsilon * E1 / E2;
   const humidity = normalizeB4Humidity(params.h);
-  const kh = humidity <= 0.98 ? 1 - humidity ** 3 : 12.94 * (1 - humidity) - 0.2;
+  const kh = b4HumidityFactor(humidity);
   const q1 = cement.p1 / (E28 * 1000);
   const q2 = cement.s2 * Math.pow(strength, cement.s2f) / 1000;
   const q3 = cement.s3 * q2 * Math.pow(strength, cement.s3f);
   const q4 = cement.s4 * Math.pow(strength, cement.s4f) / 1000;
-  const q5 = cement.s5 * Math.pow(strength, cement.s5f) * Math.pow(Math.abs(kh * epsilonSHInf), cement.p5e) / 1000;
+  const q5 = cement.s5 * Math.pow(strength, cement.s5f) * Math.pow(b4DryingCreepScale(kh, epsilonSHInf), cement.p5e) / 1000;
   const epsilonAUInf = -cement.epsilonAuCem * Math.pow(strength, cement.rEpsF);
   const tauAU = cement.tauAuCem * Math.pow(strength, cement.rTauF);
   return b4Result({

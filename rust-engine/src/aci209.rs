@@ -2,6 +2,34 @@ use crate::{Aci209CuringType, Aci209Params, TimeSeriesPoint};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 
+/// The other three kernels validate their calibration domain; ACI 209R-92 did
+/// not, so out-of-domain input produced nonsense (H = 500 % returns a negative
+/// creep coefficient) and the batch API silently reported it as valid.
+pub(crate) fn validate(params: &Aci209Params, t: f64) -> Result<(), String> {
+    if !params.t0.is_finite() || params.t0 < 1.0 {
+        return Err("ACI 209R-92 requires t0 >= 1 day.".into());
+    }
+    if !t.is_finite() || t < 0.0 {
+        return Err("ACI 209R-92 requires a non-negative finite concrete age t.".into());
+    }
+    if !(params.h.is_finite() && (0.0..=100.0).contains(&params.h)) {
+        return Err("ACI 209R-92 requires 0 <= H <= 100%.".into());
+    }
+    if !params.vs.is_finite() || params.vs <= 0.0 {
+        return Err("ACI 209R-92 requires a positive volume-surface ratio V/S.".into());
+    }
+    if !params.slump.is_finite() || params.slump < 0.0 {
+        return Err("ACI 209R-92 requires a non-negative slump.".into());
+    }
+    if !(params.fine_aggregate.is_finite() && (0.0..=100.0).contains(&params.fine_aggregate)) {
+        return Err("ACI 209R-92 requires 0 <= fine aggregate <= 100%.".into());
+    }
+    if !params.air_content.is_finite() || params.air_content < 0.0 {
+        return Err("ACI 209R-92 requires a non-negative air content.".into());
+    }
+    Ok(())
+}
+
 fn loading_age_factor(params: &Aci209Params) -> f64 {
     match params.curing_type {
         Aci209CuringType::Moist if params.t0 <= 7.0 => 1.0,
@@ -34,6 +62,7 @@ fn ultimate_creep(params: &Aci209Params) -> f64 {
 #[wasm_bindgen]
 pub fn calculate_aci209_single(params: &JsValue, t: f64) -> Result<f64, JsValue> {
     let params: Aci209Params = serde_wasm_bindgen::from_value(params.clone())?;
+    validate(&params, t).map_err(|error| js_sys::Error::new(&error).into())?;
     Ok(calculate_aci209_single_internal(&params, t))
 }
 
@@ -41,6 +70,7 @@ pub fn calculate_aci209_single(params: &JsValue, t: f64) -> Result<f64, JsValue>
 #[wasm_bindgen]
 pub fn calculate_aci209_series(params: &JsValue, max_time: usize) -> Result<JsValue, JsValue> {
     let params: Aci209Params = serde_wasm_bindgen::from_value(params.clone())?;
+    validate(&params, 0.0).map_err(|error| js_sys::Error::new(&error).into())?;
     let phi_infinity = ultimate_creep(&params);
     let mut results = Vec::with_capacity(max_time + 1);
 
@@ -59,7 +89,7 @@ pub fn calculate_aci209_series(params: &JsValue, max_time: usize) -> Result<JsVa
         });
     }
 
-    serde_wasm_bindgen::to_value(&results).map_err(|error| JsValue::from_str(&error.to_string()))
+    serde_wasm_bindgen::to_value(&results).map_err(|error| js_sys::Error::new(&error.to_string()).into())
 }
 
 /// ACI 209R-92 batch calculation using the official input units.
@@ -92,7 +122,7 @@ pub fn calculate_aci209_batch(batch_data: &JsValue) -> Result<JsValue, JsValue> 
     let batch: Vec<BatchItem> = serde_wasm_bindgen::from_value(batch_data.clone())?;
     let results: Vec<BatchResult> = batch
         .into_iter()
-        .map(|item| {
+        .map(|item| -> Result<BatchResult, JsValue> {
             let params = Aci209Params {
                 t0: item.t0,
                 h: item.h,
@@ -102,14 +132,15 @@ pub fn calculate_aci209_batch(batch_data: &JsValue) -> Result<JsValue, JsValue> 
                 fine_aggregate: item.fine_aggregate,
                 air_content: item.air_content,
             };
-            BatchResult {
+            validate(&params, item.t).map_err(|error| js_sys::Error::new(&error).into())?;
+            Ok(BatchResult {
                 phi: calculate_aci209_single_internal(&params, item.t),
                 original: serde_json::to_value(&item).expect("serializing a valid batch item"),
-            }
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, JsValue>>()?;
 
-    serde_wasm_bindgen::to_value(&results).map_err(|error| JsValue::from_str(&error.to_string()))
+    serde_wasm_bindgen::to_value(&results).map_err(|error| js_sys::Error::new(&error.to_string()).into())
 }
 
 pub fn calculate_aci209_single_internal(params: &Aci209Params, t: f64) -> f64 {
