@@ -39,7 +39,7 @@ $$
 | Batch pipeline | Upload CSV / XLSX cases, validate the schema and rows, inspect the result matrix, and export calculated outputs. |
 | Result visualizer | Separate compliance and shrinkage curves, inspect decomposed values, switch linear/log time, and export chart data. |
 | Reference library | Read implementation scope, calibrated ranges, equations, source mapping, limitations, and official references. |
-| Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels. |
+| Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels, with a parity suite and an in-app timing comparison between them. |
 
 ---
 
@@ -61,6 +61,18 @@ $$
 | --- | --- | --- |
 | ![Single analysis](docs/images/ui-single-analysis.png) | ![Batch matrix](docs/images/ui-batch-matrix.png) | ![Model docs](docs/images/ui-model-docs.png) |
 
+### Responsive Verification
+
+The calculation workspace is checked at four viewport widths — mobile, tablet, desktop, and large desktop:
+
+| 390 px | 768 px |
+| --- | --- |
+| ![Calculation workspace at 390 px](docs/images/responsive-single-390.png) | ![Calculation workspace at 768 px](docs/images/responsive-single-768.png) |
+
+| 1440 px | 1920 px |
+| --- | --- |
+| ![Calculation workspace at 1440 px](docs/images/responsive-single-1440.png) | ![Calculation workspace at 1920 px](docs/images/responsive-single-1920.png) |
+
 ---
 
 ## Architecture
@@ -81,7 +93,7 @@ flowchart LR
   class Shared,JS,WASM,Markdown green
 ```
 
-The computation layer is intentionally split: JavaScript kernels provide readable reference implementations, while Rust WebAssembly provides the high-performance path used by the Rust engine calculators.
+The computation layer is intentionally split: JavaScript kernels provide readable reference implementations, while Rust WebAssembly is the path the Rust engine calculators run. The two are held to numerical agreement by the parity suite, and the calculation workspace can time them against each other on the same inputs.
 
 ---
 
@@ -124,6 +136,13 @@ Run tests:
 
 ```bash
 npm test
+```
+
+Lint:
+
+```bash
+npm run lint
+npm run lint:fix
 ```
 
 ### Rust WebAssembly
@@ -175,18 +194,23 @@ The header toggle switches between light and dark and stores the choice in `loca
 ```text
 creep_cal/
   README.md
+  eslint.config.mjs
   docs/
     images/
       readme-hero.png
       readme-hero.svg
+      responsive-single-*.png   # the four widths documented above
   public/
-    模型说明/
-    模型示例/
+    模型说明/                 # Chinese model notes, downloadable from the reference library
+    模型示例/                 # published sample datasets, downloadable from the batch page
   rust-engine/
+    Cargo.toml
+    Cargo.lock
     src/
   src/
     components/
       ui/
+      batchModels.js          # batch model registry (kept out of the component file)
       ModelCalculator.jsx
       Aci209Calculator.jsx
       Mc2010Calculator.jsx
@@ -197,7 +221,7 @@ creep_cal/
       SingleCalculationDashboard.jsx
       *.test.jsx            # component-level regression tests
     math/
-      creepModels.js
+      creepModels.js        # JavaScript reference kernels, MAX_SERIES_DAYS
       *.test.js             # kernel benchmarks and validation tests
     wasm/
       creepEngine.js        # loader, error normalisation, parameter contracts
