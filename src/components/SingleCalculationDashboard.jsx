@@ -38,7 +38,7 @@ export default function SingleCalculationDashboard() {
       <header className="mb-6 flex flex-col gap-2 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="eyebrow">Calculation workspace</div>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-[28px]">Time-dependent concrete analysis</h1>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-display-sm">Time-dependent concrete analysis</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">Select a prediction model, define calibrated inputs, then explicitly calculate the complete 10,000-day response.</p>
         </div>
         <div className="font-mono text-3xs uppercase tracking-[0.1em] text-faint">Float64 · 0–10,000 days</div>
@@ -63,7 +63,7 @@ export default function SingleCalculationDashboard() {
                     <span className="font-mono text-3xs text-faint">{model.index}</span>
                     <span className="text-body-sm font-semibold">{model.name}</span>
                   </div>
-                  <div className="mt-1.5 pl-[22px] font-mono text-4xs uppercase tracking-[0.07em] text-faint">{model.type}</div>
+                  <div className="mt-1.5 pl-[22px] font-mono text-3xs uppercase tracking-[0.07em] text-faint">{model.type}</div>
                 </button>
               );
             })}

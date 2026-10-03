@@ -40,7 +40,7 @@ export default function ParameterSets({ modelId, params }) {
       <div className="mb-2.5 flex items-center justify-between">
         <span className="eyebrow">Parameter sets</span>
         {edited && (
-          <button onClick={() => resetModelParams(modelId)} className="font-mono text-4xs uppercase tracking-[.06em] text-faint hover:text-primary">
+          <button onClick={() => resetModelParams(modelId)} className="font-mono text-3xs uppercase tracking-[.06em] text-faint hover:text-primary">
             Reset
           </button>
         )}
@@ -71,7 +71,7 @@ export default function ParameterSets({ modelId, params }) {
           </div>
         </div>
       ) : (
-        <p className="text-[11px] leading-5 text-muted">No saved sets for this model yet. Name the current parameters to keep a case.</p>
+        <p className="text-1xs leading-5 text-muted">No saved sets for this model yet. Name the current parameters to keep a case.</p>
       )}
 
       <div className="mt-2 flex gap-2">

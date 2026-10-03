@@ -49,7 +49,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
               only appears once it fits too (~220px, from 900px). Previously the
               text shrank to a sliver and then to "CRE…" between those widths. */}
           <div className="hidden min-w-0 leading-none min-[600px]:block">
-            <div className="truncate text-[14px] font-bold tracking-[0.09em] text-primary">CREEP LAB</div>
+            <div className="truncate text-body-sm font-bold tracking-[0.09em] text-primary">CREEP LAB</div>
             <div className="mt-1 hidden truncate font-mono text-3xs uppercase tracking-[0.11em] text-faint min-[900px]:block">
               Concrete time-dependent analysis
             </div>
@@ -83,8 +83,8 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
               <circle cx="11" cy="11" r="6.5" strokeWidth="1.7" />
               <path d="m16 16 4 4" strokeWidth="1.7" strokeLinecap="round" />
             </svg>
-            <span className="font-mono text-4xs uppercase tracking-[0.08em]">Search</span>
-            <kbd className="rounded border border-line px-1 font-mono text-4xs text-faint">⌘K</kbd>
+            <span className="font-mono text-3xs uppercase tracking-[0.08em]">Search</span>
+            <kbd className="rounded border border-line px-1 font-mono text-3xs text-faint">⌘K</kbd>
           </button>
           <div
             className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 sm:flex"

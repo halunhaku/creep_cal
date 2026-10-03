@@ -49,7 +49,7 @@ function Metric({ eyebrow, value, unit, accent = false }) {
   return (
     <div className="min-w-0">
       <div className="eyebrow">{eyebrow}</div>
-      <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-[27px] font-semibold tracking-[-0.04em] md:text-[32px] ${accent ? 'text-green' : 'text-primary'}`}>
+      <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold tracking-[-0.04em] md:text-metric ${accent ? 'text-green' : 'text-primary'}`}>
         <span>{formatValue(value)}</span>
         {unit && <span className="text-1xs font-medium tracking-normal text-muted">{unit}</span>}
       </div>
@@ -74,7 +74,7 @@ function Decomposition({ items }) {
               <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-primary' : 'text-muted'}`}>
                 <span>{item.label}</span>
                 <span className="font-mono tabular-nums text-primary">
-                  {formatValue(item.value, 3)} <small className="text-4xs font-normal text-faint">{item.unit}</small>
+                  {formatValue(item.value, 3)} <small className="text-3xs font-normal text-faint">{item.unit}</small>
                 </span>
               </div>
             ))}

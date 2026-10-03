@@ -14,26 +14,27 @@ module.exports = {
         sans: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'], body: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'],
         label: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'], mono: ['"Azeret Mono"', '"SFMono-Regular"', 'monospace'],
       },
-      // The dense instrument type scale. Every value here is exactly what the
-      // ad-hoc text-[8px]…text-[15px] it replaces already rendered, so the whole
-      // scale can now be moved from one place — which is what the redesign needs,
-      // and what raising the 8–9px floor currently costs 80-odd scattered edits.
+      // The dense instrument type scale. The audit's P1-2: ~50 nodes rendered at
+      // 8-10px, which is below any comfortable reading size — 8px mono labels are
+      // legible only if you already know what they say. The floor is now 11px, and
+      // the steps above it shifted up to keep the scale's proportions.
       //
-      // Deliberately plain values: a bare `fontSize` string emits only font-size,
-      // so these do not drag a line-height along the way Tailwind's own text-xs /
-      // text-sm do. text-[12px] and text-[14px] stay arbitrary for the same
-      // reason — mapping them to text-xs/text-sm would add a line-height and
-      // change the layout.
+      // Roles are unchanged, so a token still means what it meant; only the value
+      // moved. Deliberately plain values: a bare `fontSize` string emits only
+      // font-size, so these do not drag a line-height along the way Tailwind's own
+      // text-xs / text-sm do.
       //
       // Not covered yet: recharts tick/label sizes are JS numbers in SVG props,
       // so they need a chart theme rather than a class token.
       fontSize: {
-        '4xs': '8px',      // unit suffixes, engine chips, source URLs
-        '3xs': '9px',      // micro labels: table headers, EQ numbers, small controls
-        '2xs': '10px',     // eyebrow / label
-        '1xs': '11px',     // helper text, small buttons, log lines
-        'body-sm': '13px', // dense body copy
-        'body': '15px',    // default body size, matches body{} in index.css
+        '3xs': '11px',      // floor: unit suffixes, chips, table headers, equation numbers
+        '2xs': '12px',      // eyebrow / label
+        '1xs': '13px',      // helper text, small buttons, log lines
+        'body-sm': '14px',  // dense body copy
+        'body': '15px',     // default body size, matches body{} in index.css
+        'display-sm': '28px', // page headings
+        'metric-sm': '27px',  // metric value, narrow viewports
+        'metric': '32px',     // metric value
       },
       borderRadius: {
         card: '10px', 'card-lg': '10px', 'card-xl': '12px', pill: '9999px', input: '6px',

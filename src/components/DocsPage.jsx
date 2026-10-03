@@ -367,7 +367,7 @@ export default function DocsPage() {
     <div className="animate-fade-in">
       <header className="mb-6 border-b border-line pb-5">
         <div className="eyebrow">Reference library</div>
-        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-[28px]">Model standards and equations</h1>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-display-sm">Model standards and equations</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Implementation scope, calibrated ranges, formula mapping, and primary sources for every prediction model.</p>
       </header>
 
@@ -387,9 +387,9 @@ export default function DocsPage() {
                 )}
                 <div className="flex gap-2">
                   <span className="font-mono text-3xs text-faint">{String(index + 1).padStart(2, '0')}</span>
-                  <span className="text-[12px] font-semibold">{item.name}</span>
+                  <span className="text-2xs font-semibold">{item.name}</span>
                 </div>
-                <div className="mt-1 pl-5 font-mono text-4xs uppercase tracking-[.06em] text-faint">{item.category}</div>
+                <div className="mt-1 pl-5 font-mono text-3xs uppercase tracking-[.06em] text-faint">{item.category}</div>
               </button>
             ))}
           </nav>
@@ -401,12 +401,12 @@ export default function DocsPage() {
               <div>
                 <div className="eyebrow">{model.category}</div>
                 <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-primary">{model.name}</h2>
-                <p className="mt-3 max-w-[75ch] text-[14px] leading-7 text-muted">{model.description}</p>
+                <p className="mt-3 max-w-[75ch] text-body-sm leading-7 text-muted">{model.description}</p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
                 <div className="flex gap-1.5">
                   {model.engine.map((engine) => (
-                    <span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-4xs font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>
+                    <span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>
                   ))}
                 </div>
                 <a
@@ -558,7 +558,7 @@ export default function DocsPage() {
                   >
                     <div className="text-sm font-semibold text-primary group-hover:text-green">{source.label}</div>
                     <p className="mt-1 text-xs leading-5 text-muted">{source.note}</p>
-                    <span className="mt-3 block truncate font-mono text-4xs text-faint">{source.url}</span>
+                    <span className="mt-3 block truncate font-mono text-3xs text-faint">{source.url}</span>
                   </a>
                 ))}
               </div>

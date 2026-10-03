@@ -10,7 +10,7 @@ export default function CustomSelect({ name, value, onChange, options, id, ariaL
         value={value}
         onChange={onChange}
         aria-label={ariaLabel}
-        className="h-10 w-full appearance-none border-0 bg-transparent px-3 pr-9 font-mono text-[12px] font-medium text-primary outline-none focus:ring-0"
+        className="h-10 w-full appearance-none border-0 bg-transparent px-3 pr-9 font-mono text-2xs font-medium text-primary outline-none focus:ring-0"
       >
         {normalized.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
