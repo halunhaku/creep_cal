@@ -40,7 +40,9 @@ export default [
     },
   },
   {
-    files: ['**/*.test.{js,jsx}', 'src/setupTests.js'],
+    // Test support code lives in src/testUtils and needs the same globals as the
+    // tests that import it.
+    files: ['**/*.test.{js,jsx}', 'src/setupTests.js', 'src/testUtils/**/*.js'],
     languageOptions: {
       globals: { ...globals.browser, ...globals.node, ...globals.vitest },
     },

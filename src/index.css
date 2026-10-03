@@ -25,7 +25,9 @@
   --accent-text: #b34420;
   --accent-soft: #f9e9e2;
   --cyan: #17857c;
-  --success: #247a52;
+  /* #247a52 was 4.23:1 on --surface-3 and 4.39:1 on --surface-2, and the batch
+     page prints the valid-row count in this colour on a --surface-2 panel. */
+  --success: #1f6b48;
   --success-soft: #e4f2eb;
   --warning: #7a4900;
   --warning-soft: #faefd9;
