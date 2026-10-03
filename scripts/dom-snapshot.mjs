@@ -56,9 +56,12 @@ const labelled = (label) => `[...document.querySelectorAll('.eyebrow')].some((el
 const leafText = (text) => `[...document.querySelectorAll('*')].some((el) => el.children.length === 0 && el.textContent.trim() === ${JSON.stringify(text)})`;
 
 const SCENES = [
-  { key: 'single-js', workspace: 'Calculate', settled: leafText('Computed'), click: 'JS Ref.', after: labelled('JavaScript reference') },
-  { key: 'single-rust', workspace: 'Calculate', settled: leafText('Computed') },
-  { key: 'single-compare', workspace: 'Calculate', settled: leafText('Computed'), click: 'Compare kernels', after: labelled('Rust speed-up') },
+  // "Last compute" only appears once a run has finished. The "Computed" badge is
+  // rendered from the first paint (dirty starts false), so waiting on it let the
+  // engine switch race the initial calculation and changed the log contents.
+  { key: 'single-js', workspace: 'Calculate', settled: labelled('Last compute'), click: 'JS Ref.', after: labelled('JavaScript reference') },
+  { key: 'single-rust', workspace: 'Calculate', settled: labelled('Last compute') },
+  { key: 'single-compare', workspace: 'Calculate', settled: labelled('Last compute'), click: 'Compare kernels', after: labelled('Rust speed-up') },
   { key: 'batch-empty', workspace: 'Batch', settled: labelled('Prediction model') },
   { key: 'batch-loaded', workspace: 'Batch', settled: labelled('Prediction model'), click: 'Load demo sweep', after: labelled('Result matrix') },
   { key: 'docs-b4', workspace: 'Reference', settled: leafText('Parameter contract') },
