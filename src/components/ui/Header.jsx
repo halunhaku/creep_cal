@@ -9,7 +9,7 @@ function ThemeIcon({ dark }) {
   );
 }
 
-export default function Header({ activeMode, onModeChange, onOpenDocs }) {
+export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPalette }) {
   const [theme, setTheme] = useState(() => typeof document === 'undefined' ? 'light' : document.body.dataset.theme || 'light');
   const kernel = useSyncExternalStore(subscribeKernelStatus, getKernelStatus);
   const kernelBadge = kernel.failure
@@ -74,6 +74,18 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
         </nav>
 
         <div className="flex flex-1 items-center justify-end gap-2">
+          <button
+            onClick={onOpenPalette}
+            className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-line-strong hover:text-primary md:flex"
+            aria-label="Search commands"
+          >
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-none stroke-current" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" strokeWidth="1.7" />
+              <path d="m16 16 4 4" strokeWidth="1.7" strokeLinecap="round" />
+            </svg>
+            <span className="font-mono text-4xs uppercase tracking-[0.08em]">Search</span>
+            <kbd className="rounded border border-line px-1 font-mono text-4xs text-faint">⌘K</kbd>
+          </button>
           <div
             className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 sm:flex"
             title={kernelBadge.title}
