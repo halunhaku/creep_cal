@@ -165,7 +165,11 @@ async function prepare(cdp, shot) {
     await click(cdp, 'Compare kernels');
     await cdp.waitFor(hasText('Rust speed-up'), { label: 'the kernel comparison' });
   }
-  // Let the fonts, the fade-in and any chart layout settle before capturing.
+  // Wait for webfonts before capturing. Without this the same page can render
+  // with fallback metrics on a slow run, which makes the PNGs differ between
+  // runs and turns any before/after byte comparison into noise.
+  await cdp.evaluate('document.fonts.ready.then(() => true)');
+  // Let the fade-in and any chart layout settle too.
   await sleep(700);
 }
 
