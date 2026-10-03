@@ -156,6 +156,19 @@ npm run screenshots
 
 `scripts/capture-screenshots.mjs` serves `dist/`, drives headless Chrome over the DevTools Protocol, clicks through the three workspaces (loading the demo dataset and running a kernel comparison where that is the point of the shot) and writes `docs/images/`. It needs Chrome; set `CHROME_PATH` if it is not in the usual place.
 
+### Proving a refactor is invisible
+
+Restyling and reformatting must not change what the app renders, and the calculation workspace has no deterministic screenshot (its captures contain live timings). This hashes the rendered DOM of six states — both kernels, a finished comparison, the batch pipeline empty and loaded, the reference library — with millisecond values, ratios and clock times normalised away:
+
+```bash
+npm run build
+node scripts/dom-snapshot.mjs --save     # before the change
+# ...make the change, then npm run build...
+node scripts/dom-snapshot.mjs --check    # non-zero exit if anything moved
+```
+
+Wait on the same `dist/` build on both sides: `vite preview` serves `dist/`, so a forgotten rebuild turns the comparison into a check of the old build against itself.
+
 ### Rust WebAssembly
 
 The WASM package is prebuilt in `src/wasm-pkg/`, so the app can run without rebuilding Rust.
