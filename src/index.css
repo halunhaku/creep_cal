@@ -27,6 +27,8 @@
   --error: #b42318;
   --error-soft: #fbe8e6;
   --header-bg: rgba(244, 242, 237, 0.9);
+  --header-h: 64px;
+  --sticky-offset: calc(var(--header-h) + 24px);
   --chart-grid: #dfe3df;
   --shadow-popover: 0 18px 48px rgba(29, 39, 34, 0.14), 0 2px 8px rgba(29, 39, 34, 0.08);
   --green: var(--primary);
@@ -89,6 +91,10 @@
   }
   button, input, select, textarea { font: inherit; }
   button { -webkit-tap-highlight-color: transparent; }
+  /* A jumped-to section must clear the sticky header, or its heading lands
+     underneath it (#applicability used to arrive at y=12px under a 65px header).
+     The offset matches where the sticky sidebars sit. */
+  [id] { scroll-margin-top: var(--sticky-offset); }
   button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;

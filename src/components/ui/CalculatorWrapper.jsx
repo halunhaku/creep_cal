@@ -254,7 +254,7 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
       </div>
 
       {comparison && (
-        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
+        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4" role="status">
           <div>
             <div className="eyebrow">JS reference</div>
             <div className="mt-1 font-mono text-body text-primary">{formatValue(comparison.js, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>

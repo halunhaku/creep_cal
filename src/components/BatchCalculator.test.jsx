@@ -35,6 +35,19 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(screen.queryByText(/Could not parse/)).not.toBeInTheDocument();
   });
 
+  // Regression: the row counts appear only once a file has been parsed, and there
+  // was no live region, so a screen reader user got no signal that anything had
+  // happened after choosing a file.
+  test('the row counts are announced when they appear', async () => {
+    const { container } = render(<BatchCalculator />);
+    upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112\n`, 'b4.csv');
+
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    const summary = screen.getByText('Rows detected').closest('[role="status"]');
+    expect(summary).not.toBeNull();
+    expect(summary).toHaveTextContent(/Rows detected\s*1\s*Valid\s*1\s*Issues\s*0/);
+  });
+
   // Regression: read-excel-file v9 changed its default export from "rows" to
   // "[{ sheet, data }]", so `(await readXlsxFile(file)).map(...)` threw
   // "TypeError: (headerRow || []).map is not a function" for every .xlsx file,

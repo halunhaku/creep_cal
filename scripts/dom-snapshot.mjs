@@ -167,6 +167,21 @@ async function main() {
     await send('Runtime.enable');
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
 
+    // Accept a value only once two consecutive readings agree. Chasing individual
+    // races (chart measurement, tick count, an engine switch mid-flight) kept
+    // producing coin-flip fingerprints; this settles all of them at once and
+    // fails loudly if something genuinely oscillates.
+    const stable = async (expression, label) => {
+      let previous = await evaluate(expression);
+      for (let attempt = 0; attempt < 30; attempt += 1) {
+        await sleep(250);
+        const current = await evaluate(expression);
+        if (current === previous) return current;
+        previous = current;
+      }
+      throw new Error(`${label} never settled`);
+    };
+
     const waitFor = async (expression, label) => {
       for (let attempt = 0; attempt < 80; attempt += 1) {
         if (await evaluate(expression)) return;
@@ -215,16 +230,16 @@ async function main() {
       if (process.env.DUMP_DIR) {
         writeFileSync(`${process.env.DUMP_DIR}/${scene.key}.html`, normalised);
       }
-      snapshot[scene.key] = await evaluate(`(async () => { ${NORMALISE}
+      snapshot[scene.key] = await stable(`(async () => { ${NORMALISE}
         const bytes = new TextEncoder().encode(normalise(document.body.innerHTML));
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-      })()`);
-      snapshot[`${scene.key}::styles`] = await evaluate(`(async () => { ${STYLE_FINGERPRINT}
+      })()`, 'the DOM hash');
+      snapshot[`${scene.key}::styles`] = await stable(`(async () => { ${STYLE_FINGERPRINT}
         const bytes = new TextEncoder().encode(fingerprint);
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-      })()`);
+      })()`, 'the computed-style fingerprint');
     }
 
     if (mode === 'save') {

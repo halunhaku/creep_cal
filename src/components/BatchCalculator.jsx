@@ -279,7 +279,7 @@ export default function BatchCalculator() {
       </section>
 
       {(batchError || issues.length>0 || batchResults.length>0) && <section className="mt-5 workbench-panel overflow-hidden">
-        <div className="grid grid-cols-3 border-b border-line bg-surface-2">
+        <div className="grid grid-cols-3 border-b border-line bg-surface-2" role="status">
           <div className="p-4">
             <div className="eyebrow">Rows detected</div>
             <div className="mt-1 font-mono text-xl text-primary">{batchResults.length}</div>
@@ -294,7 +294,7 @@ export default function BatchCalculator() {
           </div>
         </div>
         {batchError && (
-          <div className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error">{batchError}</div>
+          <div role="alert" className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error">{batchError}</div>
         )}
         {issues.length > 0 && (
           <div className="max-h-56 overflow-auto">

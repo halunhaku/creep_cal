@@ -31,6 +31,8 @@ describe('kernel comparison', () => {
     // Both engines were measured, so the ratio is a real number rather than the
     // placeholder the panel falls back to.
     expect(screen.getByText('Rust speed-up').parentElement).toHaveTextContent(/×/);
+    // The timings arrive asynchronously and must be announced.
+    expect(screen.getByText('Rust speed-up').closest('[role="status"]')).not.toBeNull();
   });
 
   test('a timing is discarded when a real input changes', async () => {
