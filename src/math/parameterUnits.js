@@ -60,7 +60,25 @@ export const PARAMETER_UNITS = {
 /** The dash the reference library shows for a dimensionless or categorical field. */
 export const NO_UNIT = '—';
 
+/**
+ * Long forms for the reference library, where there is room to spell it out.
+ * The symbols above stay canonical — they are what the workspace renders in a
+ * chip and what the drift test compares against the calculators.
+ */
+const UNIT_LABELS = {
+  '% c': '% of cement weight',
+  'kg/m³': 'kg/m³',
+  'mm²': 'mm²',
+};
+
 export function unitFor(name) {
   const unit = PARAMETER_UNITS[name];
   return unit ? unit : NO_UNIT;
+}
+
+/** What the parameter contract table prints: the symbol, spelled out where it helps. */
+export function unitLabelFor(name) {
+  const unit = PARAMETER_UNITS[name];
+  if (!unit) return NO_UNIT;
+  return UNIT_LABELS[unit] ?? unit;
 }

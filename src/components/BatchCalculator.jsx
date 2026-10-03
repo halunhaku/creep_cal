@@ -102,6 +102,18 @@ export default function BatchCalculator() {
   // stay on screen under the new file name.
   const clearDataset = () => updateBatch({ rows: [], headers: [], pendingRows: [], mapping: [] });
 
+  /**
+   * Columns that hold numbers are right-aligned so magnitudes line up down the
+   * column — comparing 0.6 with 219.3 by eye is the whole point of the matrix.
+   * Which columns those are is a property of the file, so it is read from the
+   * data: a column is numeric when every value in it parses as a number, and the
+   * result columns always are.
+   */
+  const numericColumn = (header) => batchResults.length > 0 && batchResults.every((row) => {
+    const value = row[header];
+    return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value));
+  });
+
   const updateMapping = (index, source) => {
     updateBatch({ mapping: mapping.map((entry, position) => (position === index ? { ...entry, source } : entry)) });
   };
@@ -452,10 +464,10 @@ export default function BatchCalculator() {
                 <tr>
                   <th className="sticky left-0 z-20 border-b border-r border-line bg-surface-2 px-3 py-2.5 font-mono text-3xs text-faint">#</th>
                   {batchHeaders.map((header) => (
-                    <th key={header} className="border-b border-line px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-faint">{header}</th>
+                    <th key={header} className={`border-b border-line px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-faint ${numericColumn(header) ? 'text-right' : ''}`}>{header}</th>
                   ))}
                   {model.resultKeys.map((key, index) => (
-                    <th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-green">{model.labels[index]}</th>
+                    <th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 text-right font-mono text-3xs uppercase tracking-[.05em] text-green">{model.labels[index]}</th>
                   ))}
                 </tr>
               </thead>
@@ -464,10 +476,10 @@ export default function BatchCalculator() {
                   <tr key={index} className={row.__status === 'invalid' ? 'bg-[var(--error-soft)]' : ''}>
                     <td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-2xs text-faint">{index + 1}</td>
                     {batchHeaders.map((header) => (
-                      <td key={header} className="px-3 py-2 font-mono text-1xs text-muted">{row[header]}</td>
+                      <td key={header} className={`px-3 py-2 font-mono text-1xs text-muted ${numericColumn(header) ? 'text-right' : ''}`}>{row[header]}</td>
                     ))}
                     {model.resultKeys.map((key) => (
-                      <td key={key} className="bg-green-soft/30 px-3 py-2 font-mono text-1xs font-medium text-primary">{row[key] ?? '—'}</td>
+                      <td key={key} className="bg-green-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-primary">{row[key] ?? '—'}</td>
                     ))}
                   </tr>
                 ))}
