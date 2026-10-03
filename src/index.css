@@ -17,7 +17,12 @@
   --primary-hover: #1947bc;
   --primary-soft: #e9eefc;
   --primary-border: #aebff2;
+  /* Two accents, because it does two jobs. Graphics (the chart's reference line)
+     need 3:1 and #c9532d gives 3.94 on the page. Text needs 4.5:1 and #c9532d
+     only gives 3.94 there / 4.38 on the card, so labels use a darker step:
+     5.53 on the card, 4.99 on the page. */
   --accent: #c9532d;
+  --accent-text: #b34420;
   --accent-soft: #f9e9e2;
   --cyan: #17857c;
   --success: #247a52;
@@ -54,7 +59,10 @@
   --primary-hover: #9bb4ff;
   --primary-soft: #202d52;
   --primary-border: #425b9a;
+  /* The dark accent is already 6.95:1 on the card and 7.54:1 on the page, so it
+     serves both jobs. */
   --accent: #f18a5b;
+  --accent-text: #f18a5b;
   --accent-soft: #3b251d;
   --cyan: #5fc0b6;
   --success: #62b68b;

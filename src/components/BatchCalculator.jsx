@@ -12,6 +12,7 @@ import CustomSelect from './ui/CustomSelect';
 import { updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
 import { applyMapping, suggestMapping } from './columnMapping';
+import { axisTitleStyle, tickGap, tickStyle } from './chartTheme';
 
 
 const SAMPLE_DATA = {
@@ -500,10 +501,11 @@ export default function BatchCalculator() {
                   <XAxis
                     dataKey="x"
                     type="number"
-                    tick={{ fontSize: 10 }}
-                    label={{ value: xKey, position: 'insideBottomRight', offset: -14, fill: 'var(--text-faint)', fontSize: 9 }}
+                    tick={tickStyle}
+                    minTickGap={tickGap}
+                    label={{ value: xKey, position: 'insideBottomRight', offset: -14, ...axisTitleStyle }}
                   />
-                  <YAxis dataKey="y" tick={{ fontSize: 10 }} width={60} />
+                  <YAxis dataKey="y" tick={tickStyle} width={60} />
                   <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line-strong)', borderRadius: 6 }} />
                   <Scatter data={chartData} fill="var(--primary)" isAnimationActive={false} />
                 </ScatterChart>
@@ -512,10 +514,11 @@ export default function BatchCalculator() {
                   <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                   <XAxis
                     dataKey="x"
-                    tick={{ fontSize: 10 }}
-                    label={{ value: xKey, position: 'insideBottomRight', offset: -14, fill: 'var(--text-faint)', fontSize: 9 }}
+                    tick={tickStyle}
+                    minTickGap={tickGap}
+                    label={{ value: xKey, position: 'insideBottomRight', offset: -14, ...axisTitleStyle }}
                   />
-                  <YAxis tick={{ fontSize: 10 }} width={60} />
+                  <YAxis tick={tickStyle} width={60} />
                   <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line-strong)', borderRadius: 6 }} />
                   <Line dataKey="y" stroke="var(--primary)" strokeWidth={2} dot={false} isAnimationActive={false} />
                 </LineChart>

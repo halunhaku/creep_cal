@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DynamicParameters from './DynamicParameters';
 import { MAX_SERIES_DAYS } from '../../math/creepModels';
+import { CHART, axisTitleStyle, legendStyle, tickGap, tickStyle } from '../chartTheme';
 import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 function downloadFile(filename, content, type = 'text/csv;charset=utf-8') {
@@ -187,32 +188,33 @@ function AnalysisChart({ data, lines, params, modelName }) {
                 scale={logX ? 'log' : 'linear'}
                 domain={logX ? ['dataMin', 'dataMax'] : [0, 'dataMax']}
                 allowDataOverflow
-                tick={{ fontSize: 10 }}
+                tick={tickStyle}
+                minTickGap={tickGap}
                 tickLine={false}
                 axisLine={{ stroke: 'var(--line-strong)' }}
-                label={{ value: 'Concrete age · days', position: 'insideBottomRight', offset: -16, fill: 'var(--text-faint)', fontSize: 10 }}
+                label={{ value: 'Concrete age · days', position: 'insideBottomRight', offset: -16, ...axisTitleStyle }}
               />
-              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={58} />
+              <YAxis tick={tickStyle} tickLine={false} axisLine={false} width={58} />
               <Tooltip content={<ScientificTooltip />} />
-              <Legend iconType="plainline" iconSize={18} wrapperStyle={{ fontSize: 10, paddingTop: 12 }} />
+              <Legend iconType="plainline" iconSize={18} wrapperStyle={legendStyle} />
               {Number.isFinite(Number(params.t0)) && (
                 <ReferenceLine
                   x={Number(params.t0)}
-                  stroke="var(--accent)"
+                  stroke={CHART.reference}
                   strokeDasharray="4 4"
-                  label={{ value: `t₀ ${params.t0}d`, fill: 'var(--accent)', fontSize: 9, position: 'insideTopLeft' }}
+                  label={{ value: `t₀ ${params.t0}d`, fill: CHART.referenceText, fontSize: CHART.labelFont, position: 'insideTopLeft' }}
                 />
               )}
               {Number.isFinite(Number(params.tPrime)) && params.tPrime !== params.t0 && (
                 <ReferenceLine
                   x={Number(params.tPrime)}
-                  stroke="var(--text-muted)"
+                  stroke={CHART.target}
                   strokeDasharray="2 3"
-                  label={{ value: `t′ ${params.tPrime}d`, fill: 'var(--text-muted)', fontSize: 9, position: 'insideTopRight' }}
+                  label={{ value: `t′ ${params.tPrime}d`, fill: CHART.target, fontSize: CHART.labelFont, position: 'insideTopRight' }}
                 />
               )}
               {Number.isFinite(Number(params.targetAge)) && (
-                <ReferenceLine x={Number(params.targetAge)} stroke="var(--accent)" strokeWidth={1.5} />
+                <ReferenceLine x={Number(params.targetAge)} stroke={CHART.reference} strokeWidth={1.5} />
               )}
               {visibleLines.map((line) => (
                 <Line
