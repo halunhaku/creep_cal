@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest';
 import Papa from 'papaparse';
 import BatchCalculator from './BatchCalculator';
 import { MODELS } from './batchModels';
+import { getState } from '../state/appStore';
 import { aci209Single, b4Single, b4sSingle, mc2010Single } from '../math/creepModels';
 
 const B4_REQUIRED = 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t'.split(', ');
@@ -73,6 +74,47 @@ describe('BatchCalculator dataset pipeline', () => {
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     expect(screen.getByText(/1 rows · 1 output field/)).toBeInTheDocument();
     expect(screen.queryByText('Column mapping')).not.toBeInTheDocument();
+  });
+
+  // Regression (audit P2-1): switching model cleared the dataset unconditionally,
+  // so trying another model destroyed the file you had just uploaded.
+  test('switching model keeps the dataset and recomputes it', async () => {
+    const { container } = render(<BatchCalculator />);
+    // The shipped B4 sweep, then switch to B4s, which shares its input contract.
+    fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(screen.getByText(/9 rows · 4 output fields/)).toBeInTheDocument();
+
+    selectModel(container, 'b4s');
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(screen.getByText(/9 rows · 4 output fields/)).toBeInTheDocument();
+    // The rows are still the user's: same count, still valid.
+    expect(screen.getByText('Rows detected').closest('[role="status"]')).toHaveTextContent(/Rows detected\s*9\s*Valid\s*9/);
+  });
+
+  test('the previous model\'s output columns are dropped, not carried over', async () => {
+    const { container } = render(<BatchCalculator />);
+    fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    const before = screen.getByText(/9 rows · 4 output fields/);
+    expect(before).toBeInTheDocument();
+
+    // B4's inputs cannot satisfy ACI's contract, so the switch asks for the
+    // missing columns rather than showing B4's outputs beside ACI's — and it does
+    // not silently drop the file either.
+    selectModel(container, 'aci209');
+    await waitFor(() => expect(screen.getByText('Column mapping')).toBeInTheDocument());
+    expect(resultSections()).toHaveLength(0);
+    expect(screen.queryByText(/result_J_GPa/)).not.toBeInTheDocument();
+    // The file is still here, waiting to be mapped: nine of ACI's columns are not
+    // in a B4 sweep, and the rows were not thrown away.
+    const { mapping, pendingRows } = getState().batch;
+    // B4's sweep already carries t0 and t; these six are the ones ACI needs and it
+    // does not have. The rows themselves are all still here.
+    expect(mapping.map((entry) => entry.field).sort()).toEqual(['H', 'VS', 'airContent', 'curingType', 'fineAggregate', 'slump']);
+    expect(pendingRows).toHaveLength(9);
+    expect(pendingRows[0]).toHaveProperty('t0');
+    expect(pendingRows[0]).not.toHaveProperty('result_J_GPa');
   });
 
   // Regression: the batch computed with the reference kernels while the header

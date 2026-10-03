@@ -117,14 +117,17 @@ export default function BatchCalculator() {
     processData(remapped, 't');
   };
 
-  const processData = (data, preferredXKey = 't', parseIssues = []) => {
+  // The target model is a parameter, not the one this render closed over: a model
+  // switch recomputes immediately, before React has re-rendered with the new id.
+  const processData = (data, preferredXKey = 't', parseIssues = [], modelId = activeModel) => {
+    const target = MODELS.find((item) => item.id === modelId) ?? model;
     if (!data?.length) {
       clearDataset(); updateBatch({ issues: parseIssues });
       setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
       setIsProcessing(false); return;
     }
     const inputHeaders = Object.keys(data[0]);
-    const required = model.req.split(', ');
+    const required = target.req.split(', ');
     const missing = required.filter((key) => !inputHeaders.includes(key));
     updateBatch({ headers: inputHeaders });
     if (missing.length) {
@@ -143,7 +146,7 @@ export default function BatchCalculator() {
 
     const nextIssues = [...parseIssues];
     const nextResults = data.map((row, index) => {
-      try { return { ...row, ...computeRow(activeModel, row), __status:'valid' }; }
+      try { return { ...row, ...computeRow(modelId, row), __status:'valid' }; }
       catch (error) {
         nextIssues.push({ row:index + 2, field:'Input', value:'—', message:error.message });
         return { ...row, __status:'invalid' };
@@ -153,7 +156,7 @@ export default function BatchCalculator() {
       rows: nextResults,
       issues: nextIssues,
       xKey: inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '',
-      yKey: model.resultKeys[0],
+      yKey: target.resultKeys[0],
     });
     setBatchError('');
     setIsProcessing(false);
@@ -193,17 +196,39 @@ export default function BatchCalculator() {
     setBatchError('Unsupported format. Use CSV or XLSX.'); setIsProcessing(false);
   };
 
+  /**
+   * Switching model used to clear the dataset unconditionally, so trying another
+   * model destroyed the file you had just uploaded (the audit's P2-1). The inputs
+   * are the user's work and survive: they are re-validated and recomputed against
+   * the new model's contract, and if that contract needs columns the file does not
+   * have, the mapping panel asks for them instead of the rows disappearing.
+   *
+   * The previous model's output columns are dropped first — otherwise switching
+   * from B4 to ACI would leave result_J_GPa sitting next to result_phi.
+   */
+  const inputsOf = (rows) => rows.map((row) => {
+    const inputs = {};
+    for (const [key, value] of Object.entries(row)) {
+      if (!key.startsWith('result_') && key !== '__status') inputs[key] = value;
+    }
+    return inputs;
+  });
+
   const resetForModel = (id) => {
+    const nextModel = MODELS.find((item) => item.id === id);
+    const carried = pendingRows.length ? pendingRows : batchResults.length ? inputsOf(batchResults) : null;
+
     updateBatch({
       modelId: id,
-      rows: [],
-      headers: [],
       issues: [],
-      fileName: '',
       xKey: '',
-      yKey: MODELS.find((item) => item.id === id)?.resultKeys[0] || '',
+      yKey: nextModel?.resultKeys[0] || '',
+      // Only a dataset that is actually carried over keeps its name.
+      ...(carried ? {} : { rows: [], headers: [], fileName: '', pendingRows: [], mapping: [] }),
     });
     setBatchError('');
+
+    if (carried) processData(carried, 't', [], id);
   };
 
   const loadSampleDataset = () => {
