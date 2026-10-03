@@ -372,39 +372,211 @@ export default function DocsPage() {
         <aside className="workbench-panel overflow-hidden lg:sticky lg:top-[88px]">
           <div className="border-b border-line px-4 py-3"><div className="eyebrow">Prediction models</div></div>
           <nav className="flex gap-1 overflow-x-auto p-2 lg:block lg:space-y-1" aria-label="Model references">
-            {MODELS.map((item,index)=><button key={item.id} onClick={()=>setSelected(item.id)} aria-pressed={item.id===selected} className={`relative min-w-[180px] rounded-md px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id===selected?'bg-green-soft text-primary':'text-muted hover:bg-surface-2 hover:text-primary'}`}>{item.id===selected&&<span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green"/>}<div className="flex gap-2"><span className="font-mono text-[9px] text-faint">{String(index+1).padStart(2,'0')}</span><span className="text-[12px] font-semibold">{item.name}</span></div><div className="mt-1 pl-5 font-mono text-[8px] uppercase tracking-[.06em] text-faint">{item.category}</div></button>)}
+            {MODELS.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => setSelected(item.id)}
+                aria-pressed={item.id === selected}
+                className={`relative min-w-[180px] rounded-md px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id === selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
+              >
+                {item.id === selected && (
+                  <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green" />
+                )}
+                <div className="flex gap-2">
+                  <span className="font-mono text-[9px] text-faint">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="text-[12px] font-semibold">{item.name}</span>
+                </div>
+                <div className="mt-1 pl-5 font-mono text-[8px] uppercase tracking-[.06em] text-faint">{item.category}</div>
+              </button>
+            ))}
           </nav>
         </aside>
 
         <article className="min-w-0 workbench-panel overflow-hidden">
           <div id="overview" className="border-b border-line p-5 md:p-7">
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div><div className="eyebrow">{model.category}</div><h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-primary">{model.name}</h2><p className="mt-3 max-w-[75ch] text-[14px] leading-7 text-muted">{model.description}</p></div>
+              <div>
+                <div className="eyebrow">{model.category}</div>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-primary">{model.name}</h2>
+                <p className="mt-3 max-w-[75ch] text-[14px] leading-7 text-muted">{model.description}</p>
+              </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
-                <div className="flex gap-1.5">{model.engine.map((engine)=><span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>)}</div>
-                <a href={encodeURI(`/模型说明/${model.id}.md`)} download className="button-secondary !min-h-8 !px-2.5 !text-[9px]">Markdown 说明</a>
+                <div className="flex gap-1.5">
+                  {model.engine.map((engine) => (
+                    <span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>
+                  ))}
+                </div>
+                <a
+                  href={encodeURI(`/模型说明/${model.id}.md`)}
+                  download
+                  className="button-secondary !min-h-8 !px-2.5 !text-[9px]"
+                >
+                  Markdown 说明
+                </a>
               </div>
             </div>
-            <div className="mt-6 grid gap-4 border-t border-line pt-5 md:grid-cols-2"><div><div className="eyebrow">Implementation output</div><p className="mt-2 text-sm leading-6 text-primary">{model.output}</p></div><div><div className="eyebrow">Primary reference</div><p className="mt-2 text-xs leading-5 text-muted">{model.reference}</p></div></div>
+            <div className="mt-6 grid gap-4 border-t border-line pt-5 md:grid-cols-2">
+              <div>
+                <div className="eyebrow">Implementation output</div>
+                <p className="mt-2 text-sm leading-6 text-primary">{model.output}</p>
+              </div>
+              <div>
+                <div className="eyebrow">Primary reference</div>
+                <p className="mt-2 text-xs leading-5 text-muted">{model.reference}</p>
+              </div>
+            </div>
           </div>
 
           <section id="parameters" className="border-b border-line p-5 md:p-7">
-            <div className="mb-4 flex items-end justify-between"><div><div className="eyebrow">Inputs & units</div><h3 className="mt-1 text-lg font-semibold text-primary">Parameter contract</h3></div><span className="font-mono text-[9px] text-faint">{model.params.length} parameters</span></div>
-            <div className="overflow-hidden rounded-lg border border-line"><table className="w-full text-left"><thead className="bg-surface-2"><tr><th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Parameter</th><th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Definition</th></tr></thead><tbody className="divide-y divide-line">{model.params.map((param)=><tr key={param.name}><td className="w-32 px-4 py-3 align-top font-mono text-[11px] font-semibold text-green">{param.name}</td><td className="px-4 py-3 text-[13px] leading-5 text-muted">{param.description}</td></tr>)}</tbody></table></div>
+            <div className="mb-4 flex items-end justify-between">
+              <div>
+                <div className="eyebrow">Inputs & units</div>
+                <h3 className="mt-1 text-lg font-semibold text-primary">Parameter contract</h3>
+              </div>
+              <span className="font-mono text-[9px] text-faint">{model.params.length} parameters</span>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-line">
+              <table className="w-full text-left">
+                <thead className="bg-surface-2">
+                  <tr>
+                    <th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Parameter</th>
+                    <th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Definition</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {model.params.map((param) => (
+                    <tr key={param.name}>
+                      <td className="w-32 px-4 py-3 align-top font-mono text-[11px] font-semibold text-green">{param.name}</td>
+                      <td className="px-4 py-3 text-[13px] leading-5 text-muted">{param.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </section>
 
-          {model.applicability&&<section id="applicability" className="border-b border-line p-5 md:p-7"><div className="eyebrow">Applicability</div><h3 className="mt-1 text-lg font-semibold text-primary">Calibrated use and limitations</h3><div className="mt-5 grid gap-5 md:grid-cols-2"><div><div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--success)]">Recommended domain</div><ul className="space-y-2">{model.applicability.map((item)=><li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]"/>{item}</li>)}</ul></div>{model.limitations&&<div><div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--warning)]">Limitations</div><ul className="space-y-2">{model.limitations.map((item)=><li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted"><span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]"/>{item}</li>)}</ul></div>}</div></section>}
+          {model.applicability && (
+            <section id="applicability" className="border-b border-line p-5 md:p-7">
+              <div className="eyebrow">Applicability</div>
+              <h3 className="mt-1 text-lg font-semibold text-primary">Calibrated use and limitations</h3>
+              <div className="mt-5 grid gap-5 md:grid-cols-2">
+                <div>
+                  <div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--success)]">Recommended domain</div>
+                  <ul className="space-y-2">
+                    {model.applicability.map((item) => (
+                      <li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {model.limitations && (
+                  <div>
+                    <div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--warning)]">Limitations</div>
+                    <ul className="space-y-2">
+                      {model.limitations.map((item) => (
+                        <li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]" />
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
-          {model.officialDocuments&&<section id="documents" className="border-b border-line p-5 md:p-7"><div className="eyebrow">Official documents</div><div className="mt-4 space-y-3">{model.officialDocuments.map((doc)=><div key={doc.designation} className="rounded-lg border border-line bg-surface-2 p-4"><div className="font-mono text-[9px] font-semibold uppercase tracking-[.07em] text-green">{doc.designation}</div><h4 className="mt-1.5 text-sm font-semibold text-primary">{doc.title}</h4><p className="mt-1 text-xs text-muted">{doc.status}</p><p className="mt-2 text-[13px] leading-5 text-muted">{doc.coverage}</p></div>)}</div></section>}
+          {model.officialDocuments && (
+            <section id="documents" className="border-b border-line p-5 md:p-7">
+              <div className="eyebrow">Official documents</div>
+              <div className="mt-4 space-y-3">
+                {model.officialDocuments.map((doc) => (
+                  <div key={doc.designation} className="rounded-lg border border-line bg-surface-2 p-4">
+                    <div className="font-mono text-[9px] font-semibold uppercase tracking-[.07em] text-green">{doc.designation}</div>
+                    <h4 className="mt-1.5 text-sm font-semibold text-primary">{doc.title}</h4>
+                    <p className="mt-1 text-xs text-muted">{doc.status}</p>
+                    <p className="mt-2 text-[13px] leading-5 text-muted">{doc.coverage}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-          {model.formulas&&<section id="formulas" className="border-b border-line p-5 md:p-7"><div className="mb-5 flex items-end justify-between"><div><div className="eyebrow">Core equations</div><h3 className="mt-1 text-lg font-semibold text-primary">Implemented formulation</h3></div><span className="font-mono text-[9px] text-faint">{model.formulas.length} equations</span></div><div className="space-y-3">{model.formulas.map((formula,index)=><div key={formula.label} className="grid gap-3 rounded-lg border border-line bg-surface-2 p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-center"><div><span className="font-mono text-[9px] text-faint">EQ {String(index+1).padStart(2,'0')}</span><div className="mt-1 text-xs font-semibold text-primary">{formula.label}</div></div><FormulaExpression expr={formula.expr}/></div>)}</div></section>}
+          {model.formulas && (
+            <section id="formulas" className="border-b border-line p-5 md:p-7">
+              <div className="mb-5 flex items-end justify-between">
+                <div>
+                  <div className="eyebrow">Core equations</div>
+                  <h3 className="mt-1 text-lg font-semibold text-primary">Implemented formulation</h3>
+                </div>
+                <span className="font-mono text-[9px] text-faint">{model.formulas.length} equations</span>
+              </div>
+              <div className="space-y-3">
+                {model.formulas.map((formula, index) => (
+                  <div key={formula.label} className="grid gap-3 rounded-lg border border-line bg-surface-2 p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
+                    <div>
+                      <span className="font-mono text-[9px] text-faint">EQ {String(index + 1).padStart(2, '0')}</span>
+                      <div className="mt-1 text-xs font-semibold text-primary">{formula.label}</div>
+                    </div>
+                    <FormulaExpression expr={formula.expr} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-          {model.sourceMapping&&<section id="mapping" className="border-b border-line p-5 md:p-7"><div className="eyebrow">Formula source mapping</div><div className="mt-4 divide-y divide-line rounded-lg border border-line">{model.sourceMapping.map((item,index)=><div key={item} className="grid grid-cols-[32px_1fr] gap-3 px-4 py-3 text-[13px] leading-5 text-muted"><span className="font-mono text-[9px] text-faint">{String(index+1).padStart(2,'0')}</span><span>{item}</span></div>)}</div></section>}
+          {model.sourceMapping && (
+            <section id="mapping" className="border-b border-line p-5 md:p-7">
+              <div className="eyebrow">Formula source mapping</div>
+              <div className="mt-4 divide-y divide-line rounded-lg border border-line">
+                {model.sourceMapping.map((item, index) => (
+                  <div key={item} className="grid grid-cols-[32px_1fr] gap-3 px-4 py-3 text-[13px] leading-5 text-muted">
+                    <span className="font-mono text-[9px] text-faint">{String(index + 1).padStart(2, '0')}</span>
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-          {model.sources&&<section id="sources" className="p-5 md:p-7"><div className="eyebrow">Official sources</div><div className="mt-4 grid gap-3 md:grid-cols-2">{model.sources.map((source)=><a key={source.url} href={source.url} target="_blank" rel="noreferrer" className="group rounded-lg border border-line p-4 transition-colors hover:border-green-border hover:bg-green-soft"><div className="text-sm font-semibold text-primary group-hover:text-green">{source.label}</div><p className="mt-1 text-xs leading-5 text-muted">{source.note}</p><span className="mt-3 block truncate font-mono text-[8px] text-faint">{source.url}</span></a>)}</div></section>}
+          {model.sources && (
+            <section id="sources" className="p-5 md:p-7">
+              <div className="eyebrow">Official sources</div>
+              <div className="mt-4 grid gap-3 md:grid-cols-2">
+                {model.sources.map((source) => (
+                  <a
+                    key={source.url}
+                    href={source.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="group rounded-lg border border-line p-4 transition-colors hover:border-green-border hover:bg-green-soft"
+                  >
+                    <div className="text-sm font-semibold text-primary group-hover:text-green">{source.label}</div>
+                    <p className="mt-1 text-xs leading-5 text-muted">{source.note}</p>
+                    <span className="mt-3 block truncate font-mono text-[8px] text-faint">{source.url}</span>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
         </article>
 
-        <aside className="sticky top-[88px] hidden 2xl:block"><div className="eyebrow">On this page</div><nav className="mt-3 border-l border-line">{sections.map(([id,label])=><a key={id} href={`#${id}`} className="block border-l border-transparent px-3 py-1.5 text-xs text-muted hover:border-green hover:text-primary">{label}</a>)}</nav></aside>
+        <aside className="sticky top-[88px] hidden 2xl:block">
+          <div className="eyebrow">On this page</div>
+          <nav className="mt-3 border-l border-line">
+            {sections.map(([id, label]) => (
+              <a
+                key={id}
+                href={`#${id}`}
+                className="block border-l border-transparent px-3 py-1.5 text-xs text-muted hover:border-green hover:text-primary"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        </aside>
       </div>
     </div>
   );
