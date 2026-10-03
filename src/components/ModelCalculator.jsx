@@ -190,6 +190,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
 
   return (
     <CalculatorWrapper
+      modelId={config.id}
       modelName={config.name}
       modelDescription={config.descriptions[engine]}
       engine={engine}

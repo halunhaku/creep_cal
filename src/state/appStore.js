@@ -23,6 +23,7 @@ import { useSyncExternalStore } from 'react';
  * Object.is and will loop otherwise.
  */
 const PARAMS_KEY = 'creep-lab:paramsByModel';
+const SETS_KEY = 'creep-lab:parameterSets';
 
 /** Parameters survive a reload; the URL carries navigation only. */
 function loadParams() {
@@ -32,6 +33,24 @@ function loadParams() {
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
     return {}; // a corrupt entry must not stop the app from starting
+  }
+}
+
+function loadSets() {
+  try {
+    const raw = globalThis.localStorage?.getItem(SETS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistSets(parameterSets) {
+  try {
+    globalThis.localStorage?.setItem(SETS_KEY, JSON.stringify(parameterSets));
+  } catch {
+    // storage can be full or blocked; the app still works without persistence
   }
 }
 
@@ -50,6 +69,8 @@ const initialState = {
   model: 'aci209',
   /** modelId -> the parameters the user has actually edited */
   paramsByModel: loadParams(),
+  /** modelId -> [{ name, params }] named parameter sets the user saved */
+  parameterSets: loadSets(),
   /** the batch pipeline's dataset and view settings, per the fields below */
   batch: {
     modelId: 'b4',
@@ -107,6 +128,41 @@ export function saveModelParams(modelId, params) {
   set({ paramsByModel });
 }
 
+/** Save the given parameters under a name; saving an existing name replaces it. */
+export function saveParameterSet(modelId, name, params) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  const existing = state.parameterSets[modelId] ?? [];
+  const next = [...existing.filter((set) => set.name !== trimmed), { name: trimmed, params }];
+  const parameterSets = { ...state.parameterSets, [modelId]: next };
+  persistSets(parameterSets);
+  set({ parameterSets });
+}
+
+export function deleteParameterSet(modelId, name) {
+  const next = (state.parameterSets[modelId] ?? []).filter((set) => set.name !== name);
+  const parameterSets = { ...state.parameterSets, [modelId]: next };
+  persistSets(parameterSets);
+  set({ parameterSets });
+}
+
+/** Load a saved set into the model's parameters, as if the user had typed it. */
+export function loadParameterSet(modelId, name) {
+  const found = (state.parameterSets[modelId] ?? []).find((set) => set.name === name);
+  if (found) saveModelParams(modelId, { ...found.params });
+}
+
+/**
+ * Forget the model's edits so it falls back to its own defaults. Needed once
+ * parameters persist: without it there is no way back to the shipped values.
+ */
+export function resetModelParams(modelId) {
+  const paramsByModel = { ...state.paramsByModel };
+  delete paramsByModel[modelId];
+  persistParams(paramsByModel);
+  set({ paramsByModel });
+}
+
 export function updateBatch(patch) {
   set({ batch: { ...state.batch, ...patch } });
 }
@@ -115,10 +171,11 @@ export function updateBatch(patch) {
 export function resetStore() {
   try {
     globalThis.localStorage?.removeItem(PARAMS_KEY);
+    globalThis.localStorage?.removeItem(SETS_KEY);
   } catch {
     // nothing to clear
   }
-  state = { ...initialState, paramsByModel: {} };
+  state = { ...initialState, paramsByModel: {}, parameterSets: {} };
   listeners.forEach((listener) => listener());
 }
 

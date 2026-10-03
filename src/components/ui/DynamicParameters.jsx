@@ -1,3 +1,4 @@
+import ParameterSets from './ParameterSets';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CustomSelect from './CustomSelect';
 
@@ -94,7 +95,7 @@ function ParameterField({ config, value, onChange }) {
   );
 }
 
-export default function DynamicParameters({ paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, dirty }) {
+export default function DynamicParameters({ modelId, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, dirty }) {
   const grouped = useMemo(
     () => GROUPS
       .map((group) => ({ ...group, items: paramsConfig.filter((item) => groupFor(item.name) === group.id) }))
@@ -118,6 +119,9 @@ export default function DynamicParameters({ paramsConfig, params, onParamChange,
           </div>
           <span className="font-mono text-2xs text-faint">{paramsConfig.length} inputs</span>
         </div>
+        {/* Above the grid, not below it: saving and loading a case is how you get
+            back to one, and below twenty fields it would only be found by scrolling. */}
+        <ParameterSets modelId={modelId} params={params} />
       </div>
       <div className="px-4">
         {grouped.map((group, index) => {

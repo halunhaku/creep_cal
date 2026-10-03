@@ -291,7 +291,7 @@ function NoticeBanner({ notices, onDismiss }) {
 }
 
 export default function CalculatorWrapper({
-  modelName,
+  modelId, modelName,
   modelDescription,
   engine,
   paramsConfig,
@@ -352,6 +352,7 @@ export default function CalculatorWrapper({
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:pr-1">
           <DynamicParameters
+            modelId={modelId}
             paramsConfig={paramsConfig}
             params={params}
             onParamChange={onParamChange}
