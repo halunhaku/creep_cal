@@ -359,7 +359,6 @@ export default function CalculatorWrapper({
             params={params}
             onParamChange={onParamChange}
             onCalculate={onCalculate}
-            calculateReady={calculateReady}
             buttonText={buttonText}
             dirty={dirty}
           />

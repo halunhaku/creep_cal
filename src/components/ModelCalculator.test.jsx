@@ -81,7 +81,15 @@ describe('ModelCalculator workspace state', () => {
     fireEvent.change(VS, { target: { value: '' } });
     fireEvent.blur(VS);
     await waitFor(() => expect(screen.getByText(/inputs require attention/i)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /inputs require attention/i })).toBeDisabled();
+
+    // This used to assert the button was disabled, which was the audit's P2-3: a
+    // disabled button cannot be focused, so a keyboard user could not reach it to
+    // find out why nothing happened, and nothing moved them to the field at fault.
+    // It now stays reachable, says what is wrong, and puts the cursor there.
+    const button = screen.getByRole('button', { name: /inputs require attention/i });
+    expect(button).toBeEnabled();
+    fireEvent.click(button);
+    expect(VS).toHaveFocus();
   });
 
   test('the Data tab states how much of the series it is showing', async () => {

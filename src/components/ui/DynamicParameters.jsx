@@ -95,7 +95,7 @@ function ParameterField({ config, value, onChange }) {
   );
 }
 
-export default function DynamicParameters({ modelId, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, dirty }) {
+export default function DynamicParameters({ modelId, paramsConfig, params, onParamChange, onCalculate, buttonText, dirty }) {
   const grouped = useMemo(
     () => GROUPS
       .map((group) => ({ ...group, items: paramsConfig.filter((item) => groupFor(item.name) === group.id) }))
@@ -103,11 +103,27 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
     [paramsConfig],
   );
   const activeAdmixtures = paramsConfig.filter((item) => ADMIXTURES.has(item.name) && Number(params[item.name]) !== 0).length;
-  const invalidCount = paramsConfig.filter((item) => !item.options && (
+  const isInvalid = (item) => !item.options && (
     !Number.isFinite(Number(params[item.name]))
     || Number(params[item.name]) < item.min
     || Number(params[item.name]) > item.max
-  )).length;
+  );
+  const invalid = paramsConfig.filter(isInvalid);
+  const invalidCount = invalid.length;
+
+  /**
+   * The button used to be disabled while anything was invalid, and a disabled
+   * button cannot be focused: a keyboard user could not reach it to find out why
+   * nothing happened, and nothing moved them to the field at fault. It now stays
+   * enabled, says what is wrong, and puts the cursor in the first bad field.
+   */
+  const handleCalculate = () => {
+    if (invalid.length) {
+      document.getElementById(`param-input-${invalid[0].name}`)?.focus();
+      return;
+    }
+    onCalculate();
+  };
 
   return (
     <section className="workbench-panel overflow-hidden">
@@ -167,7 +183,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
             Inputs changed · 当前结果待更新
           </div>
         )}
-        <button onClick={onCalculate} disabled={!calculateReady || invalidCount > 0} className="button-primary w-full">
+        <button onClick={handleCalculate} className="button-primary w-full">
           {invalidCount > 0 ? `${invalidCount} inputs require attention` : buttonText}
           <span className="ml-auto font-mono text-3xs opacity-70">⌘↵</span>
         </button>
