@@ -37,7 +37,7 @@ const config = {
     },
     { name: 'sigma', label: 'Initial Concrete Stress', min: -78, max: 78, step: 0.1, unit: 'MPa' },
   ],
-  loadingMessage: 'Loading Rust fib MC2010 WASM Module...',
+  loadingMessage: 'Loading Rust fib MC2010 WASM Module…',
   readyMessage: 'Published MC2010 creep kernel initialized successfully.',
   startMessage: (params) => (
     `Initiating MC2010 calculation with fcm=${params.fcm}MPa, t0=${params.t0}d, sigma=${params.sigma}MPa`

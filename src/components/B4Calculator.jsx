@@ -88,7 +88,7 @@ const config = {
     { name: 'airEntrainingAgent', label: 'Air-Entraining Agent', min: 0, max: 2, step: 0.01, unit: '% c' },
     { name: 'waterReducer', label: 'Water Reducer', min: 0, max: 10, step: 0.1, unit: '% c' },
   ],
-  loadingMessage: 'Loading Rust RILEM B4 WASM Module...',
+  loadingMessage: 'Loading Rust RILEM B4 WASM Module…',
   readyMessage: 'RILEM B4 composition-based kernel initialized successfully.',
   startMessage: (params) => `Initiating B4 with fc=${params.fc}MPa, t′=${params.tPrime}d, RH=${params.h}%`,
   calculateJs(params, maxDays) {

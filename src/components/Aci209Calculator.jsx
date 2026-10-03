@@ -35,7 +35,7 @@ const config = {
     { name: 'fineAggregate', label: 'Fine Aggregate', min: 0, max: 100, unit: '%' },
     { name: 'airContent', label: 'Air Content', min: 0, max: 20, unit: '%' },
   ],
-  loadingMessage: 'Loading Rust ACI209 WASM Module...',
+  loadingMessage: 'Loading Rust ACI209 WASM Module…',
   readyMessage: 'Kernel v2.4 (ACI209-Rust) initialized successfully.',
   startMessage: (params) => (
     `Initiating ${params.curingType}-cured calculation with t0=${params.t0}d, H=${params.H}%`

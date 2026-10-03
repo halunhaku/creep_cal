@@ -2,7 +2,7 @@ import React from 'react';
 
 const LoadingSpinner = ({ 
   size = 40, 
-  message = "Loading...", 
+  message = "Loading…", 
   showMessage = true,
 }) => {
   return (

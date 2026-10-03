@@ -57,7 +57,7 @@ function NumericInput({ config, value, onChange }) {
     <>
       <div className={`field-control flex overflow-hidden ${invalid ? '!border-error' : ''}`}>
         <input
-          id={`param-input-${name}`} type="number" inputMode="decimal" value={draft} min={min} max={max} step={step}
+          id={`param-input-${name}`} type="number" inputMode="decimal" autoComplete="off" value={draft} min={min} max={max} step={step}
           onChange={(event) => setDraft(event.target.value)} onBlur={commit}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();

@@ -43,6 +43,9 @@ function formatValue(value, digits = 6) {
   if (!Number.isFinite(Number(value))) return '—';
   const number = Number(value);
   if (number !== 0 && Math.abs(number) < 0.0001) return number.toExponential(4).replace('-', '−');
+  // Fixed to en-US on purpose, not by accident: engineering values are read with a
+  // decimal point and thousands grouping regardless of the UI language, and a
+  // locale-dependent format would render 1.234,56 for some readers of SI values.
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(number).replace('-', '−');
 }
 

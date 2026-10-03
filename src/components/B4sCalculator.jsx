@@ -74,7 +74,7 @@ const config = {
     { name: 'aggregateType', label: 'Aggregate Type', options: aggregateOptions },
     { name: 'specimenShape', label: 'Specimen Shape', options: shapeOptions },
   ],
-  loadingMessage: 'Loading Rust RILEM B4s WASM Module...',
+  loadingMessage: 'Loading Rust RILEM B4s WASM Module…',
   readyMessage: 'RILEM B4s strength-based kernel initialized successfully.',
   startMessage: (params) => `Initiating B4s with fc=${params.fc}MPa, t′=${params.tPrime}d, RH=${params.h}%`,
   calculateJs(params, maxDays) {
