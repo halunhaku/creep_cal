@@ -94,7 +94,9 @@
     outline: 2px solid var(--primary);
     outline-offset: 2px;
   }
-  ::selection { background: var(--primary); color: #fff; }
+  /* Text on --primary must come from the token: in the dark theme --primary is a
+     light blue (#7f9fff), where white would be 2.53:1 and fail WCAG AA. */
+  ::selection { background: var(--primary); color: var(--on-green); }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 3px solid transparent; border-radius: 99px; background-clip: padding-box; }
@@ -119,7 +121,7 @@
   .mono-data { font-family: "Azeret Mono", monospace; font-variant-numeric: tabular-nums lining-nums; }
   .button-primary, .btn-primary {
     display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px;
-    border: 1px solid var(--primary); border-radius: 6px; background: var(--primary); color: #fff;
+    border: 1px solid var(--primary); border-radius: 6px; background: var(--primary); color: var(--on-green);
     padding: 0 16px; font-family: "Azeret Mono", monospace; font-size: 11px; font-weight: 650;
     letter-spacing: .06em; text-transform: uppercase; transition: background-color 140ms ease, transform 100ms ease;
   }
