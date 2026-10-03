@@ -40,6 +40,20 @@ $$
 | Result visualizer | Separate compliance and shrinkage curves, inspect decomposed values, switch linear/log time, and export chart data. |
 | Reference library | Read implementation scope, calibrated ranges, equations, source mapping, limitations, and official references. |
 | Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels, with a parity suite and an in-app timing comparison between them. |
+| Shareable state | The workspace, model and kernel live in the URL (`?mode=docs&model=b4&kernel=js`), so a view can be linked to, Back and Forward move between workspaces, and a refresh keeps the edited parameters. |
+
+### Deep links
+
+```
+/?mode=single|batch|docs   which workspace
+/?model=aci209|mc2010|b4|b4s   which model (calculation and reference library)
+/?kernel=rust|js           which engine the calculation workspace uses
+```
+
+Defaults are omitted, so a plain visit has a clean URL. The batch dataset is
+deliberately not in the URL — it is a file, not a link — but it does survive
+switching workspaces. Edited parameters are persisted locally and are kept out
+of the URL; named, shareable parameter sets are future work.
 
 ---
 

@@ -8,10 +8,13 @@ import { resetStore } from './state/appStore';
 
 // The app store is module-level state that deliberately outlives a workspace
 // switch, so without this it would also outlive a test: a parameter edited in
-// one case would still be set in the next. Tests must start from the same state
-// the app starts from.
+// one case would still be set in the next. The URL is the same kind of state —
+// the URL sync reads it on mount, so a workspace pushed by one test would decide
+// what the next test starts on. Tests must start from the same state the app
+// starts from.
 beforeEach(() => {
   resetStore();
+  window.history.replaceState(null, '', '/');
 });
 
 // jsdom does not implement ResizeObserver, and Recharts' <ResponsiveContainer>

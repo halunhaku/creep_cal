@@ -1,9 +1,10 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/ui/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
 import { setMode, useAppSelector } from './state/appStore';
+import { initUrlSync } from './state/urlSync';
 
 const SingleCalculationDashboard = lazy(() => import('./components/SingleCalculationDashboard'));
 const BatchCalculator = lazy(() => import('./components/BatchCalculator'));
@@ -14,6 +15,10 @@ function App() {
   // leave it, so anything the user typed or loaded has to live above them. The
   // store is also what step 2 will sync with the URL.
   const activeMode = useAppSelector((state) => state.mode);
+
+  // Reads the workspace, model and kernel out of the URL, keeps them in step with
+  // Back/Forward, and writes changes back.
+  useEffect(initUrlSync, []);
 
   return (
     <Layout 

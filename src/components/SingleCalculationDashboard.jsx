@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
-import { setAlgorithm, setEngine, useAppSelector } from '../state/appStore';
+import { setEngine, setModel, useAppSelector } from '../state/appStore';
 
 const CALCULATORS = {
   aci209: lazy(() => import('./Aci209Calculator')),
@@ -19,7 +19,7 @@ const MODELS = [
 export default function SingleCalculationDashboard() {
   // From the store so the selected model and kernel survive leaving the tab.
   const engine = useAppSelector((state) => state.engine);
-  const algorithm = useAppSelector((state) => state.algorithm);
+  const algorithm = useAppSelector((state) => state.model);
   const ActiveComponent = CALCULATORS[algorithm];
   const active = MODELS.find((model) => model.id === algorithm);
   const activeModelRef = useRef(null);
@@ -54,7 +54,7 @@ export default function SingleCalculationDashboard() {
                 <button
                   key={model.id}
                   ref={selected ? activeModelRef : null}
-                  onClick={() => setAlgorithm(model.id)}
+                  onClick={() => setModel(model.id)}
                   aria-pressed={selected}
                   className={`relative min-w-[190px] rounded-md px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full ${selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
                 >

@@ -79,7 +79,9 @@ const SCENES = [
   { key: 'single-compare', workspace: 'Calculate', settled: labelled('Last compute'), click: 'Compare kernels', after: labelled('Rust speed-up') },
   { key: 'batch-empty', workspace: 'Batch', settled: labelled('Prediction model') },
   { key: 'batch-loaded', workspace: 'Batch', settled: labelled('Prediction model'), click: 'Load demo sweep', after: labelled('Result matrix') },
-  { key: 'docs-b4', workspace: 'Reference', settled: leafText('Parameter contract') },
+  // Deep-linked: the reference library now follows the app's model, and B4 is the
+  // richest page to fingerprint.
+  { key: 'docs-b4', workspace: 'Reference', settled: leafText('Parameter contract'), url: '?mode=docs&model=b4' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -192,9 +194,13 @@ async function main() {
 
     const snapshot = {};
     for (const scene of SCENES) {
-      await send('Page.navigate', { url: BASE });
+      // A scene with a URL is opened directly, which is what a shared link does.
+      // Note that this means nothing from the calculate workspace has run: the
+      // header reports an idle kernel and recharts has not created its global
+      // measurement span. That state is part of the fingerprint.
+      await send('Page.navigate', { url: scene.url ? `${BASE}${scene.url}` : BASE });
       await sleep(900);
-      if (scene.workspace !== 'Calculate') {
+      if (scene.workspace !== 'Calculate' && !scene.url) {
         await evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(scene.workspace)})?.click()`);
         await waitFor(labelled('Prediction model') + " || " + leafText('Parameter contract'), `the ${scene.workspace} workspace`);
       }

@@ -22,12 +22,34 @@ import { useSyncExternalStore } from 'react';
  * state), never a fresh object — useSyncExternalStore compares snapshots with
  * Object.is and will loop otherwise.
  */
+const PARAMS_KEY = 'creep-lab:paramsByModel';
+
+/** Parameters survive a reload; the URL carries navigation only. */
+function loadParams() {
+  try {
+    const raw = globalThis.localStorage?.getItem(PARAMS_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {}; // a corrupt entry must not stop the app from starting
+  }
+}
+
+function persistParams(paramsByModel) {
+  try {
+    globalThis.localStorage?.setItem(PARAMS_KEY, JSON.stringify(paramsByModel));
+  } catch {
+    // storage can be full or blocked; the app still works without persistence
+  }
+}
+
 const initialState = {
   mode: 'single',
   engine: 'rust',
-  algorithm: 'aci209',
+  /** the model the app is working with: drives the calculation and the docs */
+  model: 'aci209',
   /** modelId -> the parameters the user has actually edited */
-  paramsByModel: {},
+  paramsByModel: loadParams(),
   /** the batch pipeline's dataset and view settings, per the fields below */
   batch: {
     modelId: 'b4',
@@ -48,6 +70,7 @@ export function getState() {
   return state;
 }
 
+/** @param {(state: object) => void} listener */
 export function subscribe(listener) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
@@ -55,7 +78,10 @@ export function subscribe(listener) {
 
 function set(patch) {
   state = { ...state, ...patch };
-  listeners.forEach((listener) => listener());
+  // Listeners receive the new state: subscribers that need to compare (the URL
+  // sync) would otherwise have to call getState() again, and a listener written
+  // as (state) => ... silently gets undefined if this forwards nothing.
+  listeners.forEach((listener) => listener(state));
 }
 
 export function setMode(mode) {
@@ -66,13 +92,15 @@ export function setEngine(engine) {
   if (state.engine !== engine) set({ engine });
 }
 
-export function setAlgorithm(algorithm) {
-  if (state.algorithm !== algorithm) set({ algorithm });
+export function setModel(model) {
+  if (state.model !== model) set({ model });
 }
 
 /** Persist one model's parameters; the other models keep theirs untouched. */
 export function saveModelParams(modelId, params) {
-  set({ paramsByModel: { ...state.paramsByModel, [modelId]: params } });
+  const paramsByModel = { ...state.paramsByModel, [modelId]: params };
+  persistParams(paramsByModel);
+  set({ paramsByModel });
 }
 
 export function updateBatch(patch) {
@@ -81,7 +109,12 @@ export function updateBatch(patch) {
 
 /** Test seam: restore the initial state between cases. */
 export function resetStore() {
-  state = initialState;
+  try {
+    globalThis.localStorage?.removeItem(PARAMS_KEY);
+  } catch {
+    // nothing to clear
+  }
+  state = { ...initialState, paramsByModel: {} };
   listeners.forEach((listener) => listener());
 }
 

@@ -37,10 +37,10 @@ const SHOTS = [
   { file: 'readme-hero.png', width: 1440, height: 760, workspace: 'single', prepare: 'compare' },
   { file: 'ui-wide-single-analysis.png', width: 1800, height: 1250, workspace: 'single', prepare: 'compare' },
   { file: 'ui-wide-batch-matrix.png', width: 1800, height: 1250, workspace: 'batch', prepare: 'sample' },
-  { file: 'ui-wide-model-docs.png', width: 1800, height: 1250, workspace: 'docs' },
+  { file: 'ui-wide-model-docs.png', width: 1800, height: 1250, workspace: 'docs', selectModel: 'RILEM Model B4' },
   { file: 'ui-single-analysis.png', width: 488, height: 1055, workspace: 'single', prepare: 'compare' },
   { file: 'ui-batch-matrix.png', width: 488, height: 1055, workspace: 'batch', prepare: 'sample' },
-  { file: 'ui-model-docs.png', width: 488, height: 1055, workspace: 'docs' },
+  { file: 'ui-model-docs.png', width: 488, height: 1055, workspace: 'docs', selectModel: 'RILEM Model B4' },
   { file: 'responsive-single-390.png', width: 390, height: 844, workspace: 'single' },
   { file: 'responsive-single-768.png', width: 768, height: 1024, workspace: 'single' },
   { file: 'responsive-single-1440.png', width: 1440, height: 900, workspace: 'single' },
@@ -129,7 +129,10 @@ class Cdp {
 const clickButton = (label) => `(() => {
   const wanted = ${JSON.stringify(label)}.toLowerCase();
   const buttons = [...document.querySelectorAll('button')];
-  const button = buttons.find((item) => item.textContent.trim().toLowerCase().startsWith(wanted));
+  // The reference library's model buttons lead with their index ("03 RILEM
+  // Model B4"), so leading digits are stripped before matching.
+  const textOf = (item) => item.textContent.trim().replace(/^\\d+\\s*/, '').toLowerCase();
+  const button = buttons.find((item) => textOf(item).startsWith(wanted));
   if (!button) return { clicked: false, seen: buttons.map((item) => item.textContent.trim()).filter(Boolean) };
   if (button.disabled) return { clicked: false, disabled: true, seen: [] };
   button.click();
@@ -146,14 +149,18 @@ async function click(cdp, label) {
   }
 }
 
-async function openWorkspace(cdp, workspace) {
-  await cdp.send('Page.navigate', { url: BASE });
+async function openWorkspace(cdp, shot) {
+  const { workspace } = shot;
+  await cdp.send('Page.navigate', { url: shot.url ? `${BASE}${shot.url}` : BASE });
   await cdp.waitFor(hasText(HEADINGS.single), { label: 'the app shell' });
   if (workspace !== 'single') {
-    const label = workspace === 'batch' ? 'Batch' : 'Reference';
-    await click(cdp, label);
+    await click(cdp, workspace === 'batch' ? 'Batch' : 'Reference');
   }
   await cdp.waitFor(hasText(HEADINGS[workspace]), { label: `the ${workspace} workspace` });
+  // Selecting the model by clicking keeps this a client-side change, so the
+  // session stays warm; loading the URL in a new document would show an idle
+  // kernel in this one README image and a ready one in the rest.
+  if (shot.selectModel) await click(cdp, shot.selectModel);
 }
 
 async function prepare(cdp, shot) {
@@ -230,7 +237,7 @@ async function main() {
         deviceScaleFactor: 1,
         mobile: shot.width < 700,
       });
-      await openWorkspace(cdp, shot.workspace);
+      await openWorkspace(cdp, shot);
       await prepare(cdp, shot);
 
       const { data } = await cdp.send('Page.captureScreenshot', { format: 'png' });

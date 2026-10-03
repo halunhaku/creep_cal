@@ -1,5 +1,6 @@
 import React from 'react';
 import katex from 'katex';
+import { setModel, useAppSelector } from '../state/appStore';
 import 'katex/dist/katex.min.css';
 
 function FormulaExpression({ expr }) {
@@ -349,7 +350,9 @@ const MODELS = [
 
 
 export default function DocsPage() {
-  const [selected, setSelected] = React.useState('b4');
+  // The same selection the calculation workspace uses, so ?model=b4 means one
+  // thing across the app and a docs page can be linked to directly.
+  const selected = useAppSelector((state) => state.model);
   const model = MODELS.find((item) => item.id === selected);
   const sections = [
     ['overview','Overview'], ['parameters','Inputs & units'],
@@ -375,7 +378,7 @@ export default function DocsPage() {
             {MODELS.map((item, index) => (
               <button
                 key={item.id}
-                onClick={() => setSelected(item.id)}
+                onClick={() => setModel(item.id)}
                 aria-pressed={item.id === selected}
                 className={`relative min-w-[180px] rounded-md px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id === selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
               >
