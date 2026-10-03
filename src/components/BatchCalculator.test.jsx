@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import Papa from 'papaparse';
-import BatchCalculator, { MODELS } from './BatchCalculator';
+import BatchCalculator from './BatchCalculator';
+import { MODELS } from './batchModels';
 import { aci209Single, b4Single, b4sSingle, mc2010Single } from '../math/creepModels';
 
 const B4_REQUIRED = 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t'.split(', ');

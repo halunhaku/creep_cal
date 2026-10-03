@@ -139,7 +139,7 @@ function AnalysisChart({ data, lines, params, modelName }) {
               {Number.isFinite(Number(params.t0)) && <ReferenceLine x={Number(params.t0)} stroke="var(--accent)" strokeDasharray="4 4" label={{ value:`t₀ ${params.t0}d`, fill:'var(--accent)', fontSize:9, position:'insideTopLeft' }} />}
               {Number.isFinite(Number(params.tPrime)) && params.tPrime !== params.t0 && <ReferenceLine x={Number(params.tPrime)} stroke="var(--text-muted)" strokeDasharray="2 3" label={{ value:`t′ ${params.tPrime}d`, fill:'var(--text-muted)', fontSize:9, position:'insideTopRight' }} />}
               {Number.isFinite(Number(params.targetAge)) && <ReferenceLine x={Number(params.targetAge)} stroke="var(--accent)" strokeWidth={1.5} />}
-              {visibleLines.map((line, index) => <Line key={line.dataKey} type="monotone" dataKey={line.dataKey} name={line.name} stroke={line.stroke} strokeWidth={line.dataKey.includes('total') ? 2.6 : 2} strokeDasharray={line.dataKey.includes('au') ? '5 4' : undefined} dot={false} activeDot={{ r:4, strokeWidth:2, fill:'var(--surface)' }} isAnimationActive={false} />)}
+              {visibleLines.map((line) => <Line key={line.dataKey} type="monotone" dataKey={line.dataKey} name={line.name} stroke={line.stroke} strokeWidth={line.dataKey.includes('total') ? 2.6 : 2} strokeDasharray={line.dataKey.includes('au') ? '5 4' : undefined} dot={false} activeDot={{ r:4, strokeWidth:2, fill:'var(--surface)' }} isAnimationActive={false} />)}
             </LineChart>
           </ResponsiveContainer>
         </div>

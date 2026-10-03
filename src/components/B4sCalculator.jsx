@@ -85,7 +85,7 @@ const config = {
   getSummary(results, targetAge) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
     return {
-      primary: current?.j_micro_mpa / 1000 ?? NaN,
+      primary: current ? current.j_micro_mpa / 1000 : NaN,
       extraResults: current ? [
         { label:'Instantaneous q₁', value:current.j_micro_mpa - current.c0 - current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Basic creep C₀', value:current.c0, unit:'×10⁻⁶/MPa', group:'compliance' },

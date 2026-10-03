@@ -364,7 +364,9 @@ function b4AdmixtureFactors({ retarder=0, flyAsh=0, superplasticizer=0, silicaFu
 }
 
 function b4Result({ common, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU, rT, q1, q2, q3, q4, q5, p5H }) {
-  const { t, t0, tPrime, h, time } = common;
+  // Raw t0 is consumed by b4TimeState when `time` is built; the expressions
+  // below read the equivalent time time.t0Tilde instead.
+  const { t, tPrime, h, time } = common;
   const humidity = normalizeB4Humidity(h);
   const kh = b4HumidityFactor(humidity);
   const shrinkageDevelopment = Math.tanh(Math.sqrt(time.dryingDuration / tauSH));

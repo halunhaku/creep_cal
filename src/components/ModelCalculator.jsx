@@ -45,6 +45,9 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
 
   useEffect(() => {
     let cancelled = false;
+    // Deliberate reset when the selected kernel changes: user-entered params are
+    // preserved across an engine switch, everything derived from a run is not.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on kernel change
     setResults([]);
     setFeedLogs(initialFeed(engine));
     setDirty(false);

@@ -1,0 +1,10 @@
+// Batch model registry: the input contract, result columns and shipped sample
+// files for each prediction model. Lives outside BatchCalculator.jsx so the
+// component file exports only components (React Fast Refresh) while tests can
+// still assert the registry against what actually ships in public/模型示例/.
+export const MODELS = [
+  { id: 'aci209', name: 'ACI 209R-92',  sampleFiles: ['aci209示例.csv', 'aci209示例.xlsx'], resultKeys: ['result_phi'],          labels: ['φ (Creep Coeff.)'],  req: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t', template: ['moist', 28, 70, 100, 100, 50, 8, 365] },
+  { id: 'mc2010', name: 'fib MC 2010',  sampleFiles: ['mc2010示例.csv', 'mc2010示例.xlsx'], resultKeys: ['result_phi', 'result_phi_bc', 'result_phi_dc', 'result_nonlinear_factor'], labels: ['φ (Total)', 'φbc (Basic)', 'φdc (Drying)', 'Nonlinear Factor'], req: 'fcm, RH, t0, Ac, u, T, Cs, sigma, t', template: [40, 70, 28, 90000, 1200, 20, '42.5 R', 12, 365] },
+  { id: 'b4', name: 'RILEM B4', sampleFiles: ['B4示例.csv', 'B4示例.xlsx'], resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 219.3, 0.6, 7, 'R', 'No Information', '1', 0, 0, 0, 0, 0, 0, 112] },
+  { id: 'b4s', name: 'RILEM B4s', sampleFiles: ['B4s示例.csv', 'B4s示例.xlsx'], resultKeys: ['result_J_GPa', 'result_epsilonSH', 'result_epsilonAU', 'result_epsilonTotal'], labels: ['J (1/GPa)', 'εsh (Drying)', 'εau (Autogenous)', 'εsh,total'], req: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t', template: [28, 28, 20, 20, 20, 50, 27.6, 19.05, 'R', 'No Information', '1', 112] },
+];

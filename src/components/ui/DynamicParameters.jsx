@@ -40,6 +40,9 @@ function NumericInput({ config, value, onChange }) {
   const cancelRef = useRef(false);
   const invalid = !Number.isFinite(Number(value)) || Number(value) < min || Number(value) > max;
 
+  // Re-sync the editable draft when the committed value changes from outside this
+  // field (blur commit, Escape, engine switch). The input must stay controlled.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- controlled draft sync
   useEffect(() => setDraft(String(value)), [value]);
 
   const commit = () => {
