@@ -35,7 +35,8 @@ export default function Layout({ activeMode, onModeChange, onOpenDocs, children 
           <span className="font-mono text-3xs uppercase tracking-[0.09em] text-faint">Float64 · Rust WASM · JS reference</span>
         </div>
       </footer>
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+      {/* Mounted only while open, so each opening starts from a clean query. */}
+      {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
     </div>
   );
 }

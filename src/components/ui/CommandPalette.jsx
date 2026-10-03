@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  getState,
   loadParameterSet,
   setEngine,
   setMode,
@@ -27,20 +26,19 @@ const MODELS = [
  * visible result beside it, and a command that silently computes would need to
  * report its outcome somewhere the user is not looking.
  */
-export default function CommandPalette({ open, onClose }) {
+export default function CommandPalette({ onClose }) {
   const mode = useAppSelector((state) => state.mode);
   const model = useAppSelector((state) => state.model);
   const engine = useAppSelector((state) => state.engine);
   const sets = useAppSelector((state) => state.parameterSets);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
-  const inputRef = useRef(null);
 
   const commands = useMemo(() => {
     const list = [
-      { id: 'go-single', group: 'Go to', label: 'Calculate workspace', hint: 'Single case, 10,000-day series', run: () => setMode('single') },
-      { id: 'go-batch', group: 'Go to', label: 'Batch workspace', hint: 'Dataset pipeline', run: () => setMode('batch') },
-      { id: 'go-docs', group: 'Go to', label: 'Reference library', hint: 'Model standards and equations', run: () => setMode('docs') },
+      { id: 'go-single', group: 'Go to', label: 'Calculate workspace', hint: mode === 'single' ? 'current' : 'single case, 10,000-day series', run: () => setMode('single') },
+      { id: 'go-batch', group: 'Go to', label: 'Batch workspace', hint: mode === 'batch' ? 'current' : 'dataset pipeline', run: () => setMode('batch') },
+      { id: 'go-docs', group: 'Go to', label: 'Reference library', hint: mode === 'docs' ? 'current' : 'model standards and equations', run: () => setMode('docs') },
       ...MODELS.map((item) => ({
         id: `model-${item.id}`,
         group: 'Model',
@@ -88,25 +86,13 @@ export default function CommandPalette({ open, onClose }) {
       });
     }
     return list;
-  }, [engine, model, sets]);
+  }, [engine, mode, model, sets]);
 
   const matches = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return commands;
     return commands.filter((command) => `${command.label} ${command.group} ${command.hint}`.toLowerCase().includes(needle));
   }, [commands, query]);
-
-  useEffect(() => {
-    if (!open) return undefined;
-    setQuery('');
-    setActive(0);
-    inputRef.current?.focus();
-    return undefined;
-  }, [open]);
-
-  useEffect(() => { setActive(0); }, [query]);
-
-  if (!open) return null;
 
   const runCommand = (command) => {
     if (!command) return;
@@ -137,9 +123,9 @@ export default function CommandPalette({ open, onClose }) {
             <path d="m16 16 4 4" strokeWidth="1.7" strokeLinecap="round" />
           </svg>
           <input
-            ref={inputRef}
+            autoFocus
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setActive(0); }}
             onKeyDown={onKeyDown}
             role="combobox"
             aria-expanded="true"
@@ -149,7 +135,7 @@ export default function CommandPalette({ open, onClose }) {
             placeholder="Go to a workspace, model, kernel, saved set…"
             className="h-12 min-w-0 flex-1 border-0 bg-transparent text-sm text-primary outline-none placeholder:text-faint focus:ring-0"
           />
-          <kbd className="rounded border border-line px-1.5 py-0.5 font-mono text-4xs text-faint">ESC</kbd>
+          <kbd className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs text-faint">ESC</kbd>
         </div>
 
         <ul id="command-list" role="listbox" aria-label="Commands" className="max-h-[52vh] overflow-y-auto py-1">
@@ -161,7 +147,7 @@ export default function CommandPalette({ open, onClose }) {
             lastGroup = command.group;
             return (
               <React.Fragment key={command.id}>
-                {header && <li className="px-4 pb-1 pt-2.5 font-mono text-4xs uppercase tracking-[.08em] text-faint" aria-hidden="true">{header}</li>}
+                {header && <li className="px-4 pb-1 pt-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint" aria-hidden="true">{header}</li>}
                 <li
                   id={`command-${command.id}`}
                   role="option"
@@ -171,7 +157,7 @@ export default function CommandPalette({ open, onClose }) {
                   className={`mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm ${index === active ? 'bg-green-soft text-primary' : 'text-muted'}`}
                 >
                   <span className="truncate">{command.label}</span>
-                  {command.hint && <span className="shrink-0 font-mono text-4xs text-faint">{command.hint}</span>}
+                  {command.hint && <span className="shrink-0 font-mono text-3xs text-faint">{command.hint}</span>}
                 </li>
               </React.Fragment>
             );
@@ -181,6 +167,3 @@ export default function CommandPalette({ open, onClose }) {
     </div>
   );
 }
-
-/** Everything the palette can act on, for tests that assert coverage. */
-export const paletteState = getState;
