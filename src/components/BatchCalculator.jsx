@@ -11,6 +11,7 @@ import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepMo
 import CustomSelect from './ui/CustomSelect';
 import { updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
+import { applyMapping, suggestMapping } from './columnMapping';
 
 
 const SAMPLE_DATA = {
@@ -89,6 +90,8 @@ export default function BatchCalculator() {
     xKey,
     yKey,
     chartType,
+    pendingRows,
+    mapping,
   } = batch;
   const [isProcessing, setIsProcessing] = useState(false);
   const [batchError, setBatchError] = useState('');
@@ -96,7 +99,22 @@ export default function BatchCalculator() {
 
   // Every failure path must clear the previous dataset, otherwise stale results
   // stay on screen under the new file name.
-  const clearDataset = () => updateBatch({ rows: [], headers: [] });
+  const clearDataset = () => updateBatch({ rows: [], headers: [], pendingRows: [], mapping: [] });
+
+  const updateMapping = (index, source) => {
+    updateBatch({ mapping: mapping.map((entry, position) => (position === index ? { ...entry, source } : entry)) });
+  };
+
+  const applyColumnMapping = () => {
+    const { rows: remapped, conflicts } = applyMapping(pendingRows, mapping);
+    if (conflicts.length) {
+      setBatchError(`Two fields cannot use the same column: ${conflicts.join('; ')}`);
+      return;
+    }
+    updateBatch({ pendingRows: [], mapping: [] });
+    setBatchError('');
+    processData(remapped, 't');
+  };
 
   const processData = (data, preferredXKey = 't', parseIssues = []) => {
     if (!data?.length) {
@@ -109,8 +127,14 @@ export default function BatchCalculator() {
     const missing = required.filter((key) => !inputHeaders.includes(key));
     updateBatch({ headers: inputHeaders });
     if (missing.length) {
-      updateBatch({ rows: [] });
-      updateBatch({ issues: [...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' }))] });
+      // Not a dead end any more: keep the parsed rows and ask which column holds
+      // each missing field. Nothing is computed until the mapping is applied.
+      updateBatch({
+        rows: [],
+        pendingRows: data,
+        mapping: suggestMapping(missing, inputHeaders),
+        issues: [...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' }))],
+      });
       setBatchError(`Missing required columns: ${missing.join(', ')}`);
       setIsProcessing(false);
       return;
@@ -305,6 +329,41 @@ export default function BatchCalculator() {
           </div>
         </div>
       </section>
+
+      {mapping.length > 0 && (
+        <section className="mt-5 workbench-panel overflow-hidden">
+          <div className="border-b border-line px-4 py-3.5">
+            <div className="eyebrow">Column mapping</div>
+            <p className="mt-1 text-xs text-muted">
+              This file does not name {mapping.length === 1 ? 'one required column' : `${mapping.length} required columns`} the way {model.name} does. Choose which column holds each one, then calculate.
+            </p>
+          </div>
+          <div className="grid gap-3 px-4 py-4 md:grid-cols-2">
+            {mapping.map((entry, index) => (
+              <label key={entry.field} className="flex items-center gap-3 text-xs">
+                <span className="w-32 shrink-0 font-mono text-3xs font-semibold uppercase tracking-[.06em] text-green">{entry.field}</span>
+                <CustomSelect
+                  name={`map-${entry.field}`}
+                  ariaLabel={`Source column for ${entry.field}`}
+                  value={entry.source}
+                  onChange={(event) => updateMapping(index, event.target.value)}
+                  options={[{ value: '', label: '— not in this file —' }, ...batchHeaders.map((header) => ({ value: header, label: header }))]}
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
+            <span className="text-xs text-muted">Rows are only calculated once every required column is mapped.</span>
+            <button
+              onClick={applyColumnMapping}
+              disabled={mapping.some((entry) => !entry.source)}
+              className="button-primary !min-h-9 !px-3 !text-1xs"
+            >
+              Apply mapping and calculate
+            </button>
+          </div>
+        </section>
+      )}
 
       {(batchError || issues.length>0 || batchResults.length>0) && <section className="mt-5 workbench-panel overflow-hidden">
         <div className="grid grid-cols-3 border-b border-line bg-surface-2" role="status">

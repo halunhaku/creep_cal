@@ -48,6 +48,33 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(summary).toHaveTextContent(/Rows detected\s*1\s*Valid\s*1\s*Issues\s*0/);
   });
 
+  // Regression: a file whose headers did not match the contract exactly was a
+  // dead end — "Missing required columns" and nothing to do about it. The parsed
+  // rows are now kept and the user answers which column holds each field.
+  test('a file with unfamiliar headers is a question, not a dead end', async () => {
+    const { container } = render(<BatchCalculator />);
+    // ACI's contract wants H, t0, VS, slump, fineAggregate, airContent, t, curingType.
+    // Select it explicitly: the batch defaults to the B4 contract, whose fields are
+    // different (h rather than H), and the label match below is case-sensitive.
+    selectModel(container, 'aci209');
+    upload(container, `curingType,age,Humidity,volume_surface,slump,sand,air,t\n1,28,70,100,100,50,8,365\n`, 'own-names.csv');
+
+    await waitFor(() => expect(screen.getByText('Column mapping')).toBeInTheDocument());
+    // The suggestion is pre-filled from the aliases, so the common case is one click.
+    expect(screen.getByLabelText('Source column for H')).toHaveValue('Humidity');
+    expect(screen.getByLabelText('Source column for t0')).toHaveValue('');
+    expect(screen.getByRole('button', { name: /apply mapping and calculate/i })).toBeDisabled();
+
+    // Answer the one the aliases could not, then calculate.
+    fireEvent.change(screen.getByLabelText('Source column for t0'), { target: { value: 'age' } });
+    expect(screen.getByLabelText('Source column for t0')).toHaveValue('age');
+    fireEvent.click(screen.getByRole('button', { name: /apply mapping and calculate/i }));
+
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(screen.getByText(/1 rows · 1 output field/)).toBeInTheDocument();
+    expect(screen.queryByText('Column mapping')).not.toBeInTheDocument();
+  });
+
   // Regression: the batch computed with the reference kernels while the header
   // badge said the WASM kernel was active, and nothing in this workspace said
   // which kernel produced the numbers.

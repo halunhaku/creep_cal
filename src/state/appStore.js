@@ -60,6 +60,10 @@ const initialState = {
     xKey: '',
     yKey: 'result_J_GPa',
     chartType: 'scatter',
+    /** parsed rows waiting for the user to map missing columns */
+    pendingRows: [],
+    /** [{ field, source }] for the columns the file does not name as the model does */
+    mapping: [],
   },
 };
 
