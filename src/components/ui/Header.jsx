@@ -50,7 +50,9 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
               text shrank to a sliver and then to "CRE…" between those widths. */}
           <div className="hidden min-w-0 leading-none min-[600px]:block">
             <div className="truncate text-[14px] font-bold tracking-[0.09em] text-primary">CREEP LAB</div>
-            <div className="mt-1 hidden truncate font-mono text-[9px] uppercase tracking-[0.11em] text-faint min-[900px]:block">Concrete time-dependent analysis</div>
+            <div className="mt-1 hidden truncate font-mono text-[9px] uppercase tracking-[0.11em] text-faint min-[900px]:block">
+              Concrete time-dependent analysis
+            </div>
           </div>
         </div>
 
@@ -79,7 +81,9 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
             aria-live="polite"
           >
             <span className="status-dot" aria-hidden="true" style={kernelBadge.warn ? { background: 'var(--warning)' } : undefined} />
-            <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ${kernelBadge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>{kernelBadge.label}</span>
+            <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ${kernelBadge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
+              {kernelBadge.label}
+            </span>
           </div>
           <button
             onClick={() => window.toggleTheme?.()}

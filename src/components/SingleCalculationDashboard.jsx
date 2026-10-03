@@ -50,11 +50,17 @@ export default function SingleCalculationDashboard() {
               const selected = model.id === algorithm;
               return (
                 <button
-                  key={model.id} ref={selected ? activeModelRef : null} onClick={() => setAlgorithm(model.id)} aria-pressed={selected}
+                  key={model.id}
+                  ref={selected ? activeModelRef : null}
+                  onClick={() => setAlgorithm(model.id)}
+                  aria-pressed={selected}
                   className={`relative min-w-[190px] rounded-md px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full ${selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
                 >
                   {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green" aria-hidden="true" />}
-                  <div className="flex items-baseline gap-2"><span className="font-mono text-[9px] text-faint">{model.index}</span><span className="text-[13px] font-semibold">{model.name}</span></div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[9px] text-faint">{model.index}</span>
+                    <span className="text-[13px] font-semibold">{model.name}</span>
+                  </div>
                   <div className="mt-1.5 pl-[22px] font-mono text-[8px] uppercase tracking-[0.07em] text-faint">{model.type}</div>
                 </button>
               );
@@ -69,7 +75,14 @@ export default function SingleCalculationDashboard() {
             <div className="mb-2.5 flex items-center justify-between"><span className="eyebrow">Kernel</span><span className="status-dot" /></div>
             <div className="grid grid-cols-2 rounded-md border border-line bg-surface-2 p-0.5">
               {[['rust','Rust WASM'],['js','JS Ref.']].map(([id,label]) => (
-                <button key={id} onClick={() => setEngine(id)} aria-pressed={engine === id} className={`rounded-[4px] px-2 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.05em] ${engine === id ? 'bg-surface text-primary shadow-sm' : 'text-faint hover:text-primary'}`}>{label}</button>
+                <button
+                  key={id}
+                  onClick={() => setEngine(id)}
+                  aria-pressed={engine === id}
+                  className={`rounded-[4px] px-2 py-2 font-mono text-[9px] font-semibold uppercase tracking-[0.05em] ${engine === id ? 'bg-surface text-primary shadow-sm' : 'text-faint hover:text-primary'}`}
+                >
+                  {label}
+                </button>
               ))}
             </div>
           </div>
