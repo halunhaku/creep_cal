@@ -197,9 +197,9 @@ export default function BatchCalculator() {
             key={label}
             className={`border-r border-line px-4 py-3 last:border-r-0 ${stage === index + 1 ? 'bg-green-soft' : ''}`}
           >
-            <div className={`font-mono text-[9px] font-semibold ${stage >= index + 1 ? 'text-green' : 'text-faint'}`}>{number}</div>
+            <div className={`font-mono text-3xs font-semibold ${stage >= index + 1 ? 'text-green' : 'text-faint'}`}>{number}</div>
             <div className="mt-1 text-xs font-semibold text-primary">{label}</div>
-            <div className="text-[10px] text-muted">{zh}</div>
+            <div className="text-2xs text-muted">{zh}</div>
           </div>
         ))}
       </div>
@@ -221,7 +221,7 @@ export default function BatchCalculator() {
               <div className="eyebrow">Required schema</div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {model.req.split(', ').map((column) => (
-                  <code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-[9px] text-muted">{column}</code>
+                  <code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
                 ))}
               </div>
             </div>
@@ -234,7 +234,7 @@ export default function BatchCalculator() {
                     key={file}
                     href={encodeURI(`/模型示例/${file}`)}
                     download
-                    className="button-secondary !min-h-8 !px-2.5 !text-[9px]"
+                    className="button-secondary !min-h-8 !px-2.5 !text-3xs"
                   >
                     {file.endsWith('.csv') ? 'CSV' : 'XLSX'}
                   </a>
@@ -253,7 +253,7 @@ export default function BatchCalculator() {
               </svg>
               <span className="mt-3 text-sm font-semibold text-primary">Drop CSV or XLSX here</span>
               <span className="mt-1 text-xs text-muted">拖入文件，或点击选择本地数据表</span>
-              <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-[9px] uppercase tracking-[.06em] text-muted">
+              <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs uppercase tracking-[.06em] text-muted">
                 {isProcessing ? 'Processing…' : 'Choose file'}
               </span>
               <input
@@ -302,7 +302,7 @@ export default function BatchCalculator() {
               <thead className="sticky top-0 bg-surface">
                 <tr>
                   {['Row', 'Field', 'Value', 'Issue'].map((head) => (
-                    <th key={head} className="border-b border-line px-4 py-2 font-mono text-[9px] uppercase tracking-[.08em] text-faint">{head}</th>
+                    <th key={head} className="border-b border-line px-4 py-2 font-mono text-3xs uppercase tracking-[.08em] text-faint">{head}</th>
                   ))}
                 </tr>
               </thead>
@@ -337,24 +337,24 @@ export default function BatchCalculator() {
             <table className="min-w-max w-full border-collapse text-left">
               <thead className="sticky top-0 z-10 bg-surface-2">
                 <tr>
-                  <th className="sticky left-0 z-20 border-b border-r border-line bg-surface-2 px-3 py-2.5 font-mono text-[9px] text-faint">#</th>
+                  <th className="sticky left-0 z-20 border-b border-r border-line bg-surface-2 px-3 py-2.5 font-mono text-3xs text-faint">#</th>
                   {batchHeaders.map((header) => (
-                    <th key={header} className="border-b border-line px-3 py-2.5 font-mono text-[9px] uppercase tracking-[.05em] text-faint">{header}</th>
+                    <th key={header} className="border-b border-line px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-faint">{header}</th>
                   ))}
                   {model.resultKeys.map((key, index) => (
-                    <th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 font-mono text-[9px] uppercase tracking-[.05em] text-green">{model.labels[index]}</th>
+                    <th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-green">{model.labels[index]}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {batchResults.slice(0, 100).map((row, index) => (
                   <tr key={index} className={row.__status === 'invalid' ? 'bg-[var(--error-soft)]' : ''}>
-                    <td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-[10px] text-faint">{index + 1}</td>
+                    <td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-2xs text-faint">{index + 1}</td>
                     {batchHeaders.map((header) => (
-                      <td key={header} className="px-3 py-2 font-mono text-[11px] text-muted">{row[header]}</td>
+                      <td key={header} className="px-3 py-2 font-mono text-1xs text-muted">{row[header]}</td>
                     ))}
                     {model.resultKeys.map((key) => (
-                      <td key={key} className="bg-green-soft/30 px-3 py-2 font-mono text-[11px] font-medium text-primary">{row[key] ?? '—'}</td>
+                      <td key={key} className="bg-green-soft/30 px-3 py-2 font-mono text-1xs font-medium text-primary">{row[key] ?? '—'}</td>
                     ))}
                   </tr>
                 ))}
@@ -374,7 +374,7 @@ export default function BatchCalculator() {
                 <button
                   key={type}
                   onClick={() => setChartType(type)}
-                  className={`rounded px-3 py-1.5 font-mono text-[9px] uppercase ${chartType === type ? 'bg-surface text-primary' : 'text-faint'}`}
+                  className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-primary' : 'text-faint'}`}
                 >
                   {type}
                 </button>

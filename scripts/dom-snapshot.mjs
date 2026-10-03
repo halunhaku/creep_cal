@@ -25,7 +25,11 @@ const CDP_PORT = Number(process.env.CDP_PORT ?? 9228);
 const BASE = `http://127.0.0.1:${PORT}/`;
 const DEFAULT_BASELINE = '/tmp/creep-dom-baseline.json';
 
-const mode = process.argv.includes('--save') ? 'save' : process.argv.includes('--check') ? 'check' : 'print';
+const mode = process.argv.includes('--save') ? 'save'
+  : process.argv.includes('--check-styles') ? 'check-styles'
+    : process.argv.includes('--check') ? 'check'
+      : 'print';
+const STYLE_ONLY = mode === 'check-styles';
 const baselinePath = process.env.BASELINE ?? DEFAULT_BASELINE;
 
 const CHROME_CANDIDATES = [
@@ -54,6 +58,17 @@ const NORMALISE = `
 const labelled = (label) => `[...document.querySelectorAll('.eyebrow')].some((el) => el.textContent.trim() === ${JSON.stringify(label)})`;
 // Exact text on a leaf element: "Computed" is a status badge, not an eyebrow.
 const leafText = (text) => `[...document.querySelectorAll('*')].some((el) => el.children.length === 0 && el.textContent.trim() === ${JSON.stringify(text)})`;
+
+// Every element's computed typography and geometry, in document order. Insensitive
+// to class *names*, which is what a tokenisation pass legitimately changes.
+const STYLE_FINGERPRINT = `
+  const fingerprint = [...document.querySelectorAll('body *')].map((el) => {
+    const s = getComputedStyle(el);
+    return [el.tagName, s.fontSize, s.fontFamily, s.fontWeight, s.lineHeight,
+            s.letterSpacing, s.textTransform, s.color, s.backgroundColor,
+            s.borderRadius, s.borderWidth, s.padding, s.gap].join('|');
+  }).join('\\n')
+`;
 
 const SCENES = [
   // "Last compute" only appears once a run has finished. The "Computed" badge is
@@ -136,9 +151,17 @@ async function main() {
       socket.send(JSON.stringify({ id, method, params }));
       return new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
     };
-    const evaluate = async (expression) => (await send('Runtime.evaluate', {
-      expression, returnByValue: true, awaitPromise: true,
-    })).result.value;
+    const evaluate = async (expression) => {
+      const { result, exceptionDetails } = await send('Runtime.evaluate', {
+        expression, returnByValue: true, awaitPromise: true,
+      });
+      // Silently returning undefined here hid a broken in-page expression for a
+      // whole run; a failed probe must be loud.
+      if (exceptionDetails) {
+        throw new Error(`in-page evaluation failed: ${exceptionDetails.exception?.description ?? exceptionDetails.text}`);
+      }
+      return result.value;
+    };
 
     await send('Page.enable');
     await send('Runtime.enable');
@@ -197,22 +220,33 @@ async function main() {
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
       })()`);
+      snapshot[`${scene.key}::styles`] = await evaluate(`(async () => { ${STYLE_FINGERPRINT}
+        const bytes = new TextEncoder().encode(fingerprint);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
+        return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+      })()`);
     }
 
     if (mode === 'save') {
       writeFileSync(baselinePath, `${JSON.stringify(snapshot, null, 2)}\n`);
       console.log(`baseline written to ${baselinePath}`);
       console.log(JSON.stringify(snapshot, null, 2));
-    } else if (mode === 'check') {
+    } else if (mode === 'check' || STYLE_ONLY) {
       const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
-      const changed = Object.keys(snapshot).filter((key) => snapshot[key] !== baseline[key]);
-      const removed = Object.keys(baseline).filter((key) => !(key in snapshot));
+      const keys = Object.keys(snapshot).filter((key) => !STYLE_ONLY || key.endsWith('::styles'));
+      const changed = keys.filter((key) => snapshot[key] !== baseline[key]);
+      const removed = keys.filter((key) => !(key in baseline));
+      const domOnly = Object.keys(snapshot)
+        .filter((key) => !key.endsWith('::styles') && snapshot[key] !== baseline[key]);
+      if (STYLE_ONLY && domOnly.length) {
+        console.log(`(html changed in ${domOnly.length} scene(s), which a class rename is expected to do)`);
+      }
       if (changed.length || removed.length) {
         for (const key of changed) console.error(`${key}: ${baseline[key]} -> ${snapshot[key]}`);
         for (const key of removed) console.error(`${key}: missing from snapshot`);
-        throw new Error(`${changed.length + removed.length} scene(s) changed — this refactor was supposed to be invisible`);
+        throw new Error(`${changed.length + removed.length} fingerprint(s) changed — this pass was supposed to be invisible`);
       }
-      console.log(`all ${Object.keys(snapshot).length} scenes match ${baselinePath}`);
+      console.log(`all ${keys.length} ${STYLE_ONLY ? 'computed-style' : ''} fingerprints match ${baselinePath}`);
     } else {
       console.log(JSON.stringify(snapshot, null, 2));
     }

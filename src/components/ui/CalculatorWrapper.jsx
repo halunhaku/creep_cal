@@ -51,7 +51,7 @@ function Metric({ eyebrow, value, unit, accent = false }) {
       <div className="eyebrow">{eyebrow}</div>
       <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-[27px] font-semibold tracking-[-0.04em] md:text-[32px] ${accent ? 'text-green' : 'text-primary'}`}>
         <span>{formatValue(value)}</span>
-        {unit && <span className="text-[11px] font-medium tracking-normal text-muted">{unit}</span>}
+        {unit && <span className="text-1xs font-medium tracking-normal text-muted">{unit}</span>}
       </div>
     </div>
   );
@@ -74,7 +74,7 @@ function Decomposition({ items }) {
               <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-primary' : 'text-muted'}`}>
                 <span>{item.label}</span>
                 <span className="font-mono tabular-nums text-primary">
-                  {formatValue(item.value, 3)} <small className="text-[8px] font-normal text-faint">{item.unit}</small>
+                  {formatValue(item.value, 3)} <small className="text-4xs font-normal text-faint">{item.unit}</small>
                 </span>
               </div>
             ))}
@@ -89,10 +89,10 @@ function ScientificTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
-      <div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-faint">t = {label} days</div>
+      <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[0.08em] text-faint">t = {label} days</div>
       <div className="space-y-1.5">
         {payload.map((item) => (
-          <div key={item.dataKey} className="flex items-center justify-between gap-5 text-[11px]">
+          <div key={item.dataKey} className="flex items-center justify-between gap-5 text-1xs">
             <span className="flex items-center gap-2 text-muted">
               <i className="h-0.5 w-3" style={{ background: item.color }} />
               {item.name}
@@ -134,14 +134,14 @@ function AnalysisChart({ data, lines, params, modelName }) {
             <button
               onClick={() => setLogX((value) => !value)}
               aria-pressed={logX}
-              className={`button-secondary !min-h-8 !px-2.5 !text-[9px] ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
             >
               {logX ? 'Log X' : 'Linear X'}
             </button>
           )}
           <button
             onClick={() => exportSeries(modelName, params, data, lines)}
-            className="button-secondary !min-h-8 !px-2.5 !text-[9px]"
+            className="button-secondary !min-h-8 !px-2.5 !text-3xs"
           >
             Export CSV
           </button>
@@ -150,16 +150,16 @@ function AnalysisChart({ data, lines, params, modelName }) {
 
       {view === 'data' ? (
         <div>
-          <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-[9px] text-faint">
+          <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
             Showing {dataRows.length} of {data.length} computed points · every 250 days, plus the target age. Export CSV contains the full series.
           </div>
           <div className="max-h-[430px] overflow-auto">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-surface-2">
               <tr>
-                <th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Time · days</th>
+                <th className="px-4 py-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint">Time · days</th>
                 {lines.map((line) => (
-                  <th key={line.dataKey} className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">{line.name}</th>
+                  <th key={line.dataKey} className="px-4 py-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint">{line.name}</th>
                 ))}
               </tr>
             </thead>
@@ -244,11 +244,11 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="eyebrow">Kernel comparison · 内核对比</div>
-          <p className="mt-1 text-[11px] text-muted">
+          <p className="mt-1 text-1xs text-muted">
             同一组参数下，两条内核各计算一次 {MAX_SERIES_DAYS.toLocaleString('en-US')} 天序列并计时（含预热）。
           </p>
         </div>
-        <button onClick={onCompare} disabled={comparing || !compareReady} className="button-secondary !min-h-8 !px-2.5 !text-[9px]">
+        <button onClick={onCompare} disabled={comparing || !compareReady} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
           {comparing ? 'Measuring…' : 'Compare kernels'}
         </button>
       </div>
@@ -257,15 +257,15 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
         <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
           <div>
             <div className="eyebrow">JS reference</div>
-            <div className="mt-1 font-mono text-[15px] text-primary">{formatValue(comparison.js, 2)} <small className="text-[9px] font-normal text-faint">ms</small></div>
+            <div className="mt-1 font-mono text-body text-primary">{formatValue(comparison.js, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
           </div>
           <div>
             <div className="eyebrow">Rust WASM</div>
-            <div className="mt-1 font-mono text-[15px] text-primary">{formatValue(comparison.rust, 2)} <small className="text-[9px] font-normal text-faint">ms</small></div>
+            <div className="mt-1 font-mono text-body text-primary">{formatValue(comparison.rust, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
           </div>
           <div>
             <div className="eyebrow">Rust speed-up</div>
-            <div className="mt-1 font-mono text-[15px] text-green">{speedup && Number.isFinite(speedup) ? `${formatValue(speedup, 2)}×` : '—'}</div>
+            <div className="mt-1 font-mono text-body text-green">{speedup && Number.isFinite(speedup) ? `${formatValue(speedup, 2)}×` : '—'}</div>
           </div>
         </div>
       )}
@@ -280,10 +280,10 @@ function NoticeBanner({ notices, onDismiss }) {
       {notices.map((notice) => (
         <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="font-mono text-[10px] font-semibold uppercase tracking-[.08em] text-[var(--warning)]">{notice.title}</div>
-            <p className="mt-1.5 max-w-[80ch] text-[13px] leading-5 text-[var(--warning)]">{notice.message}</p>
+            <div className="font-mono text-2xs font-semibold uppercase tracking-[.08em] text-[var(--warning)]">{notice.title}</div>
+            <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]">{notice.message}</p>
           </div>
-          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-[9px]">Dismiss</button>}
+          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-3xs">Dismiss</button>}
         </div>
       ))}
     </div>
@@ -337,12 +337,12 @@ export default function CalculatorWrapper({
             <span className="eyebrow">{engine === 'rust' ? 'Rust WebAssembly' : 'JavaScript reference'}</span>
           </div>
           <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-primary">{modelName}</h2>
-          <p className="mt-1.5 max-w-[72ch] text-[13px] leading-relaxed text-muted">{modelDescription}</p>
+          <p className="mt-1.5 max-w-[72ch] text-body-sm leading-relaxed text-muted">{modelDescription}</p>
         </div>
         {duration != null && (
           <div className="rounded-md border border-line bg-surface px-3 py-2 text-right">
             <div className="eyebrow">Last compute</div>
-            <div className="mt-1 font-mono text-[11px] text-primary">{duration.toFixed(2)} ms</div>
+            <div className="mt-1 font-mono text-1xs text-primary">{duration.toFixed(2)} ms</div>
           </div>
         )}
       </header>
@@ -370,7 +370,7 @@ export default function CalculatorWrapper({
                 <div className="mt-1 font-mono text-sm font-semibold text-primary">{formatValue(params.targetAge, 0)} days</div>
               </div>
               <div
-                className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[.07em] ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
+                className={`rounded-md px-2.5 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
               >
                 {dirty ? 'Results out of date' : 'Computed'}
               </div>
@@ -397,11 +397,11 @@ export default function CalculatorWrapper({
           <details className="workbench-panel overflow-hidden">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
               <span className="eyebrow">Calculation log · 计算日志</span>
-              <span className="font-mono text-[9px] text-faint">{feedLogs.length} events</span>
+              <span className="font-mono text-3xs text-faint">{feedLogs.length} events</span>
             </summary>
             <div className="border-t border-line px-4 py-3">
               {feedLogs.map((log, index) => (
-                <div key={index} className="grid grid-cols-[72px_1fr] gap-3 py-1 font-mono text-[10px]">
+                <div key={index} className="grid grid-cols-[72px_1fr] gap-3 py-1 font-mono text-2xs">
                   <span className="text-faint">{log.time}</span>
                   <span className={log.type === 'error' ? 'text-error' : log.type === 'success' ? 'text-[var(--success)]' : 'text-muted'}>{log.message}</span>
                 </div>

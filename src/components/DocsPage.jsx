@@ -383,10 +383,10 @@ export default function DocsPage() {
                   <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green" />
                 )}
                 <div className="flex gap-2">
-                  <span className="font-mono text-[9px] text-faint">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="font-mono text-3xs text-faint">{String(index + 1).padStart(2, '0')}</span>
                   <span className="text-[12px] font-semibold">{item.name}</span>
                 </div>
-                <div className="mt-1 pl-5 font-mono text-[8px] uppercase tracking-[.06em] text-faint">{item.category}</div>
+                <div className="mt-1 pl-5 font-mono text-4xs uppercase tracking-[.06em] text-faint">{item.category}</div>
               </button>
             ))}
           </nav>
@@ -403,13 +403,13 @@ export default function DocsPage() {
               <div className="flex shrink-0 flex-col items-end gap-2">
                 <div className="flex gap-1.5">
                   {model.engine.map((engine) => (
-                    <span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>
+                    <span key={engine} className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-4xs font-semibold uppercase tracking-[.07em] text-muted">{engine}</span>
                   ))}
                 </div>
                 <a
                   href={encodeURI(`/模型说明/${model.id}.md`)}
                   download
-                  className="button-secondary !min-h-8 !px-2.5 !text-[9px]"
+                  className="button-secondary !min-h-8 !px-2.5 !text-3xs"
                 >
                   Markdown 说明
                 </a>
@@ -433,21 +433,21 @@ export default function DocsPage() {
                 <div className="eyebrow">Inputs & units</div>
                 <h3 className="mt-1 text-lg font-semibold text-primary">Parameter contract</h3>
               </div>
-              <span className="font-mono text-[9px] text-faint">{model.params.length} parameters</span>
+              <span className="font-mono text-3xs text-faint">{model.params.length} parameters</span>
             </div>
             <div className="overflow-hidden rounded-lg border border-line">
               <table className="w-full text-left">
                 <thead className="bg-surface-2">
                   <tr>
-                    <th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Parameter</th>
-                    <th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Definition</th>
+                    <th className="px-4 py-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint">Parameter</th>
+                    <th className="px-4 py-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint">Definition</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {model.params.map((param) => (
                     <tr key={param.name}>
-                      <td className="w-32 px-4 py-3 align-top font-mono text-[11px] font-semibold text-green">{param.name}</td>
-                      <td className="px-4 py-3 text-[13px] leading-5 text-muted">{param.description}</td>
+                      <td className="w-32 px-4 py-3 align-top font-mono text-1xs font-semibold text-green">{param.name}</td>
+                      <td className="px-4 py-3 text-body-sm leading-5 text-muted">{param.description}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -461,10 +461,10 @@ export default function DocsPage() {
               <h3 className="mt-1 text-lg font-semibold text-primary">Calibrated use and limitations</h3>
               <div className="mt-5 grid gap-5 md:grid-cols-2">
                 <div>
-                  <div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--success)]">Recommended domain</div>
+                  <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[.08em] text-[var(--success)]">Recommended domain</div>
                   <ul className="space-y-2">
                     {model.applicability.map((item) => (
-                      <li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted">
+                      <li key={item} className="flex gap-2.5 text-body-sm leading-5 text-muted">
                         <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--success)]" />
                         {item}
                       </li>
@@ -473,10 +473,10 @@ export default function DocsPage() {
                 </div>
                 {model.limitations && (
                   <div>
-                    <div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[.08em] text-[var(--warning)]">Limitations</div>
+                    <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[.08em] text-[var(--warning)]">Limitations</div>
                     <ul className="space-y-2">
                       {model.limitations.map((item) => (
-                        <li key={item} className="flex gap-2.5 text-[13px] leading-5 text-muted">
+                        <li key={item} className="flex gap-2.5 text-body-sm leading-5 text-muted">
                           <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--warning)]" />
                           {item}
                         </li>
@@ -494,10 +494,10 @@ export default function DocsPage() {
               <div className="mt-4 space-y-3">
                 {model.officialDocuments.map((doc) => (
                   <div key={doc.designation} className="rounded-lg border border-line bg-surface-2 p-4">
-                    <div className="font-mono text-[9px] font-semibold uppercase tracking-[.07em] text-green">{doc.designation}</div>
+                    <div className="font-mono text-3xs font-semibold uppercase tracking-[.07em] text-green">{doc.designation}</div>
                     <h4 className="mt-1.5 text-sm font-semibold text-primary">{doc.title}</h4>
                     <p className="mt-1 text-xs text-muted">{doc.status}</p>
-                    <p className="mt-2 text-[13px] leading-5 text-muted">{doc.coverage}</p>
+                    <p className="mt-2 text-body-sm leading-5 text-muted">{doc.coverage}</p>
                   </div>
                 ))}
               </div>
@@ -511,13 +511,13 @@ export default function DocsPage() {
                   <div className="eyebrow">Core equations</div>
                   <h3 className="mt-1 text-lg font-semibold text-primary">Implemented formulation</h3>
                 </div>
-                <span className="font-mono text-[9px] text-faint">{model.formulas.length} equations</span>
+                <span className="font-mono text-3xs text-faint">{model.formulas.length} equations</span>
               </div>
               <div className="space-y-3">
                 {model.formulas.map((formula, index) => (
                   <div key={formula.label} className="grid gap-3 rounded-lg border border-line bg-surface-2 p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
                     <div>
-                      <span className="font-mono text-[9px] text-faint">EQ {String(index + 1).padStart(2, '0')}</span>
+                      <span className="font-mono text-3xs text-faint">EQ {String(index + 1).padStart(2, '0')}</span>
                       <div className="mt-1 text-xs font-semibold text-primary">{formula.label}</div>
                     </div>
                     <FormulaExpression expr={formula.expr} />
@@ -532,8 +532,8 @@ export default function DocsPage() {
               <div className="eyebrow">Formula source mapping</div>
               <div className="mt-4 divide-y divide-line rounded-lg border border-line">
                 {model.sourceMapping.map((item, index) => (
-                  <div key={item} className="grid grid-cols-[32px_1fr] gap-3 px-4 py-3 text-[13px] leading-5 text-muted">
-                    <span className="font-mono text-[9px] text-faint">{String(index + 1).padStart(2, '0')}</span>
+                  <div key={item} className="grid grid-cols-[32px_1fr] gap-3 px-4 py-3 text-body-sm leading-5 text-muted">
+                    <span className="font-mono text-3xs text-faint">{String(index + 1).padStart(2, '0')}</span>
                     <span>{item}</span>
                   </div>
                 ))}
@@ -555,7 +555,7 @@ export default function DocsPage() {
                   >
                     <div className="text-sm font-semibold text-primary group-hover:text-green">{source.label}</div>
                     <p className="mt-1 text-xs leading-5 text-muted">{source.note}</p>
-                    <span className="mt-3 block truncate font-mono text-[8px] text-faint">{source.url}</span>
+                    <span className="mt-3 block truncate font-mono text-4xs text-faint">{source.url}</span>
                   </a>
                 ))}
               </div>

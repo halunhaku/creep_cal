@@ -43,14 +43,14 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] button-primary">Skip to content</a>
       <div className="mx-auto flex h-16 max-w-content items-center gap-5 px-4 md:px-7 lg:px-9">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[7px] border border-line-strong bg-surface font-mono text-[10px] font-bold text-green">CL</div>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-mark border border-line-strong bg-surface font-mono text-2xs font-bold text-green">CL</div>
           {/* Two gates instead of one shrinking block: below 600px the mark stands
               alone, from 600px the wordmark fits (it needs 83px), and the tagline
               only appears once it fits too (~220px, from 900px). Previously the
               text shrank to a sliver and then to "CRE…" between those widths. */}
           <div className="hidden min-w-0 leading-none min-[600px]:block">
             <div className="truncate text-[14px] font-bold tracking-[0.09em] text-primary">CREEP LAB</div>
-            <div className="mt-1 hidden truncate font-mono text-[9px] uppercase tracking-[0.11em] text-faint min-[900px]:block">
+            <div className="mt-1 hidden truncate font-mono text-3xs uppercase tracking-[0.11em] text-faint min-[900px]:block">
               Concrete time-dependent analysis
             </div>
           </div>
@@ -81,7 +81,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
             aria-live="polite"
           >
             <span className="status-dot" aria-hidden="true" style={kernelBadge.warn ? { background: 'var(--warning)' } : undefined} />
-            <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.1em] ${kernelBadge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
+            <span className={`font-mono text-3xs font-semibold uppercase tracking-[0.1em] ${kernelBadge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
               {kernelBadge.label}
             </span>
           </div>

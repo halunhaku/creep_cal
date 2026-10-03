@@ -62,15 +62,15 @@ function NumericInput({ config, value, onChange }) {
             if (event.key === 'Enter') event.currentTarget.blur();
             if (event.key === 'Escape') { cancelRef.current = true; setDraft(String(value)); event.currentTarget.blur(); }
           }}
-          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-[13px] font-medium text-primary outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-body-sm font-medium text-primary outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
         />
         {unit && (
-          <span className="flex min-w-[54px] items-center justify-center border-l border-line bg-surface-2 px-2 font-mono text-[9px] font-semibold uppercase tracking-[0.05em] text-muted">
+          <span className="flex min-w-[54px] items-center justify-center border-l border-line bg-surface-2 px-2 font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-muted">
             {unit === 'Days' ? 'days' : unit}
           </span>
         )}
       </div>
-      <div className={`mt-1.5 font-mono text-[9px] ${invalid ? 'text-error' : 'text-faint'}`}>
+      <div className={`mt-1.5 font-mono text-3xs ${invalid ? 'text-error' : 'text-faint'}`}>
         {invalid ? `Outside calibrated range · 超出推荐范围 ${min}–${max}` : `Recommended ${min}–${max}${unit ? ` ${unit}` : ''}`}
       </div>
     </>
@@ -82,10 +82,10 @@ function ParameterField({ config, value, onChange }) {
     <div className="py-3 first:pt-1">
       <div className="mb-2 flex items-start justify-between gap-3">
         <label htmlFor={config.options ? `param-select-${config.name}` : `param-input-${config.name}`} className="min-w-0">
-          <span className="block text-[13px] font-semibold leading-tight text-primary">{config.label}</span>
-          <span className="mt-1 block text-[11px] leading-tight text-muted">{ZH[config.name] || '模型输入参数'}</span>
+          <span className="block text-body-sm font-semibold leading-tight text-primary">{config.label}</span>
+          <span className="mt-1 block text-1xs leading-tight text-muted">{ZH[config.name] || '模型输入参数'}</span>
         </label>
-        {SYMBOLS[config.name] && <span className="shrink-0 font-mono text-[10px] italic text-faint">{SYMBOLS[config.name]}</span>}
+        {SYMBOLS[config.name] && <span className="shrink-0 font-mono text-2xs italic text-faint">{SYMBOLS[config.name]}</span>}
       </div>
       {config.options
         ? <CustomSelect id={`param-select-${config.name}`} name={config.name} value={value} onChange={onChange} options={config.options} />
@@ -116,7 +116,7 @@ export default function DynamicParameters({ paramsConfig, params, onParamChange,
             <div className="eyebrow">Input parameters</div>
             <div className="mt-1 text-xs text-muted">参数将在计算前进行范围校验</div>
           </div>
-          <span className="font-mono text-[10px] text-faint">{paramsConfig.length} inputs</span>
+          <span className="font-mono text-2xs text-faint">{paramsConfig.length} inputs</span>
         </div>
       </div>
       <div className="px-4">
@@ -138,9 +138,9 @@ export default function DynamicParameters({ paramsConfig, params, onParamChange,
               <summary className="flex cursor-pointer list-none items-center justify-between py-3.5">
                 <span>
                   <span className="eyebrow">{String(index + 1).padStart(2, '0')} · {group.label}</span>
-                  <span className="ml-2 text-[11px] text-muted">{group.zh}</span>
+                  <span className="ml-2 text-1xs text-muted">{group.zh}</span>
                 </span>
-                <span className="font-mono text-[9px] text-faint">{activeAdmixtures} active</span>
+                <span className="font-mono text-3xs text-faint">{activeAdmixtures} active</span>
               </summary>
               {content}
             </details>
@@ -149,7 +149,7 @@ export default function DynamicParameters({ paramsConfig, params, onParamChange,
             <section key={group.id} className={index ? 'border-t border-line py-4' : 'py-4'}>
               <div className="mb-3">
                 <span className="eyebrow">{String(index + 1).padStart(2, '0')} · {group.label}</span>
-                <span className="ml-2 text-[11px] text-muted">{group.zh}</span>
+                <span className="ml-2 text-1xs text-muted">{group.zh}</span>
               </div>
               {content}
             </section>
@@ -158,14 +158,14 @@ export default function DynamicParameters({ paramsConfig, params, onParamChange,
       </div>
       <div className="sticky bottom-0 border-t border-line bg-surface p-3.5">
         {dirty && (
-          <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-[11px] text-[var(--warning)]">
+          <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             Inputs changed · 当前结果待更新
           </div>
         )}
         <button onClick={onCalculate} disabled={!calculateReady || invalidCount > 0} className="button-primary w-full">
           {invalidCount > 0 ? `${invalidCount} inputs require attention` : buttonText}
-          <span className="ml-auto font-mono text-[9px] opacity-70">⌘↵</span>
+          <span className="ml-auto font-mono text-3xs opacity-70">⌘↵</span>
         </button>
       </div>
     </section>

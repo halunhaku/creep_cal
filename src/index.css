@@ -35,7 +35,6 @@
   --green-border: var(--primary-border);
   --amber: var(--accent);
   --on-green: #fff;
-  --trace-glow: transparent;
 }
 
 [data-theme="dark"] {
@@ -83,7 +82,7 @@
     background: var(--bg);
     color: var(--text);
     font-family: "Hanken Grotesk", "PingFang SC", sans-serif;
-    font-size: 15px;
+    font-size: theme('fontSize.body');
     line-height: 1.5;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -112,7 +111,7 @@
   .surface-inset { background: var(--surface-2); }
   .eyebrow {
     font-family: "Azeret Mono", monospace;
-    font-size: 10px;
+    font-size: theme('fontSize.2xs');
     font-weight: 600;
     letter-spacing: .13em;
     text-transform: uppercase;
@@ -122,7 +121,7 @@
   .button-primary, .btn-primary {
     display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px;
     border: 1px solid var(--primary); border-radius: 6px; background: var(--primary); color: var(--on-green);
-    padding: 0 16px; font-family: "Azeret Mono", monospace; font-size: 11px; font-weight: 650;
+    padding: 0 16px; font-family: "Azeret Mono", monospace; font-size: theme('fontSize.1xs'); font-weight: 650;
     letter-spacing: .06em; text-transform: uppercase; transition: background-color 140ms ease, transform 100ms ease;
   }
   .button-primary:hover, .btn-primary:hover { background: var(--primary-hover); }
@@ -131,7 +130,7 @@
   .button-secondary, .btn-secondary {
     display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 8px;
     border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--text);
-    padding: 0 14px; font-family: "Azeret Mono", monospace; font-size: 11px; font-weight: 600;
+    padding: 0 14px; font-family: "Azeret Mono", monospace; font-size: theme('fontSize.1xs'); font-weight: 600;
     letter-spacing: .04em; text-transform: uppercase; transition: border-color 140ms ease, background-color 140ms ease;
   }
   .button-secondary:hover, .btn-secondary:hover { border-color: var(--primary); background: var(--primary-soft); }

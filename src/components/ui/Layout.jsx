@@ -11,7 +11,7 @@ export default function Layout({ activeMode, onModeChange, onOpenDocs, children 
       <footer className="border-t border-line bg-surface">
         <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-4 text-xs text-muted sm:flex-row sm:items-center sm:justify-between md:px-7 lg:px-9">
           <span>Concrete creep calculation workspace</span>
-          <span className="font-mono text-[9px] uppercase tracking-[0.09em] text-faint">Float64 · Rust WASM · JS reference</span>
+          <span className="font-mono text-3xs uppercase tracking-[0.09em] text-faint">Float64 · Rust WASM · JS reference</span>
         </div>
       </footer>
     </div>
