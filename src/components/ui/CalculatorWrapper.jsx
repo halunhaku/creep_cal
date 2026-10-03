@@ -73,7 +73,9 @@ function Decomposition({ items }) {
             {group.items.map((item) => (
               <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-primary' : 'text-muted'}`}>
                 <span>{item.label}</span>
-                <span className="font-mono tabular-nums text-primary">{formatValue(item.value, 3)} <small className="text-[8px] font-normal text-faint">{item.unit}</small></span>
+                <span className="font-mono tabular-nums text-primary">
+                  {formatValue(item.value, 3)} <small className="text-[8px] font-normal text-faint">{item.unit}</small>
+                </span>
               </div>
             ))}
           </div>
@@ -88,7 +90,17 @@ function ScientificTooltip({ active, payload, label }) {
   return (
     <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
       <div className="mb-2 font-mono text-[9px] font-semibold uppercase tracking-[0.08em] text-faint">t = {label} days</div>
-      <div className="space-y-1.5">{payload.map((item) => <div key={item.dataKey} className="flex items-center justify-between gap-5 text-[11px]"><span className="flex items-center gap-2 text-muted"><i className="h-0.5 w-3" style={{ background:item.color }} />{item.name}</span><span className="font-mono text-primary">{formatValue(item.value, 5)}</span></div>)}</div>
+      <div className="space-y-1.5">
+        {payload.map((item) => (
+          <div key={item.dataKey} className="flex items-center justify-between gap-5 text-[11px]">
+            <span className="flex items-center gap-2 text-muted">
+              <i className="h-0.5 w-3" style={{ background: item.color }} />
+              {item.name}
+            </span>
+            <span className="font-mono text-primary">{formatValue(item.value, 5)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -107,12 +119,32 @@ function AnalysisChart({ data, lines, params, modelName }) {
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1">
           {[['compliance', hasShrinkage ? 'Compliance' : 'Response'], ...(hasShrinkage ? [['shrinkage','Shrinkage']] : []), ['data','Data']].map(([id,label]) => (
-            <button key={id} onClick={() => setView(id)} aria-pressed={view === id} className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-green-soft text-green' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}>{label}</button>
+            <button
+              key={id}
+              onClick={() => setView(id)}
+              aria-pressed={view === id}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-green-soft text-green' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
+            >
+              {label}
+            </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
-          {view !== 'data' && <button onClick={() => setLogX((value) => !value)} aria-pressed={logX} className={`button-secondary !min-h-8 !px-2.5 !text-[9px] ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}>{logX ? 'Log X' : 'Linear X'}</button>}
-          <button onClick={() => exportSeries(modelName, params, data, lines)} className="button-secondary !min-h-8 !px-2.5 !text-[9px]">Export CSV</button>
+          {view !== 'data' && (
+            <button
+              onClick={() => setLogX((value) => !value)}
+              aria-pressed={logX}
+              className={`button-secondary !min-h-8 !px-2.5 !text-[9px] ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+            >
+              {logX ? 'Log X' : 'Linear X'}
+            </button>
+          )}
+          <button
+            onClick={() => exportSeries(modelName, params, data, lines)}
+            className="button-secondary !min-h-8 !px-2.5 !text-[9px]"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
 
@@ -123,8 +155,24 @@ function AnalysisChart({ data, lines, params, modelName }) {
           </div>
           <div className="max-h-[430px] overflow-auto">
           <table className="w-full border-collapse text-left text-xs">
-            <thead className="sticky top-0 bg-surface-2"><tr><th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Time · days</th>{lines.map((line) => <th key={line.dataKey} className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">{line.name}</th>)}</tr></thead>
-            <tbody className="divide-y divide-line">{dataRows.map((row) => <tr key={row.t} className={row.t === Math.round(params.targetAge) ? 'bg-green-soft' : ''}><td className="px-4 py-2 font-mono text-muted">{row.t}</td>{lines.map((line) => <td key={line.dataKey} className="px-4 py-2 font-mono text-primary">{formatValue(row[line.dataKey], 5)}</td>)}</tr>)}</tbody>
+            <thead className="sticky top-0 bg-surface-2">
+              <tr>
+                <th className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">Time · days</th>
+                {lines.map((line) => (
+                  <th key={line.dataKey} className="px-4 py-2.5 font-mono text-[9px] uppercase tracking-[.08em] text-faint">{line.name}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {dataRows.map((row) => (
+                <tr key={row.t} className={row.t === Math.round(params.targetAge) ? 'bg-green-soft' : ''}>
+                  <td className="px-4 py-2 font-mono text-muted">{row.t}</td>
+                  {lines.map((line) => (
+                    <td key={line.dataKey} className="px-4 py-2 font-mono text-primary">{formatValue(row[line.dataKey], 5)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
           </table>
           </div>
         </div>
@@ -133,14 +181,53 @@ function AnalysisChart({ data, lines, params, modelName }) {
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top:12, right:18, left:0, bottom:24 }}>
               <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
-              <XAxis dataKey="t" type="number" scale={logX ? 'log' : 'linear'} domain={logX ? ['dataMin','dataMax'] : [0,'dataMax']} allowDataOverflow tick={{ fontSize:10 }} tickLine={false} axisLine={{ stroke:'var(--line-strong)' }} label={{ value:'Concrete age · days', position:'insideBottomRight', offset:-16, fill:'var(--text-faint)', fontSize:10 }} />
-              <YAxis tick={{ fontSize:10 }} tickLine={false} axisLine={false} width={58} />
+              <XAxis
+                dataKey="t"
+                type="number"
+                scale={logX ? 'log' : 'linear'}
+                domain={logX ? ['dataMin', 'dataMax'] : [0, 'dataMax']}
+                allowDataOverflow
+                tick={{ fontSize: 10 }}
+                tickLine={false}
+                axisLine={{ stroke: 'var(--line-strong)' }}
+                label={{ value: 'Concrete age · days', position: 'insideBottomRight', offset: -16, fill: 'var(--text-faint)', fontSize: 10 }}
+              />
+              <YAxis tick={{ fontSize: 10 }} tickLine={false} axisLine={false} width={58} />
               <Tooltip content={<ScientificTooltip />} />
-              <Legend iconType="plainline" iconSize={18} wrapperStyle={{ fontSize:10, paddingTop:12 }} />
-              {Number.isFinite(Number(params.t0)) && <ReferenceLine x={Number(params.t0)} stroke="var(--accent)" strokeDasharray="4 4" label={{ value:`t₀ ${params.t0}d`, fill:'var(--accent)', fontSize:9, position:'insideTopLeft' }} />}
-              {Number.isFinite(Number(params.tPrime)) && params.tPrime !== params.t0 && <ReferenceLine x={Number(params.tPrime)} stroke="var(--text-muted)" strokeDasharray="2 3" label={{ value:`t′ ${params.tPrime}d`, fill:'var(--text-muted)', fontSize:9, position:'insideTopRight' }} />}
-              {Number.isFinite(Number(params.targetAge)) && <ReferenceLine x={Number(params.targetAge)} stroke="var(--accent)" strokeWidth={1.5} />}
-              {visibleLines.map((line) => <Line key={line.dataKey} type="monotone" dataKey={line.dataKey} name={line.name} stroke={line.stroke} strokeWidth={line.dataKey.includes('total') ? 2.6 : 2} strokeDasharray={line.dataKey.includes('au') ? '5 4' : undefined} dot={false} activeDot={{ r:4, strokeWidth:2, fill:'var(--surface)' }} isAnimationActive={false} />)}
+              <Legend iconType="plainline" iconSize={18} wrapperStyle={{ fontSize: 10, paddingTop: 12 }} />
+              {Number.isFinite(Number(params.t0)) && (
+                <ReferenceLine
+                  x={Number(params.t0)}
+                  stroke="var(--accent)"
+                  strokeDasharray="4 4"
+                  label={{ value: `t₀ ${params.t0}d`, fill: 'var(--accent)', fontSize: 9, position: 'insideTopLeft' }}
+                />
+              )}
+              {Number.isFinite(Number(params.tPrime)) && params.tPrime !== params.t0 && (
+                <ReferenceLine
+                  x={Number(params.tPrime)}
+                  stroke="var(--text-muted)"
+                  strokeDasharray="2 3"
+                  label={{ value: `t′ ${params.tPrime}d`, fill: 'var(--text-muted)', fontSize: 9, position: 'insideTopRight' }}
+                />
+              )}
+              {Number.isFinite(Number(params.targetAge)) && (
+                <ReferenceLine x={Number(params.targetAge)} stroke="var(--accent)" strokeWidth={1.5} />
+              )}
+              {visibleLines.map((line) => (
+                <Line
+                  key={line.dataKey}
+                  type="monotone"
+                  dataKey={line.dataKey}
+                  name={line.name}
+                  stroke={line.stroke}
+                  strokeWidth={line.dataKey.includes('total') ? 2.6 : 2}
+                  strokeDasharray={line.dataKey.includes('au') ? '5 4' : undefined}
+                  dot={false}
+                  activeDot={{ r: 4, strokeWidth: 2, fill: 'var(--surface)' }}
+                  isAnimationActive={false}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -203,7 +290,31 @@ function NoticeBanner({ notices, onDismiss }) {
   );
 }
 
-export default function CalculatorWrapper({ modelName, modelDescription, engine, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, phiResult, feedLogs, chartData, chartLines, extraResults, resultLabel, dirty, duration, notices, onDismissNotice, comparison, comparing, onCompare, compareReady }) {
+export default function CalculatorWrapper({
+  modelName,
+  modelDescription,
+  engine,
+  paramsConfig,
+  params,
+  onParamChange,
+  onCalculate,
+  calculateReady,
+  buttonText,
+  phiResult,
+  feedLogs,
+  chartData,
+  chartLines,
+  extraResults,
+  resultLabel,
+  dirty,
+  duration,
+  notices,
+  onDismissNotice,
+  comparison,
+  comparing,
+  onCompare,
+  compareReady,
+}) {
   const hasResults = chartData?.length > 0;
   const [resultName, explicitUnit] = (resultLabel || 'Creep coefficient φ').split('·').map((part) => part.trim());
   const primaryUnit = explicitUnit || 'dimensionless';
@@ -221,39 +332,81 @@ export default function CalculatorWrapper({ modelName, modelDescription, engine,
     <div className="min-w-0">
       <header className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0 max-w-3xl">
-          <div className="flex items-center gap-2"><span className="status-dot" /><span className="eyebrow">{engine === 'rust' ? 'Rust WebAssembly' : 'JavaScript reference'}</span></div>
+          <div className="flex items-center gap-2">
+            <span className="status-dot" />
+            <span className="eyebrow">{engine === 'rust' ? 'Rust WebAssembly' : 'JavaScript reference'}</span>
+          </div>
           <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-primary">{modelName}</h2>
           <p className="mt-1.5 max-w-[72ch] text-[13px] leading-relaxed text-muted">{modelDescription}</p>
         </div>
-        {duration != null && <div className="rounded-md border border-line bg-surface px-3 py-2 text-right"><div className="eyebrow">Last compute</div><div className="mt-1 font-mono text-[11px] text-primary">{duration.toFixed(2)} ms</div></div>}
+        {duration != null && (
+          <div className="rounded-md border border-line bg-surface px-3 py-2 text-right">
+            <div className="eyebrow">Last compute</div>
+            <div className="mt-1 font-mono text-[11px] text-primary">{duration.toFixed(2)} ms</div>
+          </div>
+        )}
       </header>
 
       <NoticeBanner notices={notices} onDismiss={onDismissNotice} />
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
         <div className="lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:pr-1">
-          <DynamicParameters paramsConfig={paramsConfig} params={params} onParamChange={onParamChange} onCalculate={onCalculate} calculateReady={calculateReady} buttonText={buttonText} dirty={dirty} />
+          <DynamicParameters
+            paramsConfig={paramsConfig}
+            params={params}
+            onParamChange={onParamChange}
+            onCalculate={onCalculate}
+            calculateReady={calculateReady}
+            buttonText={buttonText}
+            dirty={dirty}
+          />
         </div>
 
         <div className="min-w-0 space-y-4">
           <section className="workbench-panel p-5 md:p-6">
             <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-4">
-              <div><div className="eyebrow">Calculated at</div><div className="mt-1 font-mono text-sm font-semibold text-primary">{formatValue(params.targetAge, 0)} days</div></div>
-              <div className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[.07em] ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}>{dirty ? 'Results out of date' : 'Computed'}</div>
+              <div>
+                <div className="eyebrow">Calculated at</div>
+                <div className="mt-1 font-mono text-sm font-semibold text-primary">{formatValue(params.targetAge, 0)} days</div>
+              </div>
+              <div
+                className={`rounded-md px-2.5 py-1 font-mono text-[9px] font-semibold uppercase tracking-[.07em] ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
+              >
+                {dirty ? 'Results out of date' : 'Computed'}
+              </div>
             </div>
             <div className={`grid gap-6 ${totalShrinkage ? 'sm:grid-cols-2' : ''}`}>
               <Metric eyebrow={resultName} value={phiResult} unit={primaryUnit} accent />
-              {totalShrinkage && <Metric eyebrow="Total shrinkage" value={totalShrinkage.value} unit={totalShrinkage.unit} />}
+              {totalShrinkage && (
+                <Metric eyebrow="Total shrinkage" value={totalShrinkage.value} unit={totalShrinkage.unit} />
+              )}
             </div>
           </section>
 
           <Decomposition items={extraResults} />
-          <KernelComparison comparison={comparison} comparing={comparing} onCompare={onCompare} compareReady={compareReady} />
-          {hasResults && <AnalysisChart data={chartData} lines={chartLines} params={params} modelName={modelName} />}
+          <KernelComparison
+            comparison={comparison}
+            comparing={comparing}
+            onCompare={onCompare}
+            compareReady={compareReady}
+          />
+          {hasResults && (
+            <AnalysisChart data={chartData} lines={chartLines} params={params} modelName={modelName} />
+          )}
 
           <details className="workbench-panel overflow-hidden">
-            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3"><span className="eyebrow">Calculation log · 计算日志</span><span className="font-mono text-[9px] text-faint">{feedLogs.length} events</span></summary>
-            <div className="border-t border-line px-4 py-3">{feedLogs.map((log, index) => <div key={index} className="grid grid-cols-[72px_1fr] gap-3 py-1 font-mono text-[10px]"><span className="text-faint">{log.time}</span><span className={log.type === 'error' ? 'text-error' : log.type === 'success' ? 'text-[var(--success)]' : 'text-muted'}>{log.message}</span></div>)}</div>
+            <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
+              <span className="eyebrow">Calculation log · 计算日志</span>
+              <span className="font-mono text-[9px] text-faint">{feedLogs.length} events</span>
+            </summary>
+            <div className="border-t border-line px-4 py-3">
+              {feedLogs.map((log, index) => (
+                <div key={index} className="grid grid-cols-[72px_1fr] gap-3 py-1 font-mono text-[10px]">
+                  <span className="text-faint">{log.time}</span>
+                  <span className={log.type === 'error' ? 'text-error' : log.type === 'success' ? 'text-[var(--success)]' : 'text-muted'}>{log.message}</span>
+                </div>
+              ))}
+            </div>
           </details>
         </div>
       </div>
