@@ -244,6 +244,14 @@ async function main() {
         const digest = await crypto.subtle.digest('SHA-256', bytes);
         return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
       })()`, 'the DOM hash');
+      // A hash says "something changed"; for an intentional visual change the
+      // fingerprint text is what you review, so it is dumped alongside the HTML.
+      if (process.env.DUMP_DIR) {
+        const lines = await evaluate(`(async () => { ${STYLE_FINGERPRINT}
+          return fingerprint;
+        })()`);
+        writeFileSync(`${process.env.DUMP_DIR}/${scene.key}.styles.txt`, lines);
+      }
       snapshot[`${scene.key}::styles`] = await stable(`(async () => { ${STYLE_FINGERPRINT}
         const bytes = new TextEncoder().encode(fingerprint);
         const digest = await crypto.subtle.digest('SHA-256', bytes);
