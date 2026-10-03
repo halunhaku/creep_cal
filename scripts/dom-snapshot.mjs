@@ -48,13 +48,20 @@ const NORMALISE = `
 
 // Each scene names the state it must reach, so the snapshot never races the
 // first calculation: waiting on text, not on elapsed time.
+// `settled` / `after` are in-page predicates, not loose text: matching the
+// page's own prose ("…the JavaScript reference kernel…", "…a reproducible result
+// matrix.") would return before the state is reached.
+const labelled = (label) => `[...document.querySelectorAll('.eyebrow')].some((el) => el.textContent.trim() === ${JSON.stringify(label)})`;
+// Exact text on a leaf element: "Computed" is a status badge, not an eyebrow.
+const leafText = (text) => `[...document.querySelectorAll('*')].some((el) => el.children.length === 0 && el.textContent.trim() === ${JSON.stringify(text)})`;
+
 const SCENES = [
-  { key: 'single-js', workspace: 'Calculate', settled: 'Computed', click: 'JS Ref.', after: 'JavaScript reference' },
-  { key: 'single-rust', workspace: 'Calculate', settled: 'Computed' },
-  { key: 'single-compare', workspace: 'Calculate', settled: 'Computed', click: 'Compare kernels', after: 'Rust speed-up' },
-  { key: 'batch-empty', workspace: 'Batch', settled: 'Drop CSV or XLSX here' },
-  { key: 'batch-loaded', workspace: 'Batch', settled: 'Drop CSV or XLSX here', click: 'Load demo sweep', after: 'Result matrix' },
-  { key: 'docs-b4', workspace: 'Reference', settled: 'Parameter contract' },
+  { key: 'single-js', workspace: 'Calculate', settled: leafText('Computed'), click: 'JS Ref.', after: labelled('JavaScript reference') },
+  { key: 'single-rust', workspace: 'Calculate', settled: leafText('Computed') },
+  { key: 'single-compare', workspace: 'Calculate', settled: leafText('Computed'), click: 'Compare kernels', after: labelled('Rust speed-up') },
+  { key: 'batch-empty', workspace: 'Batch', settled: labelled('Prediction model') },
+  { key: 'batch-loaded', workspace: 'Batch', settled: labelled('Prediction model'), click: 'Load demo sweep', after: labelled('Result matrix') },
+  { key: 'docs-b4', workspace: 'Reference', settled: leafText('Parameter contract') },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -134,13 +141,12 @@ async function main() {
     await send('Runtime.enable');
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
 
-    const waitForText = async (text, label) => {
-      for (let attempt = 0; attempt < 60; attempt += 1) {
-        const found = await evaluate(`document.body.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())})`);
-        if (found) return;
+    const waitFor = async (expression, label) => {
+      for (let attempt = 0; attempt < 80; attempt += 1) {
+        if (await evaluate(expression)) return;
         await sleep(150);
       }
-      throw new Error(`timed out waiting for ${label ?? text}`);
+      throw new Error(`timed out waiting for ${label}`);
     };
 
     const snapshot = {};
@@ -149,9 +155,9 @@ async function main() {
       await sleep(900);
       if (scene.workspace !== 'Calculate') {
         await evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(scene.workspace)})?.click()`);
-        await waitForText(scene.workspace === 'Batch' ? 'dataset pipeline' : 'model standards', `the ${scene.workspace} workspace`);
+        await waitFor(labelled('Prediction model') + " || " + leafText('Parameter contract'), `the ${scene.workspace} workspace`);
       }
-      await waitForText(scene.settled, `the settled ${scene.key} state`);
+      await waitFor(scene.settled, `the settled ${scene.key} state`);
       if (scene.click) {
         const clicked = await evaluate(`(() => {
           const button = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().toLowerCase().startsWith(${JSON.stringify(scene.click)}.toLowerCase()));
@@ -160,11 +166,29 @@ async function main() {
           return true;
         })()`);
         if (!clicked) throw new Error(`could not click "${scene.click}" in scene ${scene.key}`);
-        await waitForText(scene.after, `the post-click state of ${scene.key}`);
+        await waitFor(scene.after, `the post-click state of ${scene.key}`);
       }
       await evaluate('document.fonts.ready.then(() => true)');
-      await sleep(300);
+      // recharts writes its *measured* size inline on .recharts-wrapper, so a
+      // measurement that lands before the layout settles changes the DOM hash
+      // without any layout change. Wait for two identical readings.
+      let chartStyle = null;
+      for (let attempt = 0; attempt < 40; attempt += 1) {
+        const current = await evaluate(`(() => {
+          const el = document.querySelector('.recharts-wrapper');
+          return el ? el.getAttribute('style') : 'no-chart';
+        })()`);
+        if (current === chartStyle) break;
+        chartStyle = current;
+        await sleep(200);
+      }
 
+      const normalised = await evaluate(`(async () => { ${NORMALISE}
+        return normalise(document.body.innerHTML);
+      })()`);
+      if (process.env.DUMP_DIR) {
+        writeFileSync(`${process.env.DUMP_DIR}/${scene.key}.html`, normalised);
+      }
       snapshot[scene.key] = await evaluate(`(async () => { ${NORMALISE}
         const bytes = new TextEncoder().encode(normalise(document.body.innerHTML));
         const digest = await crypto.subtle.digest('SHA-256', bytes);
