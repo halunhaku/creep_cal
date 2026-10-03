@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
+import { updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
 
 
@@ -75,35 +76,41 @@ function computeRow(modelId, row) {
 }
 
 export default function BatchCalculator() {
-  const [activeModel, setActiveModel] = useState('b4');
-  const [batchResults, setBatchResults] = useState([]);
-  const [batchHeaders, setBatchHeaders] = useState([]);
-  const [issues, setIssues] = useState([]);
+  // The parsed dataset and its results cannot be recreated without the file, so
+  // they live in the store and survive leaving the workspace; parsing state and
+  // errors are transient and stay here.
+  const batch = useAppSelector((state) => state.batch);
+  const {
+    modelId: activeModel,
+    rows: batchResults,
+    headers: batchHeaders,
+    issues,
+    fileName,
+    xKey,
+    yKey,
+    chartType,
+  } = batch;
   const [isProcessing, setIsProcessing] = useState(false);
   const [batchError, setBatchError] = useState('');
-  const [fileName, setFileName] = useState('');
-  const [xKey, setXKey] = useState('');
-  const [yKey, setYKey] = useState('result_J_GPa');
-  const [chartType, setChartType] = useState('scatter');
   const model = MODELS.find((item) => item.id === activeModel);
 
   // Every failure path must clear the previous dataset, otherwise stale results
   // stay on screen under the new file name.
-  const clearDataset = () => { setBatchResults([]); setBatchHeaders([]); };
+  const clearDataset = () => updateBatch({ rows: [], headers: [] });
 
   const processData = (data, preferredXKey = 't', parseIssues = []) => {
     if (!data?.length) {
-      clearDataset(); setIssues(parseIssues);
+      clearDataset(); updateBatch({ issues: parseIssues });
       setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
       setIsProcessing(false); return;
     }
     const inputHeaders = Object.keys(data[0]);
     const required = model.req.split(', ');
     const missing = required.filter((key) => !inputHeaders.includes(key));
-    setBatchHeaders(inputHeaders);
+    updateBatch({ headers: inputHeaders });
     if (missing.length) {
-      setBatchResults([]);
-      setIssues([...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' }))]);
+      updateBatch({ rows: [] });
+      updateBatch({ issues: [...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' }))] });
       setBatchError(`Missing required columns: ${missing.join(', ')}`);
       setIsProcessing(false);
       return;
@@ -117,17 +124,20 @@ export default function BatchCalculator() {
         return { ...row, __status:'invalid' };
       }
     });
-    setBatchResults(nextResults);
-    setIssues(nextIssues);
+    updateBatch({
+      rows: nextResults,
+      issues: nextIssues,
+      xKey: inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '',
+      yKey: model.resultKeys[0],
+    });
     setBatchError('');
-    setXKey(inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '');
-    setYKey(model.resultKeys[0]);
     setIsProcessing(false);
   };
 
   const readFile = async (file) => {
     if (!file) return;
-    setFileName(file.name); setIsProcessing(true); setBatchError(''); setIssues([]); clearDataset();
+    updateBatch({ fileName: file.name, issues: [], rows: [], headers: [] });
+    setIsProcessing(true); setBatchError('');
     const name = file.name.toLowerCase();
     if (name.endsWith('.csv')) {
       Papa.parse(file, {
@@ -159,11 +169,23 @@ export default function BatchCalculator() {
   };
 
   const resetForModel = (id) => {
-    setActiveModel(id); setBatchResults([]); setBatchHeaders([]); setIssues([]); setBatchError(''); setFileName(''); setXKey('');
-    setYKey(MODELS.find((item) => item.id === id)?.resultKeys[0] || '');
+    updateBatch({
+      modelId: id,
+      rows: [],
+      headers: [],
+      issues: [],
+      fileName: '',
+      xKey: '',
+      yKey: MODELS.find((item) => item.id === id)?.resultKeys[0] || '',
+    });
+    setBatchError('');
   };
 
-  const loadSampleDataset = () => { setFileName(`${activeModel}_demo_sweep.csv`); setIsProcessing(true); processData(SAMPLE_DATA[activeModel], 't'); };
+  const loadSampleDataset = () => {
+    updateBatch({ fileName: `${activeModel}_demo_sweep.csv` });
+    setIsProcessing(true);
+    processData(SAMPLE_DATA[activeModel], 't');
+  };
   const downloadTemplate = () => {
     const columns = model.req.split(', ');
     const csv = Papa.unparse([columns, model.template ?? columns.map(() => '0')]);
@@ -373,7 +395,7 @@ export default function BatchCalculator() {
               {['scatter', 'line'].map((type) => (
                 <button
                   key={type}
-                  onClick={() => setChartType(type)}
+                  onClick={() => updateBatch({ chartType: type })}
                   className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-primary' : 'text-faint'}`}
                 >
                   {type}
@@ -388,7 +410,7 @@ export default function BatchCalculator() {
                 <CustomSelect
                   name="xKey"
                   value={xKey}
-                  onChange={(event) => setXKey(event.target.value)}
+                  onChange={(event) => updateBatch({ xKey: event.target.value })}
                   options={batchHeaders.map((key) => ({ value: key, label: key }))}
                 />
               </div>
@@ -399,7 +421,7 @@ export default function BatchCalculator() {
                 <CustomSelect
                   name="yKey"
                   value={yKey}
-                  onChange={(event) => setYKey(event.target.value)}
+                  onChange={(event) => updateBatch({ yKey: event.target.value })}
                   options={model.resultKeys.map((key, index) => ({ value: key, label: model.labels[index] }))}
                 />
               </div>

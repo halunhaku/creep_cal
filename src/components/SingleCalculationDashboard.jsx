@@ -1,5 +1,6 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
+import { setAlgorithm, setEngine, useAppSelector } from '../state/appStore';
 
 const CALCULATORS = {
   aci209: lazy(() => import('./Aci209Calculator')),
@@ -16,8 +17,9 @@ const MODELS = [
 ];
 
 export default function SingleCalculationDashboard() {
-  const [engine, setEngine] = useState('rust');
-  const [algorithm, setAlgorithm] = useState('aci209');
+  // From the store so the selected model and kernel survive leaving the tab.
+  const engine = useAppSelector((state) => state.engine);
+  const algorithm = useAppSelector((state) => state.algorithm);
   const ActiveComponent = CALCULATORS[algorithm];
   const active = MODELS.find((model) => model.id === algorithm);
   const activeModelRef = useRef(null);

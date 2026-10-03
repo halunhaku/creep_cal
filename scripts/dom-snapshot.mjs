@@ -210,17 +210,20 @@ async function main() {
         await waitFor(scene.after, `the post-click state of ${scene.key}`);
       }
       await evaluate('document.fonts.ready.then(() => true)');
-      // recharts writes its *measured* size inline on .recharts-wrapper, so a
-      // measurement that lands before the layout settles changes the DOM hash
-      // without any layout change. Wait for two identical readings.
-      let chartStyle = null;
-      for (let attempt = 0; attempt < 40; attempt += 1) {
+      // recharts writes its *measured* size inline on .recharts-wrapper and only
+      // then renders its axis ticks, so a snapshot taken during that sequence
+      // differs without any layout change behind it. Wait until both the measured
+      // size and the tick count have stopped moving, and the ticks exist at all.
+      let chartState = null;
+      for (let attempt = 0; attempt < 60; attempt += 1) {
         const current = await evaluate(`(() => {
-          const el = document.querySelector('.recharts-wrapper');
-          return el ? el.getAttribute('style') : 'no-chart';
+          const wrapper = document.querySelector('.recharts-wrapper');
+          if (!wrapper) return 'no-chart';
+          return wrapper.getAttribute('style') + '|ticks=' + document.querySelectorAll('.recharts-cartesian-axis-tick').length;
         })()`);
-        if (current === chartStyle) break;
-        chartStyle = current;
+        const settled = current === chartState && (current === 'no-chart' || !current.endsWith('ticks=0'));
+        if (settled) break;
+        chartState = current;
         await sleep(200);
       }
 

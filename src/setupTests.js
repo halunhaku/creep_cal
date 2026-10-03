@@ -3,6 +3,16 @@
 // expect(element).toHaveTextContent(/react/i)
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
+import { beforeEach } from 'vitest';
+import { resetStore } from './state/appStore';
+
+// The app store is module-level state that deliberately outlives a workspace
+// switch, so without this it would also outlive a test: a parameter edited in
+// one case would still be set in the next. Tests must start from the same state
+// the app starts from.
+beforeEach(() => {
+  resetStore();
+});
 
 // jsdom does not implement ResizeObserver, and Recharts' <ResponsiveContainer>
 // requires it. Without this shim any component test that mounts a chart dies with

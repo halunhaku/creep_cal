@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appendFeedLog, errorMessage, loadCreepEngine, setKernelStatus } from '../wasm/creepEngine';
 import { MAX_SERIES_DAYS } from '../math/creepModels';
+import { saveModelParams, useAppSelector } from '../state/appStore';
 import CalculatorWrapper from './ui/CalculatorWrapper';
 
 function initialFeed(engine) {
@@ -17,7 +18,14 @@ const COMPARE_NOTICE = 'comparison-failed';
 
 export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const isRust = engine === 'rust';
-  const [params, setParams] = useState(() => ({ ...config.initialParams }));
+  // Parameters are persisted per model, so leaving the workspace and coming back
+  // no longer discards them. Results are not carried: they recompute in a few
+  // milliseconds when this component remounts, from the parameters below.
+  const storedParams = useAppSelector((state) => state.paramsByModel[config.id]);
+  const params = useMemo(
+    () => ({ ...config.initialParams, ...storedParams }),
+    [config.initialParams, storedParams],
+  );
   const [results, setResults] = useState([]);
   const [wasmModule, setWasmModule] = useState(null);
   const [wasmReady, setWasmReady] = useState(!isRust);
@@ -102,10 +110,10 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
 
   const handleParamChange = useCallback((event) => {
     const { name, value } = event.target;
-    setParams((previous) => ({
-      ...previous,
+    saveModelParams(config.id, {
+      ...params,
       [name]: stringParams.has(name) ? value : parseFloat(value),
-    }));
+    });
     // `targetAge` only selects a point of the already-computed 0–10,000 day
     // series, so it never invalidates the results — nor a timing taken over the
     // whole series, which is why a comparison survives it too.
@@ -113,7 +121,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       setDirty(true);
       setComparison(null);
     }
-  }, [stringParams]);
+  }, [config.id, params, stringParams]);
 
   const calculate = useCallback(() => {
     if (isRust && (!wasmReady || !wasmModule)) {

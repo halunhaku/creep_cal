@@ -53,6 +53,7 @@ function rustChartPoint(point) {
 }
 
 const config = {
+  id: 'b4',
   name: 'RILEM Model B4',
   descriptions: {
     js: 'RILEM TC-242-MDC composition-based B4 mean prediction with staged temperatures, Tables 4–6 admixture and aggregate corrections, compliance, and both shrinkage components.',

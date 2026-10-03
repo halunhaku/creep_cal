@@ -4,6 +4,7 @@ import { buildMc2010Params } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 const config = {
+  id: 'mc2010',
   name: 'fib Model Code 2010',
   descriptions: {
     js: 'Published fib Model Code 2010 creep formulation with basic creep, drying creep, and the nonlinear stress correction of Eq. 5.1-74.',

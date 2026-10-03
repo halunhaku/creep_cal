@@ -1,21 +1,25 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense } from 'react';
 import './App.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/ui/Layout';
 import LoadingSpinner from './components/LoadingSpinner';
+import { setMode, useAppSelector } from './state/appStore';
 
 const SingleCalculationDashboard = lazy(() => import('./components/SingleCalculationDashboard'));
 const BatchCalculator = lazy(() => import('./components/BatchCalculator'));
 const DocsPage = lazy(() => import('./components/DocsPage'));
 
 function App() {
-  const [activeMode, setActiveMode] = useState('single');
+  // Held in the store rather than local state: each workspace unmounts when you
+  // leave it, so anything the user typed or loaded has to live above them. The
+  // store is also what step 2 will sync with the URL.
+  const activeMode = useAppSelector((state) => state.mode);
 
   return (
     <Layout 
       activeMode={activeMode} 
-      onModeChange={setActiveMode}
-      onOpenDocs={() => setActiveMode('docs')}
+      onModeChange={setMode}
+      onOpenDocs={() => setMode('docs')}
     >
       {/* Keyed by mode so a crash in one workspace cannot trap the others:
           switching tabs remounts the boundary and clears the error state. */}
