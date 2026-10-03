@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DynamicParameters from './DynamicParameters';
+import { MAX_SERIES_DAYS } from '../../math/creepModels';
 import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 function downloadFile(filename, content, type = 'text/csv;charset=utf-8') {
@@ -148,6 +149,43 @@ function AnalysisChart({ data, lines, params, modelName }) {
   );
 }
 
+function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
+  const speedup = comparison && comparison.rust > 0 ? comparison.js / comparison.rust : null;
+
+  return (
+    <section className="workbench-panel p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="eyebrow">Kernel comparison · 内核对比</div>
+          <p className="mt-1 text-[11px] text-muted">
+            同一组参数下，两条内核各计算一次 {MAX_SERIES_DAYS.toLocaleString('en-US')} 天序列并计时（含预热）。
+          </p>
+        </div>
+        <button onClick={onCompare} disabled={comparing || !compareReady} className="button-secondary !min-h-8 !px-2.5 !text-[9px]">
+          {comparing ? 'Measuring…' : 'Compare kernels'}
+        </button>
+      </div>
+
+      {comparison && (
+        <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
+          <div>
+            <div className="eyebrow">JS reference</div>
+            <div className="mt-1 font-mono text-[15px] text-primary">{formatValue(comparison.js, 2)} <small className="text-[9px] font-normal text-faint">ms</small></div>
+          </div>
+          <div>
+            <div className="eyebrow">Rust WASM</div>
+            <div className="mt-1 font-mono text-[15px] text-primary">{formatValue(comparison.rust, 2)} <small className="text-[9px] font-normal text-faint">ms</small></div>
+          </div>
+          <div>
+            <div className="eyebrow">Rust speed-up</div>
+            <div className="mt-1 font-mono text-[15px] text-green">{speedup && Number.isFinite(speedup) ? `${formatValue(speedup, 2)}×` : '—'}</div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function NoticeBanner({ notices, onDismiss }) {
   if (!notices?.length) return null;
   return (
@@ -165,7 +203,7 @@ function NoticeBanner({ notices, onDismiss }) {
   );
 }
 
-export default function CalculatorWrapper({ modelName, modelDescription, engine, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, phiResult, feedLogs, chartData, chartLines, extraResults, resultLabel, dirty, duration, notices, onDismissNotice }) {
+export default function CalculatorWrapper({ modelName, modelDescription, engine, paramsConfig, params, onParamChange, onCalculate, calculateReady, buttonText, phiResult, feedLogs, chartData, chartLines, extraResults, resultLabel, dirty, duration, notices, onDismissNotice, comparison, comparing, onCompare, compareReady }) {
   const hasResults = chartData?.length > 0;
   const [resultName, explicitUnit] = (resultLabel || 'Creep coefficient φ').split('·').map((part) => part.trim());
   const primaryUnit = explicitUnit || 'dimensionless';
@@ -210,6 +248,7 @@ export default function CalculatorWrapper({ modelName, modelDescription, engine,
           </section>
 
           <Decomposition items={extraResults} />
+          <KernelComparison comparison={comparison} comparing={comparing} onCompare={onCompare} compareReady={compareReady} />
           {hasResults && <AnalysisChart data={chartData} lines={chartLines} params={params} modelName={modelName} />}
 
           <details className="workbench-panel overflow-hidden">

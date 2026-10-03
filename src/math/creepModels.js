@@ -4,6 +4,12 @@
  * Used by: BatchCalculator, individual JS calculators, and any future tools.
  */
 
+/**
+ * Length of the concrete-age series every calculator produces (0…10,000 days).
+ * Shared so the run, the comparison label and the axis domain cannot drift.
+ */
+export const MAX_SERIES_DAYS = 10000;
+
 // Shared range guard used by every kernel's validation.
 const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 

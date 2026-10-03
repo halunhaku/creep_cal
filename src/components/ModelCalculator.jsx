@@ -1,8 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appendFeedLog, errorMessage, loadCreepEngine, setKernelStatus } from '../wasm/creepEngine';
+import { MAX_SERIES_DAYS } from '../math/creepModels';
 import CalculatorWrapper from './ui/CalculatorWrapper';
-
-const MAX_DAYS = 10000;
 
 function initialFeed(engine) {
   return [{
@@ -14,6 +13,7 @@ function initialFeed(engine) {
 
 const KERNEL_NOTICE = 'kernel-unavailable';
 const CALC_NOTICE = 'calculation-failed';
+const COMPARE_NOTICE = 'comparison-failed';
 
 export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const isRust = engine === 'rust';
@@ -24,6 +24,8 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const [feedLogs, setFeedLogs] = useState(() => initialFeed(engine));
   const [dirty, setDirty] = useState(false);
   const [duration, setDuration] = useState(null);
+  const [comparison, setComparison] = useState(null);
+  const [comparing, setComparing] = useState(false);
   const [notices, setNotices] = useState([]);
   const initialRunRef = useRef(false);
   // Held in a ref so an inline callback from the parent cannot retrigger the
@@ -105,8 +107,12 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       [name]: stringParams.has(name) ? value : parseFloat(value),
     }));
     // `targetAge` only selects a point of the already-computed 0–10,000 day
-    // series, so it never invalidates the results.
-    if (name !== 'targetAge') setDirty(true);
+    // series, so it never invalidates the results — nor a timing taken over the
+    // whole series, which is why a comparison survives it too.
+    if (name !== 'targetAge') {
+      setDirty(true);
+      setComparison(null);
+    }
   }, [stringParams]);
 
   const calculate = useCallback(() => {
@@ -118,8 +124,8 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     try {
       const startTime = performance.now();
       const nextResults = isRust
-        ? config.calculateRust(wasmModule, params, MAX_DAYS)
-        : config.calculateJs(params, MAX_DAYS);
+        ? config.calculateRust(wasmModule, params, MAX_SERIES_DAYS)
+        : config.calculateJs(params, MAX_SERIES_DAYS);
       const elapsed = performance.now() - startTime;
       setResults(nextResults);
       setDuration(elapsed);
@@ -132,6 +138,34 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       raiseNotice({ id: CALC_NOTICE, title: 'Calculation failed · 计算失败', message: detail });
     }
   }, [addLog, config, dismissNotice, isRust, params, raiseNotice, wasmModule, wasmReady]);
+
+  // Times both kernels on the identical parameter set and series length, so the
+  // dual-engine design can be judged on measurements instead of claims. Each
+  // kernel runs a warm-up pass first: the first Rust call also pays for module
+  // instantiation, which would otherwise flatter the JavaScript kernel.
+  const compareKernels = useCallback(async () => {
+    setComparing(true);
+    try {
+      const module = wasmModule ?? await loadCreepEngine();
+      const measure = (run) => {
+        run();
+        const start = performance.now();
+        run();
+        return performance.now() - start;
+      };
+      const jsMs = measure(() => config.calculateJs(params, MAX_SERIES_DAYS));
+      const rustMs = measure(() => config.calculateRust(module, params, MAX_SERIES_DAYS));
+      setComparison({ js: jsMs, rust: rustMs, days: MAX_SERIES_DAYS });
+      addLog(`Kernel comparison over ${MAX_SERIES_DAYS} days: JS ${jsMs.toFixed(2)} ms vs Rust ${rustMs.toFixed(2)} ms.`, 'success');
+    } catch (error) {
+      const detail = errorMessage(error);
+      setComparison(null);
+      addLog(`Kernel comparison failed: ${detail}`, 'error');
+      raiseNotice({ id: COMPARE_NOTICE, title: 'Kernel comparison failed · 内核对比失败', message: detail });
+    } finally {
+      setComparing(false);
+    }
+  }, [addLog, config, params, raiseNotice, wasmModule]);
 
   const inputsValid = config.paramsConfig.every((item) => item.options || (
     Number.isFinite(Number(params[item.name])) && Number(params[item.name]) >= item.min && Number(params[item.name]) <= item.max
@@ -167,6 +201,10 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       extraResults={summary.extraResults}
       notices={notices}
       onDismissNotice={dismissNotice}
+      comparison={comparison}
+      comparing={comparing}
+      onCompare={compareKernels}
+      compareReady={inputsValid}
     />
   );
 }
