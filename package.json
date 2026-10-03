@@ -17,7 +17,8 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "screenshots": "node scripts/capture-screenshots.mjs"
   },
   "browserslist": {
     "production": [

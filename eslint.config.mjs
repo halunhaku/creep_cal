@@ -46,7 +46,7 @@ export default [
     },
   },
   {
-    files: ['*.config.{js,mjs,cjs}', 'postcss.config.cjs', 'tailwind.config.js'],
+    files: ['*.config.{js,mjs,cjs}', 'postcss.config.cjs', 'tailwind.config.js', 'scripts/**/*.mjs'],
     languageOptions: {
       globals: { ...globals.node },
     },
