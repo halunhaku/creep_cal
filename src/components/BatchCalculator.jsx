@@ -207,6 +207,12 @@ export default function BatchCalculator() {
         <div className="eyebrow">Batch calculation</div>
         <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-[28px]">Dataset pipeline</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Upload a calibrated input table, validate every row, calculate model outputs, and export a reproducible result matrix.</p>
+        {/* The audit found the batch silently computing with a different kernel than
+            the header badge implied. State it, and state why. */}
+        <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-4xs font-semibold uppercase tracking-[.07em] text-muted">JavaScript reference kernel</span>
+          <span>Every row is evaluated with the reference kernels, for all four models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.</span>
+        </p>
       </header>
 
       <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-lg border border-line bg-surface">

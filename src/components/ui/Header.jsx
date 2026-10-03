@@ -22,7 +22,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs }) {
       idle: { label: 'Kernel idle', title: 'No calculation has run in this session yet.' },
       loading: { label: 'Loading WASM…', title: 'Loading the Rust WebAssembly kernel.' },
       ready: kernel.engine === 'rust'
-        ? { label: 'WASM ready', title: 'The Rust WebAssembly kernel is loaded and active.' }
+        ? { label: 'WASM ready', title: 'The Rust WebAssembly kernel is loaded and active for the calculation workspace. The batch pipeline computes with the JavaScript reference kernels.' }
         : { label: 'JS kernel ready', title: 'The JavaScript reference kernel is active.' },
       failed: { label: 'WASM unavailable', warn: true, title: 'The Rust kernel failed to load.' },
     }[kernel.state] ?? { label: 'Kernel idle', title: '' };

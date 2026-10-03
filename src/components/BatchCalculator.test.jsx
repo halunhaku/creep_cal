@@ -48,6 +48,15 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(summary).toHaveTextContent(/Rows detected\s*1\s*Valid\s*1\s*Issues\s*0/);
   });
 
+  // Regression: the batch computed with the reference kernels while the header
+  // badge said the WASM kernel was active, and nothing in this workspace said
+  // which kernel produced the numbers.
+  test('the workspace states which kernel computes the rows', () => {
+    render(<BatchCalculator />);
+    expect(screen.getByText('JavaScript reference kernel')).toBeInTheDocument();
+    expect(screen.getByText(/Rust kernel exposes batch entry points for ACI 209 and MC 2010 only/)).toBeInTheDocument();
+  });
+
   // Regression: read-excel-file v9 changed its default export from "rows" to
   // "[{ sheet, data }]", so `(await readXlsxFile(file)).map(...)` threw
   // "TypeError: (headerRow || []).map is not a function" for every .xlsx file,
