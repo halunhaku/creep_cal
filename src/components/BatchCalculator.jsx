@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 // read-excel-file v9 changed the default export to return `[{ sheet, data }]`.
 // `readSheet()` is the API that still returns plain rows for a single sheet.
@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
-import { updateBatch, useAppSelector } from '../state/appStore';
+import { getState, updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
 import { applyMapping, suggestMapping } from './columnMapping';
 import { axisTitleStyle, tickGap, tickStyle } from './chartTheme';
@@ -41,6 +41,18 @@ function formatResult(value, digits, label) {
     throw new RangeError(`${label} could not be evaluated from these inputs · 输入无法产生有效结果`);
   }
   return value.toFixed(digits);
+}
+
+/**
+ * Is this cell a number? Blank and whitespace-only cells are not (`Number('  ')`
+ * is 0, which used to right-align a column of empty-looking text as if it were
+ * numeric), and neither are booleans.
+ */
+function isNumericCell(value) {
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (typeof value !== 'string') return false;
+  const text = value.trim();
+  return text !== '' && Number.isFinite(Number(text));
 }
 
 function computeRow(modelId, row) {
@@ -97,6 +109,10 @@ export default function BatchCalculator() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [batchError, setBatchError] = useState('');
   const model = MODELS.find((item) => item.id === activeModel);
+  // A read that is still parsing must not be able to overwrite a newer one, and
+  // it must resolve its model when it finishes rather than when the file was
+  // chosen (see readFile).
+  const readSeq = useRef(0);
 
   // Every failure path must clear the previous dataset, otherwise stale results
   // stay on screen under the new file name.
@@ -108,11 +124,16 @@ export default function BatchCalculator() {
    * Which columns those are is a property of the file, so it is read from the
    * data: a column is numeric when every value in it parses as a number, and the
    * result columns always are.
+   *
+   * Computed once per dataset: it used to run inside every header and body cell,
+   * so a 400-row file cost 40,500 row reads per render and a 20,000-row file made
+   * the matrix take ~0.8 s to redraw — for the 100 rows it actually shows.
    */
-  const numericColumn = (header) => batchResults.length > 0 && batchResults.every((row) => {
-    const value = row[header];
-    return value !== '' && value !== null && value !== undefined && Number.isFinite(Number(value));
-  });
+  const numericColumns = useMemo(() => new Set(batchHeaders.filter((header) => (
+    batchResults.length > 0 && batchResults.every((row) => isNumericCell(row[header]))
+  ))), [batchHeaders, batchResults]);
+
+  const numericColumn = (header) => numericColumns.has(header);
 
   const updateMapping = (index, source) => {
     updateBatch({ mapping: mapping.map((entry, position) => (position === index ? { ...entry, source } : entry)) });
@@ -131,17 +152,20 @@ export default function BatchCalculator() {
 
   // The target model is a parameter, not the one this render closed over: a model
   // switch recomputes immediately, before React has re-rendered with the new id.
-  const processData = (data, preferredXKey = 't', parseIssues = [], modelId = activeModel) => {
+  // `fileLabel` re-states the file the rows came from, because a model switch that
+  // lands while the file is still parsing would otherwise clear the name.
+  const processData = (data, preferredXKey = 't', parseIssues = [], modelId = activeModel, fileLabel = '') => {
     const target = MODELS.find((item) => item.id === modelId) ?? model;
+    const name = fileLabel ? { fileName: fileLabel } : {};
     if (!data?.length) {
-      clearDataset(); updateBatch({ issues: parseIssues });
+      clearDataset(); updateBatch({ issues: parseIssues, ...name });
       setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
       setIsProcessing(false); return;
     }
     const inputHeaders = Object.keys(data[0]);
     const required = target.req.split(', ');
     const missing = required.filter((key) => !inputHeaders.includes(key));
-    updateBatch({ headers: inputHeaders });
+    updateBatch({ headers: inputHeaders, ...name });
     if (missing.length) {
       // Not a dead end any more: keep the parsed rows and ask which column holds
       // each missing field. Nothing is computed until the mapping is applied.
@@ -164,11 +188,17 @@ export default function BatchCalculator() {
         return { ...row, __status:'invalid' };
       }
     });
+    // The mapping panel is answered or irrelevant by the time rows exist: leaving
+    // `pendingRows`/`mapping` behind kept a panel on screen claiming this file was
+    // missing columns, and its Apply button recomputed the *previous* file's rows.
     updateBatch({
       rows: nextResults,
       issues: nextIssues,
+      pendingRows: [],
+      mapping: [],
       xKey: inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '',
       yKey: target.resultKeys[0],
+      ...name,
     });
     setBatchError('');
     setIsProcessing(false);
@@ -176,33 +206,59 @@ export default function BatchCalculator() {
 
   const readFile = async (file) => {
     if (!file) return;
-    updateBatch({ fileName: file.name, issues: [], rows: [], headers: [] });
+    const seq = readSeq.current + 1;
+    readSeq.current = seq;
+    // Every failure path has to clear the previous dataset *and* any mapping panel
+    // still standing from an earlier file.
+    clearDataset();
+    updateBatch({ fileName: file.name, issues: [] });
     setIsProcessing(true); setBatchError('');
+    /*
+     * The model is read when the parse finishes, not when the file was chosen: a
+     * switch during a long parse used to compute the rows with the model that had
+     * already been left, so an ACI heading sat over four B4 result columns and
+     * every cell read "—" while the row still counted as Valid.
+     */
+    const finish = (data, issues) => {
+      if (readSeq.current !== seq) return;   // a newer read has taken over
+      processData(data, 't', issues, getState().batch.modelId, file.name);
+    };
     const name = file.name.toLowerCase();
     if (name.endsWith('.csv')) {
       Papa.parse(file, {
         header:true,
         skipEmptyLines:true,
-        complete:(result) => processData(result.data, 't', (result.errors ?? []).map((error) => ({
+        complete:(result) => finish(result.data, (result.errors ?? []).map((error) => ({
           row: Number.isInteger(error.row) ? error.row + 2 : 'File',
           field: 'CSV',
           value: '—',
           message: `${error.message}${error.code ? ` (${error.code})` : ''}`,
         }))),
-        error:(error) => { setBatchError(`Could not parse CSV: ${error.message}`); setIsProcessing(false); },
+        error:(error) => {
+          if (readSeq.current !== seq) return;
+          clearDataset();
+          setBatchError(`Could not parse CSV: ${error.message}`);
+          setIsProcessing(false);
+        },
       });
       return;
     }
     if (name.endsWith('.xlsx')) {
       try {
         const rows = await readSheet(file);
+        if (readSeq.current !== seq) return;
         const [headerRow, ...dataRows] = rows;
         const headers = (headerRow || []).map((value) => String(value ?? '').trim());
         const records = dataRows
           .filter((row) => Array.isArray(row) && row.some((value) => value !== null && value !== undefined && value !== ''))
           .map((row) => Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] ?? ''])));
-        processData(records);
-      } catch (error) { setBatchError(`Could not parse XLSX: ${error.message}`); setIsProcessing(false); }
+        finish(records, []);
+      } catch (error) {
+        if (readSeq.current !== seq) return;
+        clearDataset();
+        setBatchError(`Could not parse XLSX: ${error.message}`);
+        setIsProcessing(false);
+      }
       return;
     }
     setBatchError('Unsupported format. Use CSV or XLSX.'); setIsProcessing(false);
@@ -244,9 +300,13 @@ export default function BatchCalculator() {
   };
 
   const loadSampleDataset = () => {
-    updateBatch({ fileName: `${activeModel}_demo_sweep.csv` });
+    // A parse still in flight must not land on top of the sample the user just
+    // asked for: the newest action wins.
+    readSeq.current += 1;
+    const label = `${activeModel}_demo_sweep.csv`;
+    updateBatch({ fileName: label });
     setIsProcessing(true);
-    processData(SAMPLE_DATA[activeModel], 't');
+    processData(SAMPLE_DATA[activeModel], 't', [], activeModel, label);
   };
   const downloadTemplate = () => {
     const columns = model.req.split(', ');

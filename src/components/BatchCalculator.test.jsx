@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 import Papa from 'papaparse';
 import BatchCalculator from './BatchCalculator';
 import { MODELS } from './batchModels';
-import { getState } from '../state/appStore';
+import { getState, updateBatch } from '../state/appStore';
 import { aci209Single, b4Single, b4sSingle, mc2010Single } from '../math/creepModels';
 
 const B4_REQUIRED = 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t'.split(', ');
@@ -92,8 +92,111 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(screen.getByText('Rows detected').closest('[role="status"]')).toHaveTextContent(/Rows detected\s*9\s*Valid\s*9/);
   });
 
-  test('the previous model\'s output columns are dropped, not carried over', async () => {
+  /*
+   * Regression: the pending mapping was never cleared once rows existed. After a
+   * complete file was uploaded, the panel still claimed columns were missing, and
+   * its "Apply mapping and calculate" recomputed the *previous* file's rows under
+   * the new file's name — measured: a 2-row complete.csv produced the old
+   * single-row dataset (row cells ["1","1","100","365","28","70",…]).
+   */
+  test('a complete upload clears a mapping panel left by an earlier file', async () => {
     const { container } = render(<BatchCalculator />);
+    selectModel(container, 'aci209');
+    upload(container, 'curingType,age,Humidity,volume_surface,slump,sand,air,t\n1,28,70,100,100,50,8,365\n', 'own-names.csv');
+    await waitFor(() => expect(screen.getByText('Column mapping')).toBeInTheDocument());
+
+    upload(container, `${ACI_REQUIRED.join(',')}\nmoist,28,70,100,100,50,8,365\nmoist,28,80,100,100,50,8,730\n`, 'complete.csv');
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(screen.getByText(/2 rows · 1 output field/)).toBeInTheDocument();
+
+    // The panel and the rows behind it belong to the file that was replaced.
+    expect(screen.queryByText('Column mapping')).not.toBeInTheDocument();
+    expect(getState().batch.pendingRows).toHaveLength(0);
+    expect(getState().batch.mapping).toHaveLength(0);
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2);
+  });
+
+  test('loading the demo sweep clears a mapping panel too', async () => {
+    const { container } = render(<BatchCalculator />);
+    upload(container, 't0,tPrime,t\n28,28,112\n', 'wrong-columns.csv');
+    await waitFor(() => expect(screen.getByText('Column mapping')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(screen.queryByText('Column mapping')).not.toBeInTheDocument();
+    expect(getState().batch.mapping).toHaveLength(0);
+  });
+
+  test('an unsupported file does not leave the previous file\'s mapping standing', async () => {
+    const { container } = render(<BatchCalculator />);
+    upload(container, 't0,tPrime,t\n28,28,112\n', 'wrong-columns.csv');
+    await waitFor(() => expect(screen.getByText('Column mapping')).toBeInTheDocument());
+
+    upload(container, 'not a table', 'notes.txt');
+    await waitFor(() => expect(screen.getByText(/Unsupported format/i)).toBeInTheDocument());
+    expect(screen.queryByText('Column mapping')).not.toBeInTheDocument();
+    expect(getState().batch.pendingRows).toHaveLength(0);
+  });
+
+  test('switching to a model the file does satisfy clears the panel', async () => {
+    const { container } = render(<BatchCalculator />);
+    // B4 needs c/wC/aC and the admixtures; this file has none of them.
+    upload(container, 't0,tPrime,Tcur,Tsh,Tc,h,fc,vS,cementType,aggregateType,specimenShape,t\n28,28,20,20,20,50,27.6,19.05,R,No Information,1,112\n', 'lean.csv');
+    await waitFor(() => expect(screen.getByText('Column mapping')).toBeInTheDocument());
+
+    // B4s shares the columns this file does have.
+    selectModel(container, 'b4s');
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(screen.getByText(/1 rows · 4 output fields/)).toBeInTheDocument();
+    expect(screen.queryByText('Column mapping')).not.toBeInTheDocument();
+    expect(getState().batch.mapping).toHaveLength(0);
+  });
+
+  // Regression: the parse callback captured the model selected when the file was
+  // chosen, so switching during a parse computed B4 rows under an ACI heading —
+  // every result cell read "—" while the rows still counted as Valid.
+  test('a parse that lands after a model switch computes with the model on screen', async () => {
+    const { container } = render(<BatchCalculator />);
+    const wide = [
+      'curingType,t0,H,VS,slump,fineAggregate,airContent,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t',
+      'moist,28,70,100,100,50,8,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,365',
+    ].join('\n');
+    upload(container, wide, 'wide.csv');
+    // Same tick: the file is still parsing.
+    selectModel(container, 'aci209');
+
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    expect(getState().batch.modelId).toBe('aci209');
+    expect(getState().batch.rows[0]).toHaveProperty('result_phi');
+    expect(getState().batch.rows[0]).not.toHaveProperty('result_J_GPa');
+    expect(getState().batch.yKey).toBe('result_phi');
+    expect(screen.getByText(/1 rows · 1 output field/)).toBeInTheDocument();
+  });
+
+  // Regression: numericColumn ran inside every header and body cell, re-reading a
+  // whole column each time — 40,500 row reads for a 400-row file, and ~0.8 s to
+  // redraw a 20,000-row matrix that shows 100 rows.
+  test('the matrix does not re-scan the whole dataset for every cell', async () => {
+    let reads = 0;
+    const rows = Array.from({ length: 400 }, (_, index) => {
+      const row = { __status: 'valid' };
+      for (const [key, value] of Object.entries({ fc: 27.6, vS: 19.05, t: index, result_J_GPa: 0.16 })) {
+        Object.defineProperty(row, key, { enumerable: true, get() { reads += 1; return value; } });
+      }
+      return row;
+    });
+    updateBatch({
+      modelId: 'b4', rows, headers: ['fc', 'vS', 't'], issues: [],
+      fileName: 'big.csv', xKey: 't', yKey: 'result_J_GPa', pendingRows: [], mapping: [],
+    });
+
+    render(<BatchCalculator />);
+    expect(screen.getByText(/Result matrix/)).toBeInTheDocument();
+    expect(screen.getByText(/400 rows · 4 output fields/)).toBeInTheDocument();
+    expect(reads).toBeLessThan(5000);
+  });
+
+  test('the previous model\'s output columns are dropped, not carried over', async () => {    const { container } = render(<BatchCalculator />);
     fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     const before = screen.getByText(/9 rows · 4 output fields/);
@@ -121,13 +224,15 @@ describe('BatchCalculator dataset pipeline', () => {
   // numbers to line up. Which columns are numeric is read from the data.
   test('numeric columns are right-aligned, categorical ones are not', async () => {
     const { container } = render(<BatchCalculator />);
-    upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112\n`, 'b4.csv');
+    upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,note,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0, ,112\n`, 'b4.csv');
     await waitFor(() => expect(resultSections()).toHaveLength(1));
 
     const headerCells = [...container.querySelectorAll('thead th')];
     const cellFor = (label) => headerCells.find((cell) => cell.textContent.trim().toLowerCase() === label);
     expect(cellFor('fc').className).toContain('text-right');
     expect(cellFor('cementtype').className).not.toContain('text-right');
+    // A column of whitespace is not a column of numbers: Number(' ') is 0.
+    expect(cellFor('note').className).not.toContain('text-right');
 
     const firstRow = [...container.querySelectorAll('tbody tr')][0];
     const cells = [...firstRow.querySelectorAll('td')];
@@ -135,6 +240,7 @@ describe('BatchCalculator dataset pipeline', () => {
     const byHeader = (label) => cells[headerCells.findIndex((cell) => cell.textContent.trim().toLowerCase() === label)];
     expect(byHeader('fc').className).toContain('text-right');
     expect(byHeader('cementtype').className).not.toContain('text-right');
+    expect(byHeader('note').className).not.toContain('text-right');
   });
 
   // Regression: the batch computed with the reference kernels while the header
@@ -190,6 +296,27 @@ describe('BatchCalculator dataset pipeline', () => {
     await waitFor(() => expect(screen.getByText(/File is empty/i)).toBeInTheDocument());
     await waitFor(() => expect(resultSections()).toHaveLength(0));
     expect(container.querySelectorAll('tbody tr')).toHaveLength(0);
+  });
+
+  // Regression: B4/B4s coerced cells with `Number`, so a blank humidity cell became
+  // 0 % RH and a thousands separator turned 1,200 days into 1 — both computed and
+  // both counted as Valid, while ACI/MC2010 reported the identical row.
+  test('a cell that is not a number is an issue, not a silent extreme', async () => {
+    const { container } = render(<BatchCalculator />);
+    upload(container, [
+      B4_REQUIRED.join(','),
+      '28,28,20,20,20,,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112',   // h blank -> was 0 % RH
+      '28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,"1,200"', // t = 1,200 -> was day 1
+      '28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112',   // valid
+    ].join('\n'), 'bad-cells.csv');
+
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+    const state = getState().batch;
+    expect(state.rows.map((row) => row.__status)).toEqual(['invalid', 'invalid', 'valid']);
+    expect(state.issues.some((issue) => /relative humidity/.test(issue.message))).toBe(true);
+    expect(state.issues.some((issue) => /concrete age/.test(issue.message))).toBe(true);
+    // The matrix still shows the cell the user typed, so the issue can be traced.
+    expect(screen.getByText('1,200')).toBeInTheDocument();
   });
 
   test('a file with missing columns clears the previous results too', async () => {

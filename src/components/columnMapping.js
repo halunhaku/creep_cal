@@ -28,9 +28,12 @@ const ALIASES = {
   fcm: ['fc', 'fck', 'mean_strength', 'compressive_strength'],
   Ac: ['area', 'cross_section', 'cross_sectional_area', 'ac_mm2'],
   u: ['perimeter', 'exposed_perimeter', 'u_mm'],
-  vS: ['volume_surface', 'volume_to_surface', 'v_s', 'vs_ratio'],
-  VS: ['volume_surface', 'volume_to_surface', 'v_s', 'vs_ratio'],
-  h: ['thickness', 'member_thickness', 'notional_size', 'h0', 'effective_thickness'],
+  vS: ['volume_surface', 'volume_to_surface', 'v_s', 'vs_ratio', 'thickness', 'member_thickness', 'notional_size', 'effective_thickness'],
+  VS: ['volume_surface', 'volume_to_surface', 'v_s', 'vs_ratio', 'thickness', 'member_thickness', 'notional_size', 'effective_thickness'],
+  // `h` is relative humidity in every model that has it (B4). The size names live
+  // on vS/V/S above: an earlier revision offered `h <- thickness`, so a 50 mm
+  // member was silently computed at 50 % RH — in range, plausible and wrong.
+  h: ['humidity', 'rh', 'relative_humidity', 'ambient_humidity'],
   // Mix
   c: ['cement', 'cement_content', 'cement_kg'],
   wC: ['wc', 'w_c', 'water_cement', 'water_cement_ratio'],
@@ -51,7 +54,13 @@ const ALIASES = {
   waterReducer: ['water_reducing', 'wr', 'plasticizer'],
 };
 
-const normalise = (value) => String(value).toLowerCase().replace(/[\s_.\-()]/g, '');
+/**
+ * Case, spacing and punctuation are noise; a slash is not, unless it is dropped
+ * like the rest. The workspace and the reference library write the ratios as
+ * `w/c`, `a/c` and `V/S`, so a spreadsheet that copies those names has to match
+ * the field — before, only the hyphen spelling did.
+ */
+const normalise = (value) => String(value).toLowerCase().replace(/[\s_.\-()/\\]/g, '');
 
 /**
  * @param {string} field one of the model's required columns
@@ -82,6 +91,11 @@ export function suggestMapping(missing, headers) {
  * matrix should show the field the model asks for, not the spreadsheet's wording.
  * A source column used by two fields is reported rather than silently applied.
  *
+ * Every target is written from the *original* row before any source is dropped:
+ * one entry's field name can be another entry's source name (`C -> B` and
+ * `B -> A`), and deleting as we went dropped a value depending on the order the
+ * entries happened to be in.
+ *
  * @returns {{rows: object[], conflicts: string[]}}
  */
 export function applyMapping(rows, mapping) {
@@ -94,12 +108,13 @@ export function applyMapping(rows, mapping) {
   }
   if (conflicts.length) return { rows, conflicts };
 
-  const rename = new Map(mapping.filter(({ source }) => source).map(({ field, source }) => [source, field]));
+  const renames = mapping.filter(({ source }) => source);
+  const targets = new Set(renames.map(({ field }) => field));
   const remapped = rows.map((row) => {
     const next = { ...row };
-    for (const [source, field] of rename) {
-      next[field] = row[source];
-      if (source !== field) delete next[source];
+    for (const { field, source } of renames) next[field] = row[source];
+    for (const { field, source } of renames) {
+      if (source !== field && !targets.has(source)) delete next[source];
     }
     return next;
   });
