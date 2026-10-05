@@ -67,11 +67,13 @@ export function appendFeedLog(setFeedLogs, message, type = 'info') {
 /**
  * Turn anything that can be thrown across the wasm boundary into a readable string.
  *
- * Rust `#[wasm_bindgen]` functions declared as `Result<_, JsValue>` historically
- * threw `JsValue::from_str(...)`, i.e. a bare JS *string* rather than an `Error`,
- * so `error.message` is `undefined` and the UI would log "Calculation failed: undefined".
- * The Rust kernels now throw real `js_sys::Error` values, but the prebuilt
- * `src/wasm-pkg/*.wasm` keeps the old behaviour until it is rebuilt, so normalise here.
+ * Rust `#[wasm_bindgen]` functions declared as `Result<_, JsValue>` used to throw
+ * `JsValue::from_str(...)`, i.e. a bare JS *string* rather than an `Error`, so
+ * `error.message` was `undefined` and the UI logged "Calculation failed: undefined".
+ * The committed `src/wasm-pkg/*.wasm` now throws real `js_sys::Error` values — the
+ * "validation errors cross the boundary as real Error objects" case in
+ * `kernelParity.test.js` asserts exactly that — but the normalisation stays: a
+ * future rebuild that regresses it would otherwise put "undefined" back in the log.
  *
  * @param {unknown} error
  * @returns {string}

@@ -13,7 +13,12 @@ beforeAll(() => Rust.initSync({ module: wasmBytes }));
  * The committed `src/wasm-pkg/*` is a build artifact, and the fixed-value
  * consistency tests only cover a handful of parameter sets. A wasm that has
  * drifted from the Rust source (e.g. built before an admixture-table fix) still
- * passes those, so this sweep samples the whole calibration box instead.
+ * passes those, so this sweep samples the calibration box instead — including the
+ * admixture dosages, whose tables are selected by thresholds (0.5/0.6 retarder,
+ * 15/30 fly ash, 5 superplasticizer, 8/18 silica fume, 0.05 AEA, 2/3 water
+ * reducer). An earlier revision drew `retarder` from (0, 0.6], which is always
+ * positive, so the kernel always took its first row and 24 of 27 shrinkage rows
+ * plus 9 of 11 creep rows were never compared at all.
  *
  * Deterministic: the PRNG is seeded, so a failure is reproducible.
  */
@@ -23,13 +28,16 @@ const pick = (arr) => arr[Math.floor(rnd() * arr.length)];
 const between = (lo, hi) => lo + rnd() * (hi - lo);
 const SAMPLES = 150;
 
+/** A dosage that lands on both sides of every table threshold, and on zero. */
+const dosage = (thresholds, hi) => pick([0, ...thresholds, ...thresholds.map((value) => value + 1e-9), between(0, hi)]);
+
 const aciParams = () => ({ curingType: pick(['moist', 'steam']), t0: between(1, 365), H: between(0, 100), VS: between(1, 1000), slump: between(0, 300), fineAggregate: between(0, 100), airContent: between(0, 20) });
 const aciWasm = (p) => ({ curingType: p.curingType, t0: p.t0, H: p.H, VS: p.VS, slump: p.slump, fineAggregate: p.fineAggregate, airContent: p.airContent });
 
 const mcParams = () => ({ fcm: between(20, 130), RH: between(40, 100), t0: between(1, 365), Ac: between(1, 1e6), u: between(1, 10000), T: between(5, 30), Cs: pick(['32.5 N', '32.5 R', '42.5 N', '42.5 R', '52.5 N', '52.5 R']), sigma: between(-12, 12) });
 const mcWasm = (p) => ({ fcm: p.fcm, rh: p.RH, t0: p.t0, ac: p.Ac, u: p.u, t: p.T, cement_type: p.Cs, sigma: p.sigma });
 
-const b4Params = () => ({ t0: between(1, 365), tPrime: between(1, 365), Tcur: between(20, 30), Tsh: between(-25, 75), Tc: between(-25, 75), h: between(1, 98.4), fc: between(15, 70), vS: between(12, 120), c: between(200, 1500), wC: between(0.22, 0.87), aC: between(1, 13.2), cementType: pick(['R', 'RS', 'SL']), aggregateType: pick(['Diabase', 'Quartzite', 'Limestone', 'Sandstone', 'Granite', 'Quartz Diorite', 'No Information']), specimenShape: pick(['1', '2', '3', '4', '5']), retarder: between(0, 0.6), flyAsh: between(0, 30), superplasticizer: between(0, 5), silicaFume: between(0, 18), airEntrainingAgent: between(0, 0.05), waterReducer: between(0, 3) });
+const b4Params = () => ({ t0: between(1, 365), tPrime: between(1, 365), Tcur: between(20, 30), Tsh: between(-25, 75), Tc: between(-25, 75), h: between(1, 98.4), fc: between(15, 70), vS: between(12, 120), c: between(200, 1500), wC: between(0.22, 0.87), aC: between(1, 13.2), cementType: pick(['R', 'RS', 'SL']), aggregateType: pick(['Diabase', 'Quartzite', 'Limestone', 'Sandstone', 'Granite', 'Quartz Diorite', 'No Information']), specimenShape: pick(['1', '2', '3', '4', '5']), retarder: dosage([0.5, 0.6], 2), flyAsh: dosage([15, 30], 60), superplasticizer: dosage([5], 20), silicaFume: dosage([8, 18], 30), airEntrainingAgent: dosage([0.05], 2), waterReducer: dosage([2, 3], 10) });
 const b4Wasm = (p) => ({ t0: p.t0, t_prime: p.tPrime, t_cur: p.Tcur, t_sh: p.Tsh, t_c: p.Tc, h: p.h, fc: p.fc, v_s: p.vS, c: p.c, w_c: p.wC, a_c: p.aC, cement_type: p.cementType, aggregate_type: p.aggregateType, specimen_shape: p.specimenShape, retarder: p.retarder, fly_ash: p.flyAsh, superplasticizer: p.superplasticizer, silica_fume: p.silicaFume, air_entraining_agent: p.airEntrainingAgent, water_reducer: p.waterReducer });
 const b4sWasm = (p) => { const { c, w_c, a_c, retarder, fly_ash, superplasticizer, silica_fume, air_entraining_agent, water_reducer, ...rest } = b4Wasm(p); return rest; };
 
@@ -64,8 +72,47 @@ describe('randomised JavaScript/Rust kernel parity', () => {
     expect(comparisons).toBeGreaterThan(0);
   });
 
-  test('the wasm series stays aligned with the JS kernels and with itself', () => {
-    const b4 = b4Params();
+  /*
+   * The random sweep can only be as good as its draws, so the admixture tables get
+   * an exhaustive grid as well: every combination of the dosages that select a
+   * table row (including zero, which no earlier draw ever produced).
+   */
+  test('every admixture table row is compared, not only the first one', () => {
+    const grid = {
+      retarder: [0, 0.4, 0.55, 0.7],
+      flyAsh: [0, 10, 20, 40],
+      superplasticizer: [0, 3, 8],
+      silicaFume: [0, 5, 12, 25],
+      airEntrainingAgent: [0, 0.03, 0.1],
+      waterReducer: [0, 1.5, 2.5, 5],
+    };
+    const seen = new Set();
+    let comparisons = 0;
+
+    for (const retarder of grid.retarder)
+      for (const flyAsh of grid.flyAsh)
+        for (const superplasticizer of grid.superplasticizer)
+          for (const silicaFume of grid.silicaFume)
+            for (const airEntrainingAgent of grid.airEntrainingAgent)
+              for (const waterReducer of grid.waterReducer) {
+                const params = { ...b4Params(), retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer };
+                const where = JSON.stringify({ retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer });
+                const expected = b4Point({ ...params, t: 3650 });
+                const actual = Rust.calculate_b4_single(b4Wasm(params), 3650);
+                expect(consistent(expected.J, actual.j), `J at ${where}`).toBe(true);
+                expect(consistent(expected.C0, actual.c0), `C0 at ${where}`).toBe(true);
+                expect(consistent(expected.epsilonSH, actual.epsilon_sh), `eps_sh at ${where}`).toBe(true);
+                seen.add(expected.C0.toPrecision(12));
+                comparisons += 1;
+              }
+
+    expect(comparisons).toBe(2304);
+    // A grid that only ever reached one table row would compare one number 2304
+    // times; the table has dozens of rows, so the results have to spread out.
+    expect(seen.size).toBeGreaterThan(50);
+  });
+
+  test('the wasm series stays aligned with the JS kernels and with itself', () => {    const b4 = b4Params();
     const series = Rust.calculate_b4_series(b4Wasm(b4), 300);
     expect(series).toHaveLength(301);
     for (const t of [0, 1, 28, 112, 300]) {

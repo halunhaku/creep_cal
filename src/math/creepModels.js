@@ -13,6 +13,33 @@ export const MAX_SERIES_DAYS = 10000;
 // Shared range guard used by every kernel's validation.
 const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 
+/**
+ * Strict coercion for the batch row adapters.
+ *
+ * The four adapters disagreed about what a spreadsheet cell means: ACI and
+ * MC2010 used `parseFloat` (`'1,200'` -> 1, `'38,5'` -> 38, `'365 days'` -> 365)
+ * while B4 and B4s used `Number` (`''` -> 0, `' '` -> 0, `true` -> 1,
+ * `'0x10'` -> 16). Either way a cell the user can see was read as a different
+ * number — often as an extreme end of the model's range — and the row was
+ * reported valid, so a blank humidity cell became 0 % RH and a thousands
+ * separator turned 1,200 days into 1 day.
+ *
+ * Accept a number, or a string that is *only* a number. Everything else
+ * (blank, whitespace, booleans, null, unit suffixes, percent signs, thousands
+ * separators, decimal commas, hex) becomes NaN, which every kernel's range
+ * validation already rejects with a message naming the field.
+ *
+ * @param {unknown} value
+ * @returns {number} the value, or NaN when the cell is not a single number
+ */
+export function coerceNumber(value) {
+  if (typeof value === 'number') return value;
+  if (typeof value !== 'string') return NaN;
+  const text = value.trim();
+  if (text === '' || !/^[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?$/.test(text)) return NaN;
+  return Number(text);
+}
+
 // ─── ACI 209R-92 ────────────────────────────────────────────────────────────
 /**
  * ACI 209R-92 correction factors are only defined over the calibration domain
@@ -90,13 +117,13 @@ export function aci209Phi({ curingType, t0, H, VS, slump, fineAggregate, airCont
 export function aci209Single({ curingType, t0, H, VS, slump, fineAggregate, airContent, t }) {
   return aci209Phi({
     curingType: String(curingType).trim().toLowerCase(),
-    t0: parseFloat(t0),
-    H: parseFloat(H),
-    VS: parseFloat(VS),
-    slump: parseFloat(slump),
-    fineAggregate: parseFloat(fineAggregate),
-    airContent: parseFloat(airContent),
-    t: parseFloat(t),
+    t0: coerceNumber(t0),
+    H: coerceNumber(H),
+    VS: coerceNumber(VS),
+    slump: coerceNumber(slump),
+    fineAggregate: coerceNumber(fineAggregate),
+    airContent: coerceNumber(airContent),
+    t: coerceNumber(t),
   });
 }
 
@@ -160,6 +187,18 @@ export function mc2010Point({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
     : 1;
   const elapsed = t - t0;
 
+  /*
+   * φ_dc divides by (0.1·h₀/100)^{1/3}, so a notional size that underflows to
+   * zero returns Infinity instead of throwing — reachable through this public
+   * API (Ac = 1e-300, u = 1e300) even though the workspace's own fields cannot
+   * express it. The Rust kernel carries the same gap; it needs the same bound at
+   * the next wasm rebuild.
+   */
+  const notionalSize = (2 * Ac) / u;
+  if (!Number.isFinite(notionalSize) || notionalSize <= 0) {
+    throw new RangeError('MC2010 requires a finite notional size 2Ac/u greater than zero.');
+  }
+
   if (elapsed <= 0) {
     return {
       t,
@@ -171,7 +210,6 @@ export function mc2010Point({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
     };
   }
 
-  const notionalSize = (2 * Ac) / u;
   const alphaFcm = Math.sqrt(35 / fcm);
   const betaH = Math.min(
     1.5 * notionalSize + 250 * alphaFcm,
@@ -198,19 +236,40 @@ export function mc2010Point({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
 /** Single-row version for batch use (accepts row object). */
 export function mc2010Single({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
   return mc2010Point({
-    fcm: parseFloat(fcm),
-    RH: parseFloat(RH),
-    t0: parseFloat(t0),
-    Ac: parseFloat(Ac),
-    u: parseFloat(u),
-    T: parseFloat(T),
+    fcm: coerceNumber(fcm),
+    RH: coerceNumber(RH),
+    t0: coerceNumber(t0),
+    Ac: coerceNumber(Ac),
+    u: coerceNumber(u),
+    T: coerceNumber(T),
     Cs: String(Cs).trim(),
-    sigma: parseFloat(sigma),
-    t: parseFloat(t),
+    sigma: coerceNumber(sigma),
+    t: coerceNumber(t),
   });
 }
 
 // ─── RILEM Model B4 / B4s ──────────────────────────────────────────────────
+/*
+ * The `RS` row's negative `epsilonAuCem` is the published value, not a
+ * transcription slip: the B4 cement-type table gives ε_au,cem = 210 × 10⁻⁶ (R),
+ * −84 × 10⁻⁶ (RS), 0 (SL), and the model's own autogenous formula carries a
+ * leading minus — ε_au∞ = −ε_au,cem (a/c/6)^{r_εa} (w/c/0.38)^{r_εw}. Rapid-
+ * hardening cement therefore gets a *positive* (expansive) autogenous term by
+ * construction: measured +0.076 µε at t = 112 d and +15.06 µε at t = 3650 d on
+ * the paper's §1.9 case, and SL gets exactly zero. B4s is a different fit with a
+ * single ε_au,cem = 78.2 × 10⁻⁶ for every cement type, so it stays contractive —
+ * the two models disagree in sign for RS concrete by design, not by bug.
+ *
+ * Checked against the published tables, from two independent sources that both
+ * reproduce the RILEM recommendation (Sakthivel, IIT Madras, Tables 2.1–2.6, and
+ * the TC-242-MDC reference script by K. Zdanowicz, whose table comments name the
+ * paper's Table 1/2/3/6): every cement, aggregate, shape and admixture
+ * coefficient below matches, as does the shrinkage table (τ_cem 0.016/0.08/0.01,
+ * ε_cem 360/860/410 × 10⁻⁶, …) and the humidity factor's 0.98 switch. One
+ * difference worth knowing: that script evaluates the autogenous term at
+ * (t̃ − t̃₀) where the recommendation — and this kernel — use (t̃ + t̃₀); the
+ * §1.9 benchmark below only reproduces with the plus sign.
+ */
 const B4_CEMENT = {
   R:  { tauCem:0.016, epsilonCem:360e-6, tauAuCem:1,  epsilonAuCem:210e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1,   rT:-4.5, tauA:-0.33, tauW:-0.06, tauC:-0.1, epsA:-0.8, epsW:1.1,   epsC:0.11, p1:0.70, p2:58.6e-3, p3:39.3e-3, p4:3.4e-3, p5:777e-6,  p5H:8, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
   RS: { tauCem:0.08,  epsilonCem:860e-6, tauAuCem:41, epsilonAuCem:-84e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1.4, rT:-4.5, tauA:-0.33, tauW:-2.4,  tauC:-2.7, epsA:-0.8, epsW:-0.27, epsC:0.11, p1:0.60, p2:17.4e-3, p3:39.3e-3, p4:3.4e-3, p5:94.6e-6, p5H:1, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
@@ -234,7 +293,16 @@ const B4_AGGREGATE = {
 };
 const B4_SHAPE = { '1':1, '2':1.15, '3':1.25, '4':1.3, '5':1.55 };
 
-const acceleration = (temperature) => Math.exp(4000 * (1 / 293 - 1 / (temperature + 273)));
+/**
+ * B4 temperature acceleration β_T = exp[U_h/R · (1/293 − 1/(T+273))], U_h/R = 4000 K.
+ *
+ * Exported because the workspace has to undo it: J = q₁ + β(Tc)·C₀ + C_d, so
+ * reading the instantaneous compliance q₁ back out of a result means dividing
+ * C₀ by the same factor this produced (see B4Calculator).
+ */
+export function b4TemperatureAcceleration(temperature) {
+  return Math.exp(4000 * (1 / 293 - 1 / (temperature + 273)));
+}
 
 /**
  * B4 humidity is always a percentage (0–100) — earlier revisions also accepted a
@@ -248,7 +316,7 @@ const acceleration = (temperature) => Math.exp(4000 * (1 / 293 - 1 / (temperatur
  * 98 % to 2.8 × 10⁵ µε at 98.4544 % — so the model is not usable in that band.
  */
 function normalizeB4Humidity(value) {
-  const percent = Number(value);
+  const percent = coerceNumber(value);
   if (!inRange(percent, 0, 98.4)) {
     throw new RangeError('B4 requires relative humidity between 0 and 100% (the drying formulation is only usable up to 98.4%).');
   }
@@ -294,9 +362,9 @@ function validateB4Common({ t0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, ag
 }
 
 function b4TimeState({ t0, tPrime, Tcur, Tsh, Tc, t }) {
-  const betaTh = acceleration(Tcur);
-  const betaTs = acceleration(Tsh);
-  const betaTc = acceleration(Tc);
+  const betaTh = b4TemperatureAcceleration(Tcur);
+  const betaTs = b4TemperatureAcceleration(Tsh);
+  const betaTc = b4TemperatureAcceleration(Tc);
   const t0Tilde = t0 * betaTh;
   const tPrimeHat = tPrime >= t0
     ? t0Tilde + (tPrime - t0) * betaTs
@@ -320,10 +388,10 @@ function b4CreepTimeTerms(tPrimeHat, tHat) {
 }
 
 function b4AdmixtureFactors({ retarder=0, flyAsh=0, superplasticizer=0, silicaFume=0, airEntrainingAgent=0, waterReducer=0 }) {
-  const re = Number(retarder), fly = Number(flyAsh), superValue = Number(superplasticizer);
-  const silica = Number(silicaFume), aea = Number(airEntrainingAgent), wr = Number(waterReducer);
+  const re = coerceNumber(retarder), fly = coerceNumber(flyAsh), superValue = coerceNumber(superplasticizer);
+  const silica = coerceNumber(silicaFume), aea = coerceNumber(airEntrainingAgent), wr = coerceNumber(waterReducer);
   for (const [name, value] of Object.entries({ retarder:re, flyAsh:fly, superplasticizer:superValue, silicaFume:silica, airEntrainingAgent:aea, waterReducer:wr })) {
-    if (!Number.isFinite(value) || value < 0) throw new RangeError(`B4 admixture percentage ${name} must be non-negative.`);
+    if (!Number.isFinite(value) || value < 0) throw new RangeError(`B4 admixture percentage ${name} must be a non-negative number.`);
   }
 
   let shrinkage = [1, 1, 1, 1];
@@ -401,7 +469,7 @@ function b4Result({ common, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU, r
 export function b4Point(input) {
   const numericKeys = ['t0','tPrime','Tcur','Tsh','Tc','h','fc','vS','c','wC','aC','t'];
   const params = { ...input };
-  for (const key of numericKeys) params[key] = Number(params[key]);
+  for (const key of numericKeys) params[key] = coerceNumber(params[key]);
   validateB4Common(params);
   if (!inRange(params.c, 200, 1500)) throw new RangeError('B4 calibration range is 200 ≤ c ≤ 1500 kg/m³.');
   if (!inRange(params.wC, 0.22, 0.87)) throw new RangeError('B4 calibration range is 0.22 ≤ w/c ≤ 0.87.');
@@ -446,7 +514,7 @@ export function b4Point(input) {
 export function b4sPoint(input) {
   const numericKeys = ['t0','tPrime','Tcur','Tsh','Tc','h','fc','vS','t'];
   const params = { ...input };
-  for (const key of numericKeys) params[key] = Number(params[key]);
+  for (const key of numericKeys) params[key] = coerceNumber(params[key]);
   validateB4Common(params);
   const cement = B4S_CEMENT[params.cementType];
   const aggregate = B4_AGGREGATE[params.aggregateType];

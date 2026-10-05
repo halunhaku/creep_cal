@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { aci209Phi, aci209Single, b4Single, b4sSingle, mc2010Single } from './creepModels';
+import { aci209Phi, aci209Single, b4Point, b4Single, b4sSingle, mc2010Point, mc2010Single } from './creepModels';
 
 const aciBase = {
   curingType: 'moist', t0: 28, H: 70, VS: 100,
@@ -61,8 +61,58 @@ describe('ACI 209R-92 rejects out-of-domain input', () => {
   });
 });
 
-describe('B4 humidity is a percentage, not a 0–1 fraction', () => {
-  // Regression: `normalizeB4Humidity` treated any value <= 1 as a fraction, so
+describe('a spreadsheet cell has to be one number', () => {
+  /*
+   * Regression: the four row adapters disagreed about what a cell means. ACI and
+   * MC2010 used `parseFloat` — '1,200' became 1 day, '38,5' became 38 MPa, '365
+   * days' was accepted — and B4/B4s used `Number`, which turns '' and ' ' into 0
+   * (the extreme end of the humidity range), true into 1 and '0x10' into 16. The
+   * matrix displayed the cell the user typed and computed a different number, and
+   * the row was counted as Valid.
+   */
+  const notNumbers = [
+    ['blank', ''],
+    ['whitespace', '   '],
+    ['thousands separator', '1,200'],
+    ['decimal comma', '38,5'],
+    ['unit suffix', '365 days'],
+    ['percent sign', '50%'],
+    ['hexadecimal', '0x10'],
+    ['boolean', true],
+    ['null', null],
+  ];
+
+  test.each(notNumbers)('%s is rejected by every adapter', (_label, value) => {
+    expect(() => aci209Single({ ...aciBase, H: value })).toThrow(/0 ≤ H ≤ 100/);
+    expect(() => mc2010Single({ ...mc2010Base, RH: value })).toThrow(/40 ≤ RH ≤ 100/);
+    expect(() => b4Single({ ...b4Base, h: value })).toThrow(/relative humidity/);
+    expect(() => b4sSingle({ ...b4Base, h: value })).toThrow(/relative humidity/);
+  });
+
+  test('a blank age is reported instead of being computed as day zero', () => {
+    expect(() => aci209Single({ ...aciBase, t: '' })).toThrow(/concrete age/);
+    expect(() => mc2010Single({ ...mc2010Base, t: ' ' })).toThrow(/concrete age/);
+    expect(() => b4Single({ ...b4Base, t: '' })).toThrow(/concrete age/);
+    expect(() => b4sSingle({ ...b4Base, t: '' })).toThrow(/concrete age/);
+  });
+
+  test('a blank admixture dosage is reported rather than dosed at zero', () => {
+    expect(() => b4Single({ ...b4Base, flyAsh: '' })).toThrow(/flyAsh/);
+    expect(() => b4Single({ ...b4Base, retarder: ' ' })).toThrow(/retarder/);
+  });
+
+  test('a number written as a string still computes — the shipped XLSX cells are text', () => {
+    expect(aci209Single({ ...aciBase, H: '70', t: '365' })).toBeCloseTo(aci209Phi(aciBase), 12);
+    expect(b4Single({ ...b4Base, h: '50', t: '112' }).J).toBeCloseTo(b4Point(b4Base).J, 12);
+    expect(mc2010Single({ ...mc2010Base, RH: '70', t: '365' }).phi).toBeCloseTo(mc2010Point(mc2010Base).phi, 12);
+  });
+
+  test('MC2010 refuses a notional size that underflows instead of returning Infinity', () => {
+    expect(() => mc2010Point({ ...mc2010Base, Ac: 1e-300, u: 1e300 })).toThrow(/notional size/);
+  });
+});
+
+describe('B4 humidity is a percentage, not a 0–1 fraction', () => {  // Regression: `normalizeB4Humidity` treated any value <= 1 as a fraction, so
   // typing "1" in a field labelled "%" computed 100 % RH.
   test('h = 1 means 1 % RH, not 100 % RH', () => {
     const onePercent = b4Single({ ...b4Base, h: 1 });

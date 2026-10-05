@@ -142,7 +142,25 @@ describe('JavaScript and Rust model consistency', () => {
     expect(betaDcTime).toBeCloseTo(0.9911, 4);
     expect(point.phi_dc).toBeCloseTo(0.2597, 4);
     expect(Math.abs(point.phi - 1.64)).toBeLessThan(0.01);
-    expect(Math.abs(point.phi / 1.05 - 1.563)).toBeLessThan(0.005);
+    /*
+     * The manual's total is 1.64 — the sum of its own components, which the two
+     * assertions above already pin — and it then divides by 1.05:
+     *
+     *   "According to Model Code 2010, the creep value is related to the tangent
+     *    Young's modulus E_c, where E_c being defined as 1.05 · E_cm. To account
+     *    for this, SOFiSTiK adopts this scaling for the computed creep
+     *    coefficient (in SOFiSTiK, all computations are consistently based on
+     *    E_cm).  ϕ(t,t₀) = 1.64 / 1.05 = 1.56"
+     *                    — SOFiSTiK Verification Manual, DCE-MC1 §38.4, p. 320 (2025)
+     *
+     * So the 1.05 is the reference tool's modulus convention, not a coefficient
+     * of the MC2010 creep model: it must not move into the kernel. fib's own
+     * implementation (structuralcodes, mc2010/_concrete_creep_and_shrinkage.py)
+     * has no such factor either — φ is β_bc·β_bc(t) + β_dc·β_RH·β_t0·β_t with the
+     * k_σ correction, exactly what this kernel computes.
+     */
+    const TANGENT_MODULUS_RATIO = 1.05;   // E_c = 1.05 · E_cm, SOFiSTiK's basis
+    expect(Math.abs(point.phi / TANGENT_MODULUS_RATIO - 1.56)).toBeLessThan(0.01);
 
     for (const key of ['phi', 'phi_bc', 'phi_dc', 'nonlinear_factor', 't0_adjusted']) {
       expectConsistent(point[key], rustPoint[key]);
@@ -187,8 +205,41 @@ describe('JavaScript and Rust model consistency', () => {
     expect(withFlyAsh.epsilonAU * 1e6).toBeCloseTo(-45.11, 1);
   });
 
-  test('matches official RILEM B4s §1.8/§1.9 strength-based benchmark', () => {
+  /*
+   * The published cement-type table, pinned so it cannot be "corrected" by
+   * accident. B4 gives ε_au,cem = 210 × 10⁻⁶ (R), −84 × 10⁻⁶ (RS), 0 (SL) and
+   * its autogenous formula starts with a minus sign, so RS concrete expands and
+   * SL concrete has no autogenous term at all — while B4s, a separate fit with a
+   * single ε_au,cem = 78.2 × 10⁻⁶, stays contractive for every class. The two
+   * models disagreeing in sign for RS is the model, not a bug.
+   */
+  test('B4 autogenous shrinkage follows the published cement-type table', () => {
     const plain = {
+      t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50,
+      fc: 27.6, vS: 19.05, c: 219.3, wC: 0.60, aC: 7.0,
+      aggregateType: 'No Information', specimenShape: '1',
+      retarder: 0, flyAsh: 0, superplasticizer: 0, silicaFume: 0,
+      airEntrainingAgent: 0, waterReducer: 0, t: 112,
+    };
+    const epsAu = (cementType) => b4Point({ ...plain, cementType }).epsilonAU * 1e6;
+
+    expect(epsAu('R')).toBeCloseTo(-36.971, 3);   // the §1.9 benchmark value
+    expect(Math.abs(epsAu('SL'))).toBe(0);        // ε_au,cem = 0 (the sign of zero is not the point)
+    expect(epsAu('RS')).toBeGreaterThan(0);       // ε_au,cem = −84 × 10⁻⁶
+    expect(epsAu('RS')).toBeCloseTo(0.076, 3);
+
+    const later = (cementType) => b4Point({ ...plain, cementType, t: 3650 }).epsilonAU * 1e6;
+    expect(later('R')).toBeCloseTo(-37.817, 3);
+    expect(later('RS')).toBeCloseTo(15.059, 3);
+
+    // B4s has one value for every class, so it never expands.
+    const b4sPlain = { ...plain, t: 112 };
+    for (const cementType of ['R', 'RS', 'SL']) {
+      expect(b4sPoint({ ...b4sPlain, cementType }).epsilonAU * 1e6).toBeCloseTo(-53.270, 3);
+    }
+  });
+
+  test('matches official RILEM B4s §1.8/§1.9 strength-based benchmark', () => {    const plain = {
       t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50,
       fc: 27.6, vS: 19.05, cementType: 'R', aggregateType: 'No Information',
       specimenShape: '1', t: 112,
