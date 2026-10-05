@@ -25,7 +25,7 @@ export default function ParameterSets({ modelId, params }) {
   const [name, setName] = useState('');
   const [selected, setSelected] = useState('');
 
-  const saved = sets ?? [];
+  const saved = Array.isArray(sets) ? sets : [];
   const chosen = selected || saved[0]?.name || '';
 
   const save = () => {

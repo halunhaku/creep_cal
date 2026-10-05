@@ -20,6 +20,7 @@ const KERNELS = new Set(['rust', 'js']);
 const DEFAULTS = { mode: 'single', model: 'aci209', engine: 'rust' };
 
 const KEYS = { mode: 'mode', model: 'model', engine: 'kernel' };
+const SETTERS = { mode: setMode, model: setModel, engine: setEngine };
 
 export function readUrl(search) {
   const query = new URLSearchParams(search ?? (typeof window === 'undefined' ? '' : window.location.search));
@@ -47,27 +48,36 @@ export function buildSearch(state) {
  * model and kernel changes replace the current one, because they are selections
  * within a workspace and would otherwise bury the Back button in noise.
  *
+ * `complete` is what separates the first load from a Back/Forward: an entry the
+ * URL omits means *the default* (buildSearch leaves defaults out), not "whatever
+ * is on screen". Reading it as "no information" made Back from ?mode=batch to /
+ * do nothing at all — the address bar said the default workspace while the batch
+ * workspace stayed on screen — and the next selection then wrote ?mode=batch back
+ * into the URL the user had just backed out of.
+ *
  * @returns {() => void} teardown, for tests
  */
 export function initUrlSync() {
   if (typeof window === 'undefined') return () => {};
 
   let applyingFromUrl = false;
+  let previousMode = getState().mode;
 
-  const apply = () => {
+  const apply = (complete = false) => {
     const parsed = readUrl();
     applyingFromUrl = true;
-    // Only overwrite what the URL actually specifies; anything absent keeps the
-    // value it has (which on first load is the default).
-    if (parsed.mode) setMode(parsed.mode);
-    if (parsed.model) setModel(parsed.model);
-    if (parsed.engine) setEngine(parsed.engine);
+    for (const field of Object.keys(KEYS)) {
+      const next = parsed[field] ?? (complete ? DEFAULTS[field] : undefined);
+      if (next !== undefined) SETTERS[field](next);
+    }
     applyingFromUrl = false;
+    // The URL now describes this mode, so the next in-workspace change replaces
+    // rather than pushing a second entry for the same workspace.
+    previousMode = getState().mode;
   };
 
   apply();
 
-  let previousMode = getState().mode;
   const unsubscribe = subscribe((state) => {
     if (applyingFromUrl) return;
     const search = `${buildSearch(state)}${window.location.hash}`;
@@ -80,7 +90,7 @@ export function initUrlSync() {
     previousMode = state.mode;
   });
 
-  const onPopState = () => apply();
+  const onPopState = () => apply(true);
   window.addEventListener('popstate', onPopState);
 
   return () => {

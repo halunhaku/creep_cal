@@ -25,12 +25,26 @@ import { useSyncExternalStore } from 'react';
 const PARAMS_KEY = 'creep-lab:paramsByModel';
 const SETS_KEY = 'creep-lab:parameterSets';
 
-/** Parameters survive a reload; the URL carries navigation only. */
+/**
+ * Both entries are user data that can outlive a schema change, so a shape the app
+ * no longer expects has to be dropped rather than trusted: a `parameterSets` entry
+ * that is a string (an older layout, or a hand-edited localStorage) used to reach
+ * `saved.map` and take the whole calculation workspace down with it.
+ */
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
 function loadParams() {
   try {
     const raw = globalThis.localStorage?.getItem(PARAMS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!isPlainObject(parsed)) return {};
+    const clean = {};
+    for (const [modelId, params] of Object.entries(parsed)) {
+      if (isPlainObject(params)) clean[modelId] = params;
+    }
+    return clean;
   } catch {
     return {}; // a corrupt entry must not stop the app from starting
   }
@@ -40,7 +54,14 @@ function loadSets() {
   try {
     const raw = globalThis.localStorage?.getItem(SETS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    if (!isPlainObject(parsed)) return {};
+    const clean = {};
+    for (const [modelId, sets] of Object.entries(parsed)) {
+      if (!Array.isArray(sets)) continue;
+      const kept = sets.filter((set) => isPlainObject(set) && typeof set.name === 'string' && isPlainObject(set.params));
+      if (kept.length) clean[modelId] = kept;
+    }
+    return clean;
   } catch {
     return {};
   }
@@ -176,7 +197,10 @@ export function resetStore() {
     // nothing to clear
   }
   state = { ...initialState, paramsByModel: {}, parameterSets: {} };
-  listeners.forEach((listener) => listener());
+  // Listeners get the new state, exactly as `set` above promises: the URL sync's
+  // subscriber reads `state.mode`, so calling them with nothing threw a TypeError
+  // whenever the app was mounted.
+  listeners.forEach((listener) => listener(state));
 }
 
 export function useAppSelector(selector) {
