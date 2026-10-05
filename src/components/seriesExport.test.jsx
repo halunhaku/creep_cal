@@ -62,4 +62,45 @@ describe('single-analysis CSV export', () => {
     expect(Number(data[0].targetAge)).toBeNaN();   // targetAge is UI-only, not a batch column
     expect(data[0].targetAge).toBeUndefined();
   });
+
+  // Regression: the export wrote the parameters currently on screen beside the
+  // results of the *previous* run. Measured before the fix: after loading a saved
+  // set back (H 35, whose phi(365) is 1.470112) the file said H=35 while carrying
+  // phi=0.980565, the value computed at H=90 — a 33 % error in a file that is
+  // meant to be re-imported into the batch pipeline.
+  test('the exported inputs are the ones that produced the exported results', async () => {
+    render(<Aci209Calculator engine="js" />);
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument(), { timeout: 5000 });
+
+    const humidity = screen.getByLabelText(/Relative Humidity/i);
+    const setHumidity = async (value) => {
+      fireEvent.change(humidity, { target: { value } });
+      fireEvent.blur(humidity);
+      await waitFor(() => expect(humidity.value).toBe(value));
+    };
+    const run = async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^Calculate/i }));
+      await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+    };
+
+    await setHumidity('35');
+    await run();
+    fireEvent.change(screen.getByLabelText(/New parameter set name/i), { target: { value: 'dry' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByLabelText(/Saved parameter set/i)).toHaveValue('dry'));
+
+    await setHumidity('90');
+    await run();
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    await waitFor(() => expect(screen.getByLabelText(/Relative Humidity/i).value).toBe('35'));
+
+    fireEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
+    const { data } = Papa.parse(await downloads[0].text(), { header: true, skipEmptyLines: true });
+    const at365 = data.find((row) => Number(row.t) === 365);
+
+    // The file must describe one case, not two: the H it names has to be the H
+    // whose result it carries.
+    expect(Number(at365.H)).toBe(90);
+    expect(Number(at365.phi)).toBeCloseTo(0.980565, 5);
+  });
 });

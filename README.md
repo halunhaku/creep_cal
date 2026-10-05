@@ -54,7 +54,9 @@ $$
 Defaults are omitted, so a plain visit has a clean URL. The batch dataset is
 deliberately not in the URL — it is a file, not a link — but it does survive
 switching workspaces. Edited parameters are persisted locally and are kept out
-of the URL; named, shareable parameter sets are future work.
+of the URL; a case can be kept under a name from the parameter panel (or the
+command palette), and loading one marks the results on screen as out of date
+rather than presenting a stale number as current.
 
 ---
 

@@ -39,6 +39,20 @@ const config = {
   ],
   loadingMessage: 'Loading Rust fib MC2010 WASM Module…',
   readyMessage: 'Published MC2010 creep kernel initialized successfully.',
+  /**
+   * |σ| ≤ 0.6·fcm is the model's nonlinear-stress limit (Eq. 5.1-74). It spans two
+   * fields, so the per-field ranges cannot express it: sigma's own range allows 78
+   * MPa, which is only legal at fcm = 130. Without this the button looked ready and
+   * the run could only end in an error notice.
+   */
+  validateInputs({ fcm, sigma }) {
+    const limit = 0.6 * Number(fcm);
+    if (!Number.isFinite(limit) || Math.abs(Number(sigma)) <= limit) return null;
+    return {
+      field: 'sigma',
+      message: `|σ| must be ≤ 0.6·fcm = ${Number(limit.toFixed(2))} MPa · 超出 MC2010 应力适用范围`,
+    };
+  },
   startMessage: (params) => (
     `Initiating MC2010 calculation with fcm=${params.fcm}MPa, t0=${params.t0}d, sigma=${params.sigma}MPa`
   ),
@@ -52,7 +66,8 @@ const config = {
   calculateRust(wasm, params, maxDays) {
     return wasm.calculate_mc2010_series(buildMc2010Params(params), maxDays);
   },
-  getSummary(results, targetAge) {
+  getSummary(results, params) {
+    const targetAge = params.targetAge;
     const final = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
     return {
       primary: final?.phi ?? NaN,

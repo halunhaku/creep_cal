@@ -16,6 +16,27 @@ const KERNEL_NOTICE = 'kernel-unavailable';
 const CALC_NOTICE = 'calculation-failed';
 const COMPARE_NOTICE = 'comparison-failed';
 
+/**
+ * `targetAge` only selects a point of the already-computed series, so it never
+ * invalidates a result; every other input does.
+ */
+const NON_INVALIDATING = new Set(['targetAge']);
+
+/** Do two parameter objects describe the same run? (NaN counts as a value.) */
+function sameRunInputs(a, b) {
+  const keys = new Set([...Object.keys(a ?? {}), ...Object.keys(b ?? {})]);
+  for (const key of keys) {
+    if (NON_INVALIDATING.has(key)) continue;
+    const left = a?.[key];
+    const right = b?.[key];
+    const equal = typeof left === 'number' && typeof right === 'number'
+      ? Object.is(left, right)
+      : left === right;
+    if (!equal) return false;
+  }
+  return true;
+}
+
 export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const isRust = engine === 'rust';
   // Parameters are persisted per model, so leaving the workspace and coming back
@@ -30,7 +51,13 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const [wasmModule, setWasmModule] = useState(null);
   const [wasmReady, setWasmReady] = useState(!isRust);
   const [feedLogs, setFeedLogs] = useState(() => initialFeed(engine));
-  const [dirty, setDirty] = useState(false);
+  // The parameters the results on screen were computed from. Staleness is derived
+  // from this rather than set by the input handlers: loading a saved set or
+  // pressing Reset changes the inputs without going through a field, and the old
+  // flag could not see either, so the badge kept saying "Computed" over a number
+  // that belonged to a different case (and the CSV export wrote that number
+  // beside the new inputs).
+  const [runParams, setRunParams] = useState(null);
   const [duration, setDuration] = useState(null);
   const [comparison, setComparison] = useState(null);
   const [comparing, setComparing] = useState(false);
@@ -60,7 +87,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on kernel change
     setResults([]);
     setFeedLogs(initialFeed(engine));
-    setDirty(false);
+    setRunParams(null);
     setDuration(null);
     initialRunRef.current = false;
 
@@ -114,13 +141,10 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       ...params,
       [name]: stringParams.has(name) ? value : parseFloat(value),
     });
-    // `targetAge` only selects a point of the already-computed 0–10,000 day
-    // series, so it never invalidates the results — nor a timing taken over the
-    // whole series, which is why a comparison survives it too.
-    if (name !== 'targetAge') {
-      setDirty(true);
-      setComparison(null);
-    }
+    // A timing is taken over the whole series, so a comparison survives a change
+    // that only moves the read-out point; staleness itself is derived from
+    // `runParams` below, which catches this and every other way the inputs move.
+    if (name !== 'targetAge') setComparison(null);
   }, [config.id, params, stringParams]);
 
   const calculate = useCallback(() => {
@@ -136,8 +160,8 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
         : config.calculateJs(params, MAX_SERIES_DAYS);
       const elapsed = performance.now() - startTime;
       setResults(nextResults);
+      setRunParams(params);
       setDuration(elapsed);
-      setDirty(false);
       dismissNotice(CALC_NOTICE);
       addLog(`Calculation completed in ${elapsed.toFixed(2)} ms.`, 'success');
     } catch (error) {
@@ -175,9 +199,17 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     }
   }, [addLog, config, params, raiseNotice, wasmModule]);
 
-  const inputsValid = config.paramsConfig.every((item) => item.options || (
+  /*
+   * Two levels of validity. The per-field ranges come from the parameter config;
+   * a model can also have a rule that spans fields (MC2010 needs |σ| ≤ 0.6·fcm, so
+   * a σ that is fine for fcm = 130 is not fine for fcm = 40). Without the second
+   * level the button looked ready and the run could only fail.
+   */
+  const fieldsValid = config.paramsConfig.every((item) => item.options || (
     Number.isFinite(Number(params[item.name])) && Number(params[item.name]) >= item.min && Number(params[item.name]) <= item.max
   ));
+  const inputIssue = config.validateInputs?.(params) ?? null;
+  const inputsValid = fieldsValid && !inputIssue;
   const kernelFailed = isRust && !wasmReady && notices.some((notice) => notice.id === KERNEL_NOTICE);
   const ready = (!isRust || wasmReady) && inputsValid;
   useEffect(() => {
@@ -186,7 +218,10 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     calculate();
   }, [calculate, ready]);
 
-  const summary = useMemo(() => config.getSummary(results, params.targetAge), [config, params.targetAge, results]);
+  // Results on screen belong to `runParams`; anything that moves the inputs since
+  // — a field, a loaded parameter set, Reset, the palette — makes them stale.
+  const dirty = runParams !== null && !sameRunInputs(runParams, params);
+  const summary = useMemo(() => config.getSummary(results, params), [config, params, results]);
 
   return (
     <CalculatorWrapper
@@ -196,10 +231,12 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       engine={engine}
       paramsConfig={config.paramsConfig}
       params={params}
+      resultParams={runParams}
       onParamChange={handleParamChange}
       onCalculate={calculate}
       calculateReady={ready}
       dirty={dirty}
+      inputIssue={inputIssue}
       duration={duration}
       buttonText={ready ? 'Calculate' : kernelFailed ? 'Kernel unavailable' : 'Loading kernel…'}
       phiResult={summary.primary}

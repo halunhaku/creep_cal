@@ -12,6 +12,15 @@ async function openCalculate() {
 }
 
 /**
+ * The header's nav also has a "Calculate" button, so the submit button is the one
+ * carrying the ⌘↵ hint.
+ */
+async function runCalculation() {
+  fireEvent.click(screen.getByRole('button', { name: /⌘↵/ }));
+  await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+}
+
+/**
  * Regression: the audit found no way to keep a case — comparing two mixtures
  * meant re-typing every parameter — and, once parameters persist locally, no way
  * back to the shipped values.
@@ -36,6 +45,49 @@ describe('parameter sets', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Load' }));
     await waitFor(() => expect(screen.getByLabelText(/Relative Humidity/i).value).toBe('35'));
+  });
+
+  // Regression: loading a set (or Reset) changes the inputs without going through
+  // a field, and staleness used to be a flag only the field handler set — so the
+  // badge kept saying "Computed" over a number that belonged to the previous case
+  // (measured: H=35 on screen, phi = 0.980565 from H=90).
+  test('loading a set marks the results on screen as out of date', async () => {
+    const humidity = await openCalculate();
+    await runCalculation();
+    fireEvent.change(humidity, { target: { value: '35' } });
+    fireEvent.blur(humidity);
+    await waitFor(() => expect(humidity.value).toBe('35'));
+    await runCalculation();
+
+    fireEvent.change(screen.getByLabelText(/New parameter set name/i), { target: { value: 'dry' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByLabelText(/Saved parameter set/i)).toHaveValue('dry'));
+
+    fireEvent.change(humidity, { target: { value: '90' } });
+    fireEvent.blur(humidity);
+    await waitFor(() => expect(humidity.value).toBe('90'));
+    await runCalculation();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    await waitFor(() => expect(screen.getByLabelText(/Relative Humidity/i).value).toBe('35'));
+    expect(await screen.findByText(/Results out of date/i)).toBeInTheDocument();
+
+    // ... and recalculating clears it again.
+    await runCalculation();
+    expect(screen.queryByText(/Results out of date/i)).not.toBeInTheDocument();
+  });
+
+  test('Reset marks the results on screen as out of date', async () => {
+    const humidity = await openCalculate();
+    await runCalculation();
+    fireEvent.change(humidity, { target: { value: '35' } });
+    fireEvent.blur(humidity);
+    await waitFor(() => expect(humidity.value).toBe('35'));
+    await runCalculation();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Reset$/i }));
+    await waitFor(() => expect(screen.getByLabelText(/Relative Humidity/i).value).toBe('70'));
+    expect(await screen.findByText(/Results out of date/i)).toBeInTheDocument();
   });
 
   test('a set is per model and survives a reload', async () => {

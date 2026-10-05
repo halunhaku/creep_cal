@@ -1,5 +1,5 @@
 import React from 'react';
-import { b4Point } from '../math/creepModels';
+import { b4Point, b4TemperatureAcceleration } from '../math/creepModels';
 import { buildB4Params } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
@@ -97,12 +97,20 @@ const config = {
   calculateRust(wasm, params, maxDays) {
     return wasm.calculate_b4_series(buildB4Params(params), maxDays).map(rustChartPoint);
   },
-  getSummary(results, targetAge) {
-    const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
+  getSummary(results, params) {
+    const current = results[Math.min(results.length - 1, Math.max(0, Math.round(params.targetAge ?? 10000)))];
+    /*
+     * J = q₁ + β(Tc)·C₀ + C_d, so the instantaneous compliance is only
+     * `J − C₀ − C_d` when Tc is the reference 20 °C. Reading it that way showed
+     * 64.59 instead of 28.15 at Tc = 30 °C and a negative value at Tc = −25 °C.
+     * Undo the temperature factor the kernel applied to C₀ instead.
+     */
+    const betaTc = b4TemperatureAcceleration(Number(params.Tc));
+    const q1 = current ? current.j_micro_mpa - betaTc * current.c0 - current.cd : NaN;
     return {
       primary: current ? current.j_micro_mpa / 1000 : NaN,
       extraResults: current ? [
-        { label:'Instantaneous q₁', value:current.j_micro_mpa - current.c0 - current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
+        { label:'Instantaneous q₁', value:q1, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Basic creep C₀', value:current.c0, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Drying creep Cd', value:current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Drying shrinkage εsh', value:current.epsilon_sh, unit:'με', group:'shrinkage' },

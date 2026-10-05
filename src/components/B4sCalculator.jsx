@@ -1,5 +1,5 @@
 import React from 'react';
-import { b4sPoint } from '../math/creepModels';
+import { b4sPoint, b4TemperatureAcceleration } from '../math/creepModels';
 import { buildB4sParams } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
@@ -83,12 +83,15 @@ const config = {
   calculateRust(wasm, params, maxDays) {
     return wasm.calculate_b4s_series(buildB4sParams(params), maxDays).map(rustChartPoint);
   },
-  getSummary(results, targetAge) {
-    const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
+  getSummary(results, params) {
+    const current = results[Math.min(results.length - 1, Math.max(0, Math.round(params.targetAge ?? 10000)))];
+    // See B4Calculator: q₁ = J − β(Tc)·C₀ − C_d, not J − C₀ − C_d.
+    const betaTc = b4TemperatureAcceleration(Number(params.Tc));
+    const q1 = current ? current.j_micro_mpa - betaTc * current.c0 - current.cd : NaN;
     return {
       primary: current ? current.j_micro_mpa / 1000 : NaN,
       extraResults: current ? [
-        { label:'Instantaneous q₁', value:current.j_micro_mpa - current.c0 - current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
+        { label:'Instantaneous q₁', value:q1, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Basic creep C₀', value:current.c0, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Drying creep Cd', value:current.cd, unit:'×10⁻⁶/MPa', group:'compliance' },
         { label:'Drying shrinkage εsh', value:current.epsilon_sh, unit:'με', group:'shrinkage' },

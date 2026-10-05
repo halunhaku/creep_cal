@@ -1,7 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import Aci209Calculator from './Aci209Calculator';
+import B4Calculator from './B4Calculator';
 import Mc2010Calculator from './Mc2010Calculator';
+import ModelCalculator from './ModelCalculator';
 
 describe('ModelCalculator workspace state', () => {
   test('an initial calculation runs automatically and reports "Computed"', async () => {
@@ -40,21 +42,42 @@ describe('ModelCalculator workspace state', () => {
     await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
   });
 
-  // Regression: wasm errors were surfaced only inside the collapsed
-  // "Calculation log" accordion, and a bare-string throw from the Rust kernel made
-  // the message read "Calculation failed: undefined".
-  test('a rejected calculation shows the engine message in a visible alert', async () => {
-    render(<Mc2010Calculator engine="js" />);
-    const sigma = await screen.findByLabelText(/Initial Concrete Stress/i);
-    fireEvent.change(sigma, { target: { value: '78' } });   // 0.6 x fcm(40) = 24 MPa
-    fireEvent.blur(sigma);
+  /*
+   * Regression: wasm errors were surfaced only inside the collapsed "Calculation
+   * log" accordion, and a bare-string throw from the Rust kernel made the message
+   * read "Calculation failed: undefined".
+   *
+   * Driven by a stub config rather than by MC2010: the workspace now checks that
+   * model's |σ| ≤ 0.6·fcm rule before running (see the next case), and what these
+   * two tests are about is the notice plumbing itself — a kernel that refuses an
+   * input has to say so in a visible, dismissible alert.
+   */
+  const stubConfig = (refuses) => ({
+    id: 'stub',
+    name: 'Stub model',
+    descriptions: { js: 'stub', rust: 'stub' },
+    initialParams: { x: 1, targetAge: 5 },
+    paramsConfig: [
+      { name: 'x', label: 'X', min: 0, max: 10 },
+      { name: 'targetAge', label: 'Target Age', min: 1, max: 100 },
+    ],
+    loadingMessage: 'loading',
+    readyMessage: 'ready',
+    calculateJs() {
+      if (refuses.value) throw new RangeError('Stub kernel refused this input.');
+      return [{ t: 0, v: 0 }, { t: 1, v: 1 }];
+    },
+    calculateRust() { return this.calculateJs(); },
+    getSummary: () => ({ primary: 1 }),
+    chartLines: [{ dataKey: 'v', stroke: 'var(--primary)', name: 'V' }],
+  });
 
-    const button = await screen.findByRole('button', { name: /^Calculate/i });
-    expect(button).toBeEnabled();
-    fireEvent.click(button);
+  test('a rejected calculation shows the engine message in a visible alert', async () => {
+    const refuses = { value: true };
+    render(<ModelCalculator engine="js" config={stubConfig(refuses)} />);
 
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/0\.6/);
+    expect(alert).toHaveTextContent(/Stub kernel refused this input/);
     expect(alert.textContent).not.toMatch(/undefined/);
 
     fireEvent.click(screen.getByRole('button', { name: /Dismiss/i }));
@@ -62,17 +85,40 @@ describe('ModelCalculator workspace state', () => {
   });
 
   test('a successful calculation clears a previous calculation error', async () => {
-    render(<Mc2010Calculator engine="js" />);
-    const sigma = await screen.findByLabelText(/Initial Concrete Stress/i);
-    fireEvent.change(sigma, { target: { value: '78' } });
-    fireEvent.blur(sigma);
-    fireEvent.click(await screen.findByRole('button', { name: /^Calculate/i }));
+    const refuses = { value: true };
+    render(<ModelCalculator engine="js" config={stubConfig(refuses)} />);
     await screen.findByRole('alert');
 
-    fireEvent.change(sigma, { target: { value: '12' } });
-    fireEvent.blur(sigma);
+    refuses.value = false;
     fireEvent.click(screen.getByRole('button', { name: /^Calculate/i }));
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(screen.getByText(/^Computed$/)).toBeInTheDocument();
+  });
+
+  // Regression: |σ| ≤ 0.6·fcm spans two fields, so the per-field ranges could not
+  // express it — sigma's own range allows 78 MPa, which is only legal at fcm = 130.
+  // The button said "Calculate", the run failed, and the reason arrived as an alert
+  // after the fact instead of in the panel that owns the fields.
+  test('a cross-field rule is reported before the run, and points at the field', async () => {
+    render(<Mc2010Calculator engine="js" />);
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+
+    const sigma = screen.getByLabelText(/Initial Concrete Stress/i);
+    fireEvent.change(sigma, { target: { value: '78' } });   // 0.6 x fcm(40) = 24 MPa
+    fireEvent.blur(sigma);
+
+    const button = await screen.findByRole('button', { name: /inputs out of range/i });
+    expect(button).toBeEnabled();
+    expect(screen.getByText(/0\.6·fcm = 24 MPa/)).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    fireEvent.click(button);
+    expect(sigma).toHaveFocus();
+
+    // Bringing sigma back inside the rule makes the panel ready again.
+    fireEvent.change(sigma, { target: { value: '12' } });
+    fireEvent.blur(sigma);
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Calculate/i })).toBeEnabled());
   });
 
   test('clearing a bounded numeric field is reported instead of silently committing 0', async () => {
@@ -92,8 +138,31 @@ describe('ModelCalculator workspace state', () => {
     expect(VS).toHaveFocus();
   });
 
-  test('the Data tab states how much of the series it is showing', async () => {
-    render(<Aci209Calculator engine="js" />);
+  // Regression: the "Instantaneous q₁" readout was computed as J − C₀ − C_d, but
+  // the kernel returns J = q₁ + β(Tc)·C₀ + C_d, so it drifted with the post-loading
+  // temperature: 28.15 at Tc = 20 °C (the default, which hid it), 64.59 at 30 °C and
+  // negative at −25 °C. q₁ is the instantaneous compliance and cannot depend on Tc.
+  test('Instantaneous q1 does not drift with the post-loading temperature', async () => {
+    render(<B4Calculator engine="js" />);
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+
+    const q1Value = () => {
+      const row = screen.getByText(/Instantaneous q₁/).parentElement;
+      return Number(row.textContent.replace(/[^\d.+-]/g, ''));
+    };
+    const at20 = q1Value();
+    expect(at20).toBeCloseTo(28.146, 2);
+
+    const temperature = screen.getByLabelText(/Post-Loading Temperature/i);
+    fireEvent.change(temperature, { target: { value: '30' } });
+    fireEvent.blur(temperature);
+    fireEvent.click(screen.getByRole('button', { name: /^Calculate/i }));
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+
+    expect(q1Value()).toBeCloseTo(at20, 2);
+  });
+
+  test('the Data tab states how much of the series it is showing', async () => {    render(<Aci209Calculator engine="js" />);
     await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /^Data$/ }));
 

@@ -50,7 +50,8 @@ const config = {
   calculateRust(wasm, params, maxDays) {
     return wasm.calculate_aci209_series(buildAci209Params(params), maxDays);
   },
-  getSummary(results, targetAge) {
+  getSummary(results, params) {
+    const targetAge = params.targetAge;
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
     return { primary: current?.phi ?? NaN };
   },

@@ -95,7 +95,7 @@ function ParameterField({ config, value, onChange }) {
   );
 }
 
-export default function DynamicParameters({ modelId, paramsConfig, params, onParamChange, onCalculate, buttonText, dirty }) {
+export default function DynamicParameters({ modelId, paramsConfig, params, onParamChange, onCalculate, buttonText, dirty, inputIssue }) {
   const grouped = useMemo(
     () => GROUPS
       .map((group) => ({ ...group, items: paramsConfig.filter((item) => groupFor(item.name) === group.id) }))
@@ -116,10 +116,14 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
    * button cannot be focused: a keyboard user could not reach it to find out why
    * nothing happened, and nothing moved them to the field at fault. It now stays
    * enabled, says what is wrong, and puts the cursor in the first bad field.
+   *
+   * `inputIssue` is the model's cross-field rule (e.g. MC2010's |σ| ≤ 0.6·fcm):
+   * the field's own range is satisfied, so the field grid cannot report it.
    */
   const handleCalculate = () => {
-    if (invalid.length) {
-      document.getElementById(`param-input-${invalid[0].name}`)?.focus();
+    const firstBad = invalid[0]?.name ?? inputIssue?.field;
+    if (firstBad) {
+      document.getElementById(`param-input-${firstBad}`)?.focus();
       return;
     }
     onCalculate();
@@ -183,8 +187,16 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
             Inputs changed · 当前结果待更新
           </div>
         )}
+        {inputIssue && (
+          <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {inputIssue.message}
+          </div>
+        )}
         <button onClick={handleCalculate} className="button-primary w-full">
-          {invalidCount > 0 ? `${invalidCount} inputs require attention` : buttonText}
+          {invalidCount > 0
+            ? `${invalidCount} inputs require attention`
+            : inputIssue ? 'Inputs out of range' : buttonText}
           <span className="ml-auto font-mono text-3xs opacity-70">⌘↵</span>
         </button>
       </div>

@@ -25,6 +25,12 @@ function csvCell(value) {
  * Earlier revisions wrote a `# key,value` metadata block as the first line and
  * named the time column `t_days`; the importer read the comment as the header row
  * and rejected the app's own export with "Missing required columns".
+ *
+ * `params` here must be the parameters the series was computed from, not the ones
+ * currently on screen: when the inputs have moved since the run, writing the new
+ * inputs beside the old results makes a file whose columns contradict each other
+ * (measured: H=35 exported with the φ that belongs to H=90), and that file is
+ * meant to be re-imported.
  */
 function exportSeries(modelName, params, data, lines) {
   const inputs = Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'targetAge'));
@@ -109,7 +115,7 @@ function ScientificTooltip({ active, payload, label }) {
   );
 }
 
-function AnalysisChart({ data, lines, params, modelName }) {
+function AnalysisChart({ data, lines, params, resultParams, modelName }) {
   const hasShrinkage = lines.some((line) => line.kind === 'shrinkage');
   const [view, setView] = useState('compliance');
   const [logX, setLogX] = useState(false);
@@ -144,7 +150,7 @@ function AnalysisChart({ data, lines, params, modelName }) {
             </button>
           )}
           <button
-            onClick={() => exportSeries(modelName, params, data, lines)}
+            onClick={() => exportSeries(modelName, resultParams ?? params, data, lines)}
             className="button-secondary !min-h-8 !px-2.5 !text-3xs"
           >
             Export CSV
@@ -301,9 +307,11 @@ export default function CalculatorWrapper({
   engine,
   paramsConfig,
   params,
+  resultParams,
   onParamChange,
   onCalculate,
   calculateReady,
+  inputIssue,
   buttonText,
   phiResult,
   feedLogs,
@@ -364,6 +372,7 @@ export default function CalculatorWrapper({
             onCalculate={onCalculate}
             buttonText={buttonText}
             dirty={dirty}
+            inputIssue={inputIssue}
           />
         </div>
 
@@ -396,7 +405,7 @@ export default function CalculatorWrapper({
             compareReady={compareReady}
           />
           {hasResults && (
-            <AnalysisChart data={chartData} lines={chartLines} params={params} modelName={modelName} />
+            <AnalysisChart data={chartData} lines={chartLines} params={params} resultParams={resultParams} modelName={modelName} />
           )}
 
           <details className="workbench-panel overflow-hidden">
