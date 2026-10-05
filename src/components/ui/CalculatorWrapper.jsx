@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DynamicParameters from './DynamicParameters';
+import Lang from './Lang';
 import { MAX_SERIES_DAYS } from '../../math/creepModels';
 import { CHART, axisTitleStyle, legendStyle, tickGap, tickStyle } from '../chartTheme';
 import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -254,9 +255,9 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
     <section className="workbench-panel p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="eyebrow">Kernel comparison · 内核对比</div>
+          <div className="eyebrow">Kernel comparison · <span lang="zh-CN">内核对比</span></div>
           <p className="mt-1 text-1xs text-muted">
-            同一组参数下，两条内核各计算一次 {MAX_SERIES_DAYS.toLocaleString('en-US')} 天序列并计时（含预热）。
+            <span lang="zh-CN">同一组参数下，两条内核各计算一次</span> {MAX_SERIES_DAYS.toLocaleString('en-US')} <span lang="zh-CN">天序列并计时（含预热）。</span>
           </p>
         </div>
         <button onClick={onCompare} disabled={comparing || !compareReady} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
@@ -291,8 +292,8 @@ function NoticeBanner({ notices, onDismiss }) {
       {notices.map((notice) => (
         <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="font-mono text-2xs font-semibold uppercase tracking-[.08em] text-[var(--warning)]">{notice.title}</div>
-            <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]">{notice.message}</p>
+            <div className="font-mono text-2xs font-semibold uppercase tracking-[.08em] text-[var(--warning)]"><Lang text={notice.title} /></div>
+            <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]"><Lang text={notice.message} /></p>
           </div>
           {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-3xs">Dismiss</button>}
         </div>
@@ -410,7 +411,7 @@ export default function CalculatorWrapper({
 
           <details className="workbench-panel overflow-hidden">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
-              <span className="eyebrow">Calculation log · 计算日志</span>
+              <span className="eyebrow">Calculation log · <span lang="zh-CN">计算日志</span></span>
               <span className="font-mono text-3xs text-faint">{feedLogs.length} events</span>
             </summary>
             <div className="border-t border-line px-4 py-3">

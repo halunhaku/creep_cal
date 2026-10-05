@@ -25,9 +25,13 @@ describe('kernel comparison', () => {
 
     expect(screen.getByText('JS reference')).toBeInTheDocument();
     expect(screen.getByText('Rust WASM')).toBeInTheDocument();
-    // The panel states the series length it timed, from the shared constant.
-    const panel = screen.getByText('Kernel comparison · 内核对比').closest('section');
+    // The panel states the series length it timed, from the shared constant. Its
+    // heading is bilingual and the Chinese half carries its own lang, so the
+    // query is on the English half and the whole heading is read as text content.
+    const panel = screen.getByText(/^Kernel comparison ·$/).closest('section');
+    expect(panel).toHaveTextContent('Kernel comparison · 内核对比');
     expect(panel).toHaveTextContent(/10,000 天序列/);
+    expect(screen.getByText('内核对比').getAttribute('lang')).toBe('zh-CN');
     // Both engines were measured, so the ratio is a real number rather than the
     // placeholder the panel falls back to.
     expect(screen.getByText('Rust speed-up').parentElement).toHaveTextContent(/×/);

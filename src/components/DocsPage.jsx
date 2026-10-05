@@ -415,7 +415,7 @@ export default function DocsPage() {
                   download
                   className="button-secondary !min-h-8 !px-2.5 !text-3xs"
                 >
-                  Markdown 说明
+                  Markdown <span lang="zh-CN">说明</span>
                 </a>
               </div>
             </div>

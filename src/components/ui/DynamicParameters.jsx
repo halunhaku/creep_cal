@@ -1,6 +1,7 @@
 import ParameterSets from './ParameterSets';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import CustomSelect from './CustomSelect';
+import Lang from './Lang';
 
 const GROUPS = [
   { id: 'time', label: 'Time', zh: '时间参数' },
@@ -72,7 +73,7 @@ function NumericInput({ config, value, onChange }) {
         )}
       </div>
       <div className={`mt-1.5 font-mono text-3xs ${invalid ? 'text-error' : 'text-faint'}`}>
-        {invalid ? `Outside calibrated range · 超出推荐范围 ${min}–${max}` : `Recommended ${min}–${max}${unit ? ` ${unit}` : ''}`}
+        <Lang text={invalid ? `Outside calibrated range · 超出推荐范围 ${min}–${max}` : `Recommended ${min}–${max}${unit ? ` ${unit}` : ''}`} />
       </div>
     </>
   );
@@ -84,7 +85,7 @@ function ParameterField({ config, value, onChange }) {
       <div className="mb-2 flex items-start justify-between gap-3">
         <label htmlFor={config.options ? `param-select-${config.name}` : `param-input-${config.name}`} className="min-w-0">
           <span className="block text-body-sm font-semibold leading-tight text-primary">{config.label}</span>
-          <span className="mt-1 block text-1xs leading-tight text-muted">{ZH[config.name] || '模型输入参数'}</span>
+          <span className="mt-1 block text-1xs leading-tight text-muted"><Lang text={ZH[config.name] || '模型输入参数'} /></span>
         </label>
         {SYMBOLS[config.name] && <span className="shrink-0 font-mono text-2xs italic text-faint">{SYMBOLS[config.name]}</span>}
       </div>
@@ -135,7 +136,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="eyebrow">Input parameters</div>
-            <div className="mt-1 text-xs text-muted">参数将在计算前进行范围校验</div>
+            <div className="mt-1 text-xs text-muted" lang="zh-CN">参数将在计算前进行范围校验</div>
           </div>
           <span className="font-mono text-2xs text-faint">{paramsConfig.length} inputs</span>
         </div>
@@ -162,7 +163,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
               <summary className="flex cursor-pointer list-none items-center justify-between py-3.5">
                 <span>
                   <span className="eyebrow">{String(index + 1).padStart(2, '0')} · {group.label}</span>
-                  <span className="ml-2 text-1xs text-muted">{group.zh}</span>
+                  <span className="ml-2 text-1xs text-muted"><Lang text={group.zh} /></span>
                 </span>
                 <span className="font-mono text-3xs text-faint">{activeAdmixtures} active</span>
               </summary>
@@ -173,7 +174,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
             <section key={group.id} className={index ? 'border-t border-line py-4' : 'py-4'}>
               <div className="mb-3">
                 <span className="eyebrow">{String(index + 1).padStart(2, '0')} · {group.label}</span>
-                <span className="ml-2 text-1xs text-muted">{group.zh}</span>
+                <span className="ml-2 text-1xs text-muted"><Lang text={group.zh} /></span>
               </div>
               {content}
             </section>
@@ -184,13 +185,13 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
         {dirty && (
           <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            Inputs changed · 当前结果待更新
+            Inputs changed · <span lang="zh-CN">当前结果待更新</span>
           </div>
         )}
         {inputIssue && (
           <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            {inputIssue.message}
+            <Lang text={inputIssue.message} />
           </div>
         )}
         <button onClick={handleCalculate} className="button-primary w-full">

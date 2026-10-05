@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
+import Lang from './ui/Lang';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
 import { applyMapping, suggestMapping } from './columnMapping';
@@ -349,7 +350,7 @@ export default function BatchCalculator() {
           >
             <div className={`font-mono text-3xs font-semibold ${stage >= index + 1 ? 'text-green' : 'text-faint'}`}>{number}</div>
             <div className="mt-1 text-xs font-semibold text-primary">{label}</div>
-            <div className="text-2xs text-muted">{zh}</div>
+            <div className="text-2xs text-muted"><Lang text={zh} /></div>
           </div>
         ))}
       </div>
@@ -377,7 +378,7 @@ export default function BatchCalculator() {
             </div>
             <button onClick={downloadTemplate} className="button-secondary mt-5 w-full">Download template</button>
             {model.sampleFiles && <div className="mt-5">
-              <div className="eyebrow">Shipped samples · 官方示例</div>
+              <div className="eyebrow">Shipped samples · <span lang="zh-CN">官方示例</span></div>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {model.sampleFiles.map((file) => (
                   <a
@@ -402,7 +403,7 @@ export default function BatchCalculator() {
                 <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="mt-3 text-sm font-semibold text-primary">Drop CSV or XLSX here</span>
-              <span className="mt-1 text-xs text-muted">拖入文件，或点击选择本地数据表</span>
+              <span className="mt-1 text-xs text-muted" lang="zh-CN">拖入文件，或点击选择本地数据表</span>
               <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs uppercase tracking-[.06em] text-muted">
                 {isProcessing ? 'Processing…' : 'Choose file'}
               </span>
@@ -479,7 +480,7 @@ export default function BatchCalculator() {
           </div>
         </div>
         {batchError && (
-          <div role="alert" className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error">{batchError}</div>
+          <div role="alert" className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error"><Lang text={batchError} /></div>
         )}
         {issues.length > 0 && (
           <div className="max-h-56 overflow-auto">
@@ -497,7 +498,7 @@ export default function BatchCalculator() {
                     <td className="px-4 py-2 font-mono">{issue.row}</td>
                     <td className="px-4 py-2 font-mono">{issue.field}</td>
                     <td className="px-4 py-2 font-mono">{issue.value}</td>
-                    <td className="px-4 py-2 text-error">{issue.message}</td>
+                    <td className="px-4 py-2 text-error"><Lang text={issue.message} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -513,7 +514,7 @@ export default function BatchCalculator() {
               <div className="eyebrow">Result matrix</div>
               <div className="mt-1 text-xs text-muted">
                 {batchResults.length} rows · {model.resultKeys.length} output fields
-                {batchResults.length > 100 ? ` · 表格显示前 100 行，导出包含全部 ${batchResults.length} 行` : ''}
+                {batchResults.length > 100 && <Lang text={` · 表格显示前 100 行，导出包含全部 ${batchResults.length} 行`} />}
               </div>
             </div>
             <button onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button>
@@ -552,7 +553,7 @@ export default function BatchCalculator() {
           <div className="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-end md:justify-between">
             <div>
               <div className="eyebrow">Result visualizer</div>
-              <div className="mt-1 text-xs text-muted">选择输入列与结果列进行快速关系检查</div>
+              <div className="mt-1 text-xs text-muted" lang="zh-CN">选择输入列与结果列进行快速关系检查</div>
             </div>
             <div className="flex gap-1 rounded-md border border-line bg-surface-2 p-0.5">
               {['scatter', 'line'].map((type) => (
