@@ -8,6 +8,7 @@ const CALCULATORS = {
   b4: lazy(() => import('./B4Calculator')),
   b4s: lazy(() => import('./B4sCalculator')),
   gl2000: lazy(() => import('./Gl2000Calculator')),
+  aashto: lazy(() => import('./AashtoCalculator')),
 };
 
 const MODELS = [
@@ -16,6 +17,7 @@ const MODELS = [
   { id:'b4', index:'03', name:'RILEM Model B4', type:'Composition-based · Long-term', note:'Mix proportions and staged temperature', range:'15–70 MPa' },
   { id:'b4s', index:'04', name:'RILEM Model B4s', type:'Strength-based · Preliminary', note:'No mix proportions required', range:'15–70 MPa' },
   { id:'gl2000', index:'05', name:'GL2000', type:'Strength-based · Full', note:'Compliance and drying shrinkage', range:'16–82 MPa' },
+  { id:'aashto', index:'06', name:'AASHTO LRFD', type:'Code-based · Bridge', note:'Creep coefficient and shrinkage', range:'16.5–103.5 MPa' },
 ];
 
 export default function SingleCalculationDashboard() {

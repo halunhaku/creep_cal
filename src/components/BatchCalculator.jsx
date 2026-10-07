@@ -7,7 +7,7 @@ import {
   ScatterChart, Scatter, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
-import { aci209Single, mc2010Single, b4Single, b4sSingle, gl2000Single } from '../math/creepModels';
+import { aashtoSingle, aci209Single, mc2010Single, b4Single, b4sSingle, gl2000Single } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
 import Lang from './ui/Lang';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
@@ -35,6 +35,9 @@ const SAMPLE_DATA = {
   })),
   gl2000: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
     fcm28: 32.5, h: 70, vs: 100, tc: 7, t0: 28, cementType: 'I', t
+  })),
+  aashto: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
+    fci: 41, H: 70, vs: 89, ti: 7, tc: 7, t
   })),
 };
 
@@ -128,6 +131,17 @@ function computeRow(modelId, row) {
     const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = gl2000Single(row);
     return {
       result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
+      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
+      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
+      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
+    };
+  }
+  if (modelId === 'aashto') {
+    // Coefficient model like ACI 209: ψ plus the shrinkage triplet, with the
+    // same explicit-zero autogenous the GL2000 branch uses for column shape.
+    const { psi, epsilonSH, epsilonAU, epsilonTotal } = aashtoSingle(row);
+    return {
+      result_psi: formatResult(psi, 4, 'ψ (Creep Coeff.)'),
       result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
       result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
       result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),

@@ -6,6 +6,7 @@ import Mc2010Calculator from './Mc2010Calculator';
 import B4Calculator from './B4Calculator';
 import B4sCalculator from './B4sCalculator';
 import Gl2000Calculator from './Gl2000Calculator';
+import AashtoCalculator from './AashtoCalculator';
 
 const MODELS = [
   { id: 'aci209', name: 'ACI 209R-92', Calculator: Aci209Calculator, required: 'curingType, t0, H, VS, slump, fineAggregate, airContent, t'.split(', ') },
@@ -13,6 +14,7 @@ const MODELS = [
   { id: 'b4', name: 'RILEM Model B4', Calculator: B4Calculator, required: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t'.split(', ') },
   { id: 'b4s', name: 'RILEM Model B4s', Calculator: B4sCalculator, required: 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t'.split(', ') },
   { id: 'gl2000', name: 'GL2000', Calculator: Gl2000Calculator, required: 'fcm28, h, vs, tc, t0, cementType, t'.split(', ') },
+  { id: 'aashto', name: 'AASHTO LRFD', Calculator: AashtoCalculator, required: 'fci, H, vs, ti, tc, t'.split(', ') },
 ];
 
 let downloads;

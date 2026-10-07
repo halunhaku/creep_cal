@@ -688,3 +688,68 @@ export function gl2000Single(row) {
   const { epsilonSH, epsilonAU, epsilonTotal } = gl2000Shrinkage(row);
   return { J_GPa: J * 1000, epsilonSH, epsilonAU, epsilonTotal };
 }
+
+// ─── AASHTO LRFD ──────────────────────────────────────────────────────────
+/**
+ * AASHTO LRFD creep and shrinkage (NCHRP 18-07, as proposed in
+ * FHWA-HRT-05-057 Appendix D for Article 5.4.2.3): creep coefficient
+ * ψ(t,ti) = 1.9·ks·khc·kf·ktd·ti^−0.118 and shrinkage
+ * εsh = ks·khs·kf·ktd·0.48e-3. SI in and out; the spec is inch-pound,
+ * converted inside (KSI = MPa/6.89476, in = mm/25.4); V/S is capped at
+ * 6.0 in per the spec. Calibration anchors (all factors unity at
+ * f'ci = 4 KSI, H = 70 %, V/S = 3.5 in) come from the FHWA background text.
+ * Like ACI, this is a coefficient model: no compliance, no modulus.
+ * Deliberately not implemented: the one-day-accelerated-curing counts as
+ * seven days ti adjustment (optional guidance, skipped and documented).
+ */
+function validateAashto({ fci, H, vs, ti, tc, t }) {
+  const fciKsi = fci / 6.89476;
+  if (!Number.isFinite(fci) || fciKsi < 2.4 || fciKsi > 15) {
+    throw new RangeError('AASHTO requires 2.4 ≤ fci ≤ 15 KSI.');
+  }
+  if (!Number.isFinite(H) || H < 0 || H > 100) {
+    throw new RangeError('AASHTO requires 0 ≤ H ≤ 100%.');
+  }
+  if (!Number.isFinite(vs) || vs <= 0) {
+    throw new RangeError('AASHTO requires a positive volume-surface ratio V/S.');
+  }
+  if (!Number.isFinite(ti) || ti < 1) {
+    throw new RangeError('AASHTO requires a loading age ti ≥ 1 day.');
+  }
+  if (!Number.isFinite(tc) || tc < 0) {
+    throw new RangeError('AASHTO requires a non-negative curing-end age tc.');
+  }
+  if (!Number.isFinite(t) || t < 0) {
+    throw new RangeError('AASHTO requires a non-negative concrete age t.');
+  }
+}
+
+export function aashtoPoint({ fci, H, vs, ti, tc, t }) {
+  validateAashto({ fci, H, vs, ti, tc, t });
+  const fciKsi = fci / 6.89476;
+  const vsIn = Math.min(vs / 25.4, 6.0);
+  const ks = Math.max(1.0, 1.45 - 0.13 * vsIn);
+  const khc = 1.56 - 0.008 * H;
+  const khs = 2.0 - 0.014 * H;
+  const kf = 5 / (1 + fciKsi);
+  const dt = t - ti;
+  const psi = dt <= 0 ? 0 : 1.9 * ks * khc * kf * (dt / (61 - 4 * fciKsi + dt)) * Math.pow(ti, -0.118);
+  const dd = t - tc;
+  let epsilonSH = 0;
+  if (dd > 0) {
+    epsilonSH = -(ks * khs * kf * (dd / (61 - 4 * fciKsi + dd)) * 0.48e-3) * 1e6;
+    if (tc < 5) epsilonSH *= 1.2;
+  }
+  return { psi, epsilonSH, epsilonAU: 0, epsilonTotal: epsilonSH, ks, khc, khs, kf };
+}
+
+export function aashtoSingle(row) {
+  return aashtoPoint({
+    fci: coerceNumber(row.fci),
+    H: coerceNumber(row.H),
+    vs: coerceNumber(row.vs),
+    ti: coerceNumber(row.ti),
+    tc: coerceNumber(row.tc),
+    t: coerceNumber(row.t),
+  });
+}

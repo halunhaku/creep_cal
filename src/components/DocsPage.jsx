@@ -425,6 +425,62 @@ const MODELS = [
       { label: 'Loading-Age Factor', expr: String.raw`\Phi(t_c)=1\ (t_0=t_c)` },
     ],
   },
+  {
+    id: 'aashto',
+    name: 'AASHTO LRFD',
+    category: 'North American Bridge Code',
+    engine: ['JS'],
+    description: 'AASHTO LRFD (NCHRP 18-07) creep coefficient and shrinkage for bridge design: strength-based with humidity, size and time factors.',
+    params: [
+      { name: 'fci', description: 'Strength at loading, 2.4–15 KSI (16.5–103.5 MPa)' },
+      { name: 'H', description: 'Average annual ambient humidity, 0–100 %' },
+      { name: 'vs', description: 'Volume-to-surface ratio V/S in mm (capped at 6.0 in)' },
+      { name: 'ti', description: 'Age at initial loading, ti ≥ 1 day' },
+      { name: 'tc', description: 'Curing-end age; shrinkage +20 % when tc < 5 days' },
+      { name: 't', description: 'Target concrete age from casting' },
+    ],
+    output: 'ψ(t,ti) creep coefficient (dimensionless); εsh in µε (negative, shortening); no autogenous term',
+    reference: 'AASHTO LRFD Bridge Design Specifications, Article 5.4.2.3 (NCHRP 18-07: Huo, Al-Omaishi, Tadros).',
+    officialDocuments: [
+      {
+        designation: 'FHWA-HRT-05-057 Appendix D',
+        title: 'Proposed revisions to the AASHTO LRFD Bridge Design Specifications',
+        status: 'Federal report · 2006',
+        coverage: 'Full 5.4.2.3/5.4.2.4 specification text with calibration anchors (all factors unity at 4 KSI, 70 %, 3.5 in).',
+      },
+    ],
+    applicability: [
+      'Strength at loading fci: 2.4–15 KSI.',
+      'Normal-weight concrete, unit weight 0.090–0.155 kcf.',
+      'Bridges other than segmentally constructed ones (segmental needs project-specific calibration).',
+    ],
+    limitations: [
+      'Coefficient model only: no compliance, modulus, or structural-response calculations.',
+      'The one-day-accelerated-curing counts as seven days ti adjustment is optional guidance and is not applied.',
+      'Al-Manaseer & Prado (2015) rank AASHTO last of six models on RILEM/NU-ITI data; expect ±50 % per the commentary.',
+    ],
+    sourceMapping: [
+      'Creep coefficient ψ: Eq. 5.4.2.3.2-1.',
+      'Size, humidity, strength, time factors ks/khc/kf/ktd: Eqs. 5.4.2.3.2-2–5.4.2.3.2-5.',
+      'Shrinkage εsh and khs: Eqs. 5.4.2.3.3-1–5.4.2.3.3-2.',
+    ],
+    sources: [
+      {
+        label: 'FHWA-HRT-05-057 Appendix D (open HTML)',
+        url: 'https://www.fhwa.dot.gov/publications/research/infrastructure/bridge/05057/appd.cfm',
+        note: 'Complete specification text used for implementation.',
+      },
+      {
+        label: 'Auburn ALDOT 930989 §3.2.1 (open PDF)',
+        url: 'https://eng.auburn.edu/files/centers/hrc/aldot-930989-final1.pdf',
+        note: 'Independent transcription of the same equations (Eqs. 3.1–3.8).',
+      },
+    ],
+    formulas: [
+      { label: 'Creep Coefficient', expr: String.raw`\psi(t,t_i)=1.9k_sk_{hc}k_fk_{td}t_i^{-0.118}` },
+      { label: 'Shrinkage Strain', expr: String.raw`\varepsilon_{sh}=k_sk_{hs}k_fk_{td}\cdot0.48\times10^{-3}` },
+    ],
+  },
 ];
 
 

@@ -13,6 +13,7 @@ const MODELS = [
   { id: 'b4', name: 'RILEM Model B4' },
   { id: 'b4s', name: 'RILEM Model B4s' },
   { id: 'gl2000', name: 'GL2000' },
+  { id: 'aashto', name: 'AASHTO LRFD' },
 ];
 
 /**

@@ -22,7 +22,7 @@ describe('shipped documentation and sample assets are reachable', () => {
   test('every model links to sample files that exist on disk', async () => {
     const { container } = render(<BatchCalculator />);
     const seen = new Set();
-    for (const id of ['aci209', 'mc2010', 'b4', 'b4s', 'gl2000']) {
+    for (const id of ['aci209', 'mc2010', 'b4', 'b4s', 'gl2000', 'aashto']) {
       const select = container.querySelector('#batch-model');
       select.value = id;
       select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -32,12 +32,12 @@ describe('shipped documentation and sample assets are reachable', () => {
         seen.add(anchor.getAttribute('href'));
       }
     }
-    expect(seen.size).toBe(10);   // 5 models x (csv + xlsx)
+    expect(seen.size).toBe(12);   // 6 models x (csv + xlsx)
   });
 
   test('every model links to a Markdown description that exists on disk', () => {
     render(<DocsPage />);
-    const names = { aci209: 'ACI 209R-92', mc2010: 'fib Model Code 2010', b4: 'RILEM Model B4', b4s: 'RILEM Model B4s', gl2000: 'GL2000' };
+    const names = { aci209: 'ACI 209R-92', mc2010: 'fib Model Code 2010', b4: 'RILEM Model B4', b4s: 'RILEM Model B4s', gl2000: 'GL2000', aashto: 'AASHTO LRFD' };
     const expected = new Set();
     for (const [id, name] of Object.entries(names)) {
       // `(?!s)` keeps "RILEM Model B4" from also matching the B4s button.
@@ -47,6 +47,6 @@ describe('shipped documentation and sample assets are reachable', () => {
       expect(decodeURI(href)).toBe(`/模型说明/${id}.md`);
       expected.add(href);
     }
-    expect(expected.size).toBe(5);
+    expect(expected.size).toBe(6);
   });
 });

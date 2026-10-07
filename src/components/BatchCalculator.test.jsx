@@ -6,7 +6,7 @@ import Papa from 'papaparse';
 import BatchCalculator from './BatchCalculator';
 import { MODELS } from './batchModels';
 import { getState, updateBatch } from '../state/appStore';
-import { aci209Single, b4Single, b4sSingle, gl2000Single, mc2010Single } from '../math/creepModels';
+import { aashtoSingle, aci209Single, b4Single, b4sSingle, gl2000Single, mc2010Single } from '../math/creepModels';
 
 const B4_REQUIRED = 't0, tPrime, Tcur, Tsh, Tc, h, fc, vS, c, wC, aC, cementType, aggregateType, specimenShape, retarder, flyAsh, superplasticizer, silicaFume, airEntrainingAgent, waterReducer, t'.split(', ');
 const ACI_REQUIRED = 'curingType, t0, H, VS, slump, fineAggregate, airContent, t'.split(', ');
@@ -355,7 +355,7 @@ describe('BatchCalculator dataset pipeline', () => {
   });
 
   test('every model loads its in-app sample without invalid rows', async () => {
-    for (const id of ['aci209', 'mc2010', 'b4', 'b4s', 'gl2000']) {
+    for (const id of ['aci209', 'mc2010', 'b4', 'b4s', 'gl2000', 'aashto']) {
       const { container, unmount } = render(<BatchCalculator />);
       selectModel(container, id);
       fireEvent.click(screen.getByRole('button', { name: /Load demo sweep/i }));
@@ -390,6 +390,7 @@ describe('shipped sample datasets', () => {
     { id: 'b4', file: 'B4示例.csv', run: b4Single },
     { id: 'b4s', file: 'B4s示例.csv', run: b4sSingle },
     { id: 'gl2000', file: 'GL2000示例.csv', run: gl2000Single },
+    { id: 'aashto', file: 'AASHTO示例.csv', run: aashtoSingle },
   ];
 
   test.each(SAMPLES)('$file header matches the schema and every row is in range', ({ file, run }) => {
