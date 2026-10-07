@@ -356,7 +356,7 @@ const MODELS = [
     id: 'gl2000',
     name: 'GL2000',
     category: 'Strength-Based Model',
-    engine: ['JS'],
+    engine: ['JS', 'RUST'],
     description: 'Gardner and Lockman GL2000 strength-based prediction (no mix proportions): compliance from the creep coefficient plus drying shrinkage.',
     params: [
       { name: 'cementType', description: 'Cement type: I (normal), II (moderate), III (high-early)' },

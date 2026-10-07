@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { gl2000CompliancePoint, gl2000ShrinkagePoint } from '../math/creepModels';
+import { buildGl2000Params } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 const cementOptions = [
@@ -23,12 +24,27 @@ function chartPoint(t, shrinkage, compliance) {
   };
 }
 
+function rustChartPoint(point) {
+  return {
+    t: point.t,
+    j_micro_mpa: point.j * 1e6,
+    comp_basic: ((point.phi_tc * point.basic) / point.e_cm28) * 1e6,
+    comp_drying: ((point.phi_tc * point.drying) / point.e_cm28) * 1e6,
+    epsilon_sh: point.epsilon_sh,
+    epsilon_total: point.epsilon_total,
+    ultimate: point.ultimate,
+    betaH: point.beta_h,
+    betaT: point.beta_t,
+    phi28: point.phi28,
+  };
+}
+
 const config = {
   id: 'gl2000',
   name: 'GL2000',
   descriptions: {
     js: 'Gardner and Lockman GL2000 strength-based prediction (no mix proportions): compliance from the creep coefficient plus drying shrinkage.',
-    rust: 'No Rust kernel for GL2000 yet — this model always runs on the JavaScript reference kernel.',
+    rust: 'Gardner and Lockman GL2000 evaluated by the Rust WASM kernel with absolute concrete-age series.',
   },
   initialParams: {
     cementType: 'I',
@@ -78,6 +94,9 @@ const config = {
     }
     return results;
   },
+  calculateRust(wasm, params, maxDays) {
+    return wasm.calculate_gl2000_series(buildGl2000Params(params), maxDays).map(rustChartPoint);
+  },
   getSummary(results, params) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(params.targetAge ?? 10000)))];
     return {
@@ -102,10 +121,5 @@ const config = {
 };
 
 export default function Gl2000Calculator({ engine, onEngineFallback }) {
-  // No Rust kernel for GL2000 yet: hand control back to the JS kernel
-  // through the same fallback the app uses when WASM fails to load.
-  useEffect(() => {
-    if (engine !== 'js' && onEngineFallback) onEngineFallback();
-  }, [engine, onEngineFallback]);
-  return <ModelCalculator engine="js" config={config} onEngineFallback={onEngineFallback} />;
+  return <ModelCalculator engine={engine} config={config} onEngineFallback={onEngineFallback} />;
 }

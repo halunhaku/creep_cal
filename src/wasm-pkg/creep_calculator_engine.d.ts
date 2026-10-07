@@ -38,6 +38,16 @@ export function calculate_b4s_series(params: any, max_time: number): any;
 export function calculate_b4s_single(params: any, t: number): any;
 
 /**
+ * GL2000 time series indexed by concrete age from casting.
+ */
+export function calculate_gl2000_series(params: any, max_time: number): any;
+
+/**
+ * GL2000 compliance and shrinkage at concrete age t.
+ */
+export function calculate_gl2000_single(params: any, t: number): any;
+
+/**
  * Published fib Model Code 2010 batch calculation.
  */
 export function calculate_mc2010_batch(batch_data: any): any;
@@ -75,6 +85,8 @@ export interface InitOutput {
     readonly calculate_b4_single: (a: any, b: number) => [number, number, number];
     readonly calculate_b4s_series: (a: any, b: number) => [number, number, number];
     readonly calculate_b4s_single: (a: any, b: number) => [number, number, number];
+    readonly calculate_gl2000_series: (a: any, b: number) => [number, number, number];
+    readonly calculate_gl2000_single: (a: any, b: number) => [number, number, number];
     readonly calculate_mc2010_batch: (a: any) => [number, number, number];
     readonly calculate_mc2010_series: (a: any, b: number) => [number, number, number];
     readonly calculate_mc2010_single: (a: any, b: number) => [number, number, number];

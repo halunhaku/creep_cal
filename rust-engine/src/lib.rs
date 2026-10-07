@@ -32,6 +32,24 @@ pub struct B4Result {
     pub epsilon_total: f64,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct Gl2000Point {
+    pub t: f64,
+    pub j: f64,
+    pub epsilon_sh: f64,
+    pub epsilon_au: f64,
+    pub epsilon_total: f64,
+    pub ultimate: f64,
+    pub beta_h: f64,
+    pub beta_t: f64,
+    pub phi28: f64,
+    pub phi_tc: f64,
+    pub e_cmto: f64,
+    pub e_cm28: f64,
+    pub basic: f64,
+    pub drying: f64,
+}
+
 // ACI 209R-92 creep parameters use the units defined by the report.
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
@@ -73,12 +91,14 @@ pub struct Mc2010Params {
 mod aci209;
 pub(crate) mod b4;
 mod b4s;
+mod gl2000;
 mod mc2010;
 mod utils;
 
 pub use aci209::*;
 pub use b4::*;
 pub use b4s::*;
+pub use gl2000::*;
 pub use mc2010::*;
 pub use utils::*;
 

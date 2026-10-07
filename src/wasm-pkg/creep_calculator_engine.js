@@ -142,6 +142,34 @@ export function calculate_b4s_single(params, t) {
 }
 
 /**
+ * GL2000 time series indexed by concrete age from casting.
+ * @param {any} params
+ * @param {number} max_time
+ * @returns {any}
+ */
+export function calculate_gl2000_series(params, max_time) {
+    const ret = wasm.calculate_gl2000_series(params, max_time);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * GL2000 compliance and shrinkage at concrete age t.
+ * @param {any} params
+ * @param {number} t
+ * @returns {any}
+ */
+export function calculate_gl2000_single(params, t) {
+    const ret = wasm.calculate_gl2000_single(params, t);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
  * Published fib Model Code 2010 batch calculation.
  * @param {any} batch_data
  * @returns {any}

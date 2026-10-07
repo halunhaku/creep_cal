@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, test } from 'vitest';
 import * as Rust from '../wasm-pkg/creep_calculator_engine.js';
-import { aci209Phi, b4Point, b4sPoint, mc2010Point } from '../math/creepModels';
+import { aci209Phi, b4Point, b4sPoint, gl2000CompliancePoint, gl2000ShrinkagePoint, mc2010Point } from '../math/creepModels';
 
 const wasmBytes = readFileSync(resolve(process.cwd(), 'src/wasm-pkg/creep_calculator_engine_bg.wasm'));
 beforeAll(() => Rust.initSync({ module: wasmBytes }));
@@ -43,11 +43,30 @@ const b4sWasm = (p) => { const { c, w_c, a_c, retarder, fly_ash, superplasticize
 
 // wasm snake_case/`J` vs JS camelCase/`J`
 const B4_FIELDS = { j: 'J', j_gpa: 'J_GPa', c0: 'C0', cd: 'Cd', epsilon_sh: 'epsilonSH', epsilon_au: 'epsilonAU', epsilon_total: 'epsilonTotal' };
+// GL2000 Rust reports microstrain, exactly like the JS kernel, so no unit
+// conversion is needed on either side (B4 instead reports strain from Rust).
+const GL2000_FIELDS = ['j', 'epsilon_sh', 'epsilon_au', 'epsilon_total', 'ultimate', 'beta_h', 'beta_t', 'phi28', 'phi_tc', 'e_cmto', 'e_cm28', 'basic', 'drying'];
+const gl2000Params = () => {
+  const tc = between(0, 60);
+  return { fcm28: between(16, 82), h: between(20, 100), vs: between(5, 500), tc, t0: tc + between(0, 365), cementType: pick(['I', 'II', 'III']) };
+};
+const gl2000Wasm = (p) => ({ fcm28: p.fcm28, h: p.h, vs: p.vs, tc: p.tc, t0: p.t0, cement_type: p.cementType });
+const gl2000Js = (p, t) => {
+  const c = gl2000CompliancePoint({ ...p, t });
+  const s = gl2000ShrinkagePoint({ ...p, t });
+  return {
+    j: c.J, epsilon_sh: s.epsilonSH, epsilon_au: s.epsilonAU, epsilon_total: s.epsilonTotal,
+    ultimate: s.ultimate, beta_h: s.betaH, beta_t: s.betaT, phi28: c.phi28,
+    phi_tc: c.phiTc, e_cmto: c.eCmto, e_cm28: c.eCm28, basic: c.basic, drying: c.drying,
+  };
+};
+
 const MODELS = [
   { name: 'ACI 209R-92', gen: aciParams, toWasm: aciWasm, fields: null, single: 'calculate_aci209_single', js: (p, t) => aci209Phi({ ...p, t }) },
   { name: 'fib MC2010', gen: mcParams, toWasm: mcWasm, fields: ['phi', 'phi_bc', 'phi_dc', 'nonlinear_factor', 't0_adjusted'], single: 'calculate_mc2010_single', js: (p, t) => mc2010Point({ ...p, t }) },
   { name: 'RILEM B4', gen: b4Params, toWasm: b4Wasm, fields: Object.keys(B4_FIELDS), jsField: B4_FIELDS, single: 'calculate_b4_single', js: (p, t) => b4Point({ ...p, t }) },
   { name: 'RILEM B4s', gen: b4Params, toWasm: b4sWasm, fields: Object.keys(B4_FIELDS), jsField: B4_FIELDS, single: 'calculate_b4s_single', js: (p, t) => b4sPoint({ ...p, t }) },
+  { name: 'GL2000', gen: gl2000Params, toWasm: gl2000Wasm, fields: GL2000_FIELDS, single: 'calculate_gl2000_single', js: gl2000Js },
 ];
 
 const consistent = (jsValue, rustValue) => Number.isFinite(jsValue) && Number.isFinite(rustValue)

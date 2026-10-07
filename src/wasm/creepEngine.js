@@ -158,6 +158,7 @@ const B4S_KEYS = [
   't0', 't_prime', 't_cur', 't_sh', 't_c', 'h', 'fc', 'v_s',
   'cement_type', 'aggregate_type', 'specimen_shape',
 ];
+const GL2000_KEYS = ['fcm28', 'h', 'vs', 'tc', 't0', 'cement_type'];
 
 /** @param {Record<string, any>} params UI parameters @returns {Aci209WasmParams} */
 export function buildAci209Params(params) {
@@ -227,4 +228,16 @@ export function buildB4sParams(params) {
     aggregate_type: params.aggregateType,
     specimen_shape: params.specimenShape,
   }, B4S_KEYS);
+}
+
+/** @param {Record<string, any>} params UI parameters @returns {Gl2000WasmParams} */
+export function buildGl2000Params(params) {
+  return assertContract('GL2000', {
+    fcm28: params.fcm28,
+    h: params.h,
+    vs: params.vs,
+    tc: params.tc,
+    t0: params.t0,
+    cement_type: params.cementType,
+  }, GL2000_KEYS);
 }
