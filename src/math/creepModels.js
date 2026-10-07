@@ -549,3 +549,132 @@ export function b4sPoint(input) {
 export function b4Single(row) { return b4Point(row); }
 export function b4sSingle(row) { return b4sPoint(row); }
 
+// ─── GL2000, Gardner & Lockman 2001 ─────────────────────────────────────────
+/**
+ * GL2000 drying-shrinkage and creep prediction, SI units throughout
+ * (MPa, mm, days; V/S in mm, h in %). Equations follow Gardner's own
+ * appendix (CJCE comparison paper [A1]–[A6]), cross-checked against ACI
+ * 209.2R-08 Appendix A and Auburn ALDOT 930989 §3.2.8:
+ * shrinkage εsh = εshu·β(h)·β(t) with εshu = 900·K·√(30/fcm28) µe,
+ * β(h) = 1−1.18·h⁴, β(t) = √((t−tc)/((t−tc)+0.12·(V/S)²));
+ * compliance J = 1/Ecmto + φ28/Ecm28 with φ28 = Φ(tc)·[basic + drying],
+ * basic = 2(t−to)^0.3/((t−to)^0.3+14)·(7/to)^0.5·((t−to)/((t−to)+7))^0.5,
+ * drying = 2.5(1−1.086h²)·((t−to)/((t−to)+0.12(V/S)²))^0.5,
+ * Φ(tc) = 1 for to = tc, else 1−√((to−tc)/((to−tc)+0.15(V/S)²));
+ * E = 3500+4300√f, f_cmt = fcm28·exp{s[1−√(28/t)]}.
+ *
+ * Deliberate choices, all documented in docs/benchmark-sources.md:
+ *  - Type-II K = 0.75 per Gardner and Table A.14; Auburn Eq 3.189 prints
+ *    0.70 and is the odd one out. Type-II s = 0.40 likewise.
+ *  - Auburn's drying-size 97 (inches) converts to 0.150/mm², not Gardner's
+ *    0.12 — their transcription, not the model; the shrinkage half
+ *    independently confirms 0.12 in mm.
+ *  - The guide's C.4 creep table is not a validation target: its sub-terms
+ *    match Gardner's exactly but are added instead of multiplied, the drying
+ *    part is missing, and Φ/βs contradict the example's own inputs.
+ *  - Like B4/B4s, shrinkage is NEGATIVE microstrain (shortening); the
+ *    literature prints magnitudes. epsilonAU is an explicit 0 — the model
+ *    has no autogenous term — so the result keeps the B4 result shape.
+ *  - Near-100 % RH the shrinkage formula itself approaches zero and then
+ *    negative (sealed concrete is assigned 96 % RH in the literature for
+ *    this reason); the kernel returns what the equations say, and the
+ *    drying-creep term is zero by design at 96 %.
+ *  - Loading before drying started (t0 < tc) is outside the model as
+ *    published (Φ needs a non-negative gap) and is rejected, not fudged.
+ */
+// s drives strength development ([A3]); K scales ultimate shrinkage.
+const GL2000_CEMENT = {
+  I: { s: 0.335, K: 1.0 },
+  II: { s: 0.40, K: 0.75 },
+  III: { s: 0.13, K: 1.15 },
+};
+
+function validateGl2000Shrinkage({ fcm28, h, vs, tc, t, cementType }) {
+  if (!(cementType in GL2000_CEMENT)) {
+    throw new RangeError(`Unsupported GL2000 cement type: ${cementType}.`);
+  }
+  if (!Number.isFinite(fcm28) || fcm28 < 16 || fcm28 > 82) {
+    throw new RangeError('GL2000 requires 16 ≤ fcm28 ≤ 82 MPa.');
+  }
+  if (!Number.isFinite(h) || h < 20 || h > 100) {
+    throw new RangeError('GL2000 requires 20 ≤ h ≤ 100% (use 96% for sealed concrete).');
+  }
+  if (!Number.isFinite(vs) || vs <= 0) {
+    throw new RangeError('GL2000 requires a positive volume-surface ratio V/S.');
+  }
+  if (!Number.isFinite(tc) || tc < 0) {
+    throw new RangeError('GL2000 requires a non-negative drying-start age tc.');
+  }
+  if (!Number.isFinite(t) || t < 0) {
+    throw new RangeError('GL2000 requires a non-negative concrete age t.');
+  }
+}
+
+export function gl2000ShrinkagePoint({ fcm28, h, vs, tc, t, cementType }) {
+  validateGl2000Shrinkage({ fcm28, h, vs, tc, t, cementType });
+  const ultimate = 900 * GL2000_CEMENT[cementType].K * Math.sqrt(30 / fcm28);
+  const betaH = 1 - 1.18 * Math.pow(h / 100, 4);
+  // No drying yet: exactly zero rather than the square root of a negative age.
+  const betaT = t <= tc ? 0 : Math.sqrt((t - tc) / ((t - tc) + 0.12 * vs * vs));
+  const magnitude = ultimate * betaH * betaT;
+  // A zero product can carry a negative sign (-0), which would print as "-0"
+  // in readouts; shrinkage values are negative, zero is plain zero.
+  const signed = magnitude === 0 ? 0 : -magnitude;
+  return { epsilonSH: signed, epsilonAU: 0, epsilonTotal: signed, ultimate, betaH, betaT };
+}
+
+export function gl2000Shrinkage(row) {
+  return gl2000ShrinkagePoint({
+    fcm28: coerceNumber(row.fcm28),
+    h: coerceNumber(row.h),
+    vs: coerceNumber(row.vs),
+    tc: coerceNumber(row.tc),
+    t: coerceNumber(row.t),
+    cementType: String(row.cementType).trim(),
+  });
+}
+
+/**
+ * GL2000 compliance, Gardner CJCE [A5]–[A6], SI units (MPa, mm, days).
+ * J(t,to) = 1/Ecmto + φ28/Ecm28 with φ28 = Φ(tc)·(basic + drying);
+ * E = 3500+4300√f, f_cmt from [A3]. At or before loading there is no creep
+ * yet, so J is exactly the elastic compliance (C.4's first table row).
+ */
+function validateGl2000Compliance({ fcm28, h, vs, tc, t0, t, cementType }) {
+  validateGl2000Shrinkage({ fcm28, h, vs, tc, t, cementType });
+  if (!Number.isFinite(t0) || t0 < 1) {
+    throw new RangeError('GL2000 requires a loading age t0 ≥ 1 day.');
+  }
+  if (t0 < tc) {
+    throw new RangeError('GL2000 requires loading at or after drying started (t0 ≥ tc).');
+  }
+}
+
+export function gl2000CompliancePoint({ fcm28, h, vs, tc, t0, t, cementType }) {
+  validateGl2000Compliance({ fcm28, h, vs, tc, t0, t, cementType });
+  const { s } = GL2000_CEMENT[cementType];
+  const eCm28 = 3500 + 4300 * Math.sqrt(fcm28);
+  const fCmto = fcm28 * Math.exp(s * (1 - Math.sqrt(28 / t0)));
+  const eCmto = 3500 + 4300 * Math.sqrt(fCmto);
+  const elastic = 1 / eCmto;
+  if (t <= t0) return { J: elastic, phi28: 0, phiTc: 1, eCmto, eCm28, basic: 0, drying: 0 };
+  const dt = t - t0;
+  const phiTc = t0 === tc ? 1 : 1 - Math.sqrt((t0 - tc) / ((t0 - tc) + 0.15 * vs * vs));
+  const basic = (2 * Math.pow(dt, 0.3)) / (Math.pow(dt, 0.3) + 14)
+    * Math.sqrt(7 / t0) * Math.sqrt(dt / (dt + 7));
+  const drying = 2.5 * (1 - 1.086 * Math.pow(h / 100, 2)) * Math.sqrt(dt / (dt + 0.12 * vs * vs));
+  const phi28 = phiTc * (basic + drying);
+  return { J: elastic + phi28 / eCm28, phi28, phiTc, eCmto, eCm28, basic, drying };
+}
+
+export function gl2000Compliance(row) {
+  return gl2000CompliancePoint({
+    fcm28: coerceNumber(row.fcm28),
+    h: coerceNumber(row.h),
+    vs: coerceNumber(row.vs),
+    tc: coerceNumber(row.tc),
+    t0: coerceNumber(row.t0),
+    t: coerceNumber(row.t),
+    cementType: String(row.cementType).trim(),
+  });
+}

@@ -30,12 +30,15 @@ export const PARAMETER_UNITS = {
   // Strength and geometry
   fc: 'MPa',
   fcm: 'MPa',
+  fcm28: 'MPa',
   sigma: 'MPa',
   Ac: 'mm²',
   u: 'mm',
   VS: 'mm',
   vS: 'mm',
   slump: 'mm',
+  vs: 'mm',
+  tc: 'Days',
   // Mix
   c: 'kg/m³',
   wC: '',

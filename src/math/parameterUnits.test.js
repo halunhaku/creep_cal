@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { NO_UNIT, PARAMETER_UNITS, unitFor } from './parameterUnits';
 
-const CALCULATORS = ['Aci209Calculator', 'Mc2010Calculator', 'B4Calculator', 'B4sCalculator'];
+const CALCULATORS = ['Aci209Calculator', 'Mc2010Calculator', 'B4Calculator', 'B4sCalculator', 'Gl2000Calculator'];
 
 /** Every `{ name: 'x', … unit: 'y' }` the calculators declare, read from source. */
 function declaredUnits() {

@@ -15,7 +15,7 @@ import { getState, setEngine, setMode, setModel, subscribe } from './appStore';
  * Defaults are omitted, so a plain visit leaves the URL clean.
  */
 const MODES = new Set(['single', 'batch', 'docs']);
-const MODELS = new Set(['aci209', 'mc2010', 'b4', 'b4s']);
+const MODELS = new Set(['aci209', 'mc2010', 'b4', 'b4s', 'gl2000']);
 const KERNELS = new Set(['rust', 'js']);
 const DEFAULTS = { mode: 'single', model: 'aci209', engine: 'rust' };
 

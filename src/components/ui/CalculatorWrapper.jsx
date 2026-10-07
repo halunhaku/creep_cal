@@ -182,7 +182,10 @@ function ParamChanges({ before, after, config }) {
 
 function AnalysisChart({ data, lines, params, resultParams, modelName, prevData }) {
   const hasShrinkage = lines.some((line) => line.kind === 'shrinkage');
-  const [view, setView] = useState('compliance');
+  const hasCompliance = lines.some((line) => line.kind !== 'shrinkage');
+  // Single-kind models (GL2000 shrinkage today) open on the kind they have
+  // instead of an empty Compliance tab.
+  const [view, setView] = useState(hasCompliance ? 'compliance' : 'shrinkage');
   const [logX, setLogX] = useState(false);
   const [logY, setLogY] = useState(false);
   // Brush window in data days. The t domain (0–10,000) is constant across runs,
@@ -227,7 +230,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
     <section className="workbench-panel overflow-hidden">
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1">
-          {[['compliance', hasShrinkage ? 'Compliance' : 'Response'], ...(hasShrinkage ? [['shrinkage','Shrinkage']] : []), ['data','Data']].map(([id,label]) => (
+          {[...(hasCompliance ? [['compliance', hasShrinkage ? 'Compliance' : 'Response']] : []), ...(hasShrinkage ? [['shrinkage','Shrinkage']] : []), ['data','Data']].map(([id,label]) => (
             <button
               key={id}
               onClick={() => setView(id)}
@@ -376,7 +379,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
   );
 }
 
-function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
+function KernelComparison({ comparison, comparing, onCompare, compareReady, compareNote }) {
   const speedup = comparison && comparison.rust > 0 ? comparison.js / comparison.rust : null;
 
   return (
@@ -385,10 +388,10 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady }) {
         <div>
           <div className="eyebrow">Kernel comparison · <span lang="zh-CN">内核对比</span></div>
           <p className="mt-1 text-1xs text-muted">
-            <span lang="zh-CN">同一组参数下，两条内核各计算一次</span> {MAX_SERIES_DAYS.toLocaleString('en-US')} <span lang="zh-CN">天序列并计时（含预热）。</span>
+            {compareNote ?? (<><span lang="zh-CN">同一组参数下，两条内核各计算一次</span> {MAX_SERIES_DAYS.toLocaleString('en-US')} <span lang="zh-CN">天序列并计时（含预热）。</span></>)}
           </p>
         </div>
-        <button onClick={onCompare} disabled={comparing || !compareReady} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
+        <button onClick={onCompare} disabled={comparing || !compareReady} title={compareNote ?? undefined} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
           {comparing ? 'Measuring…' : 'Compare kernels'}
         </button>
       </div>
@@ -457,6 +460,7 @@ export default function CalculatorWrapper({
   comparing,
   onCompare,
   compareReady,
+  compareNote,
 }) {
   const hasResults = chartData?.length > 0;
   const [resultName, explicitUnit] = (resultLabel || 'Creep coefficient φ').split('·').map((part) => part.trim());
@@ -541,6 +545,7 @@ export default function CalculatorWrapper({
             comparing={comparing}
             onCompare={onCompare}
             compareReady={compareReady}
+            compareNote={compareNote}
           />
           {hasResults && (
             <AnalysisChart data={chartData} lines={chartLines} params={params} resultParams={resultParams} modelName={modelName} prevData={prevData} />

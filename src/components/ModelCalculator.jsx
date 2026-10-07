@@ -260,7 +260,8 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       comparison={comparison}
       comparing={comparing}
       onCompare={compareKernels}
-      compareReady={inputsValid}
+      compareReady={inputsValid && typeof config.calculateRust === 'function'}
+      compareNote={typeof config.calculateRust === 'function' ? null : 'JS-only model — no Rust kernel to compare against.'}
     />
   );
 }

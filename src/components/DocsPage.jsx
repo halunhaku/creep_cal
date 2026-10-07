@@ -352,6 +352,79 @@ const MODELS = [
       { label: 'Total Compliance', expr: String.raw`J(t,t')=q_1+R_T\cdot C_0+C_d` },
     ],
   },
+  {
+    id: 'gl2000',
+    name: 'GL2000',
+    category: 'Strength-Based Model',
+    engine: ['JS'],
+    description: 'Gardner and Lockman GL2000 strength-based prediction (no mix proportions): compliance from the creep coefficient plus drying shrinkage.',
+    params: [
+      { name: 'cementType', description: 'Cement type: I (normal), II (moderate), III (high-early)' },
+      { name: 'fcm28', description: 'Mean 28-day cylinder strength, 16–82 MPa' },
+      { name: 'h', description: 'Ambient relative humidity, 20–100 % (96 % for sealed)' },
+      { name: 'vs', description: 'Volume-to-surface ratio V/S in mm' },
+      { name: 'tc', description: 'Age when drying commences' },
+      { name: 't0', description: 'Age at loading, at or after drying start (t0 ≥ tc)' },
+      { name: 't', description: 'Target concrete age from casting' },
+    ],
+    output: 'J(t,t₀) in 1/GPa (10⁻⁶/MPa internally); εsh(t,tc) in µε (negative, shortening); no autogenous term',
+    reference: 'Gardner N.J., Lockman M.J. (2001). Design Provisions for Drying Shrinkage and Creep of Normal-Strength Concrete. ACI Materials Journal, 98(2), 159–167.',
+    officialDocuments: [
+      {
+        designation: 'ACI 209.2R-08 Appendix A.4',
+        title: 'GL2000 model equations and Table A.14 cement factors',
+        status: 'Committee guide · 2008',
+        coverage: 'Shrinkage Eqs. (A-98)–(A-101); the C.4 creep table contradicts the appendix and is not a validation target.',
+      },
+      {
+        designation: 'Gardner CJCE comparison paper, Appendix GL2000',
+        title: 'Authoritative SI statement of the creep equations [A5]–[A6]',
+        status: 'Comparison paper · Gardner',
+        coverage: 'Primary-source arbitration: [A6] bracketing, Φ(tc) piecewise form, [A3] strength development, K = 1/0.75/1.15.',
+      },
+    ],
+    applicability: [
+      'Mean 28-day cylinder compressive strength fcm28: 16–82 MPa.',
+      'Relative humidity h: 20–100 %; sealed concrete is assigned 96 %.',
+      'Cement types I, II, III (K = 1.00, 0.75, 1.15 per Table A.14).',
+      'Loading at or after drying started (t0 ≥ tc); loading age t0 ≥ 1 day.',
+    ],
+    limitations: [
+      'No autogenous shrinkage, strength, stiffness, or structural-response calculations.',
+      'Type-II K differs between sources (guide and Gardner 0.75 vs Auburn 0.70); the author value is implemented.',
+      'Creep validated against the C.4 elastic chain, structural properties, and formula triangulation — no open full-curve numeric target exists (C.4 creep table disqualified with proof).',
+    ],
+    sourceMapping: [
+      'Drying shrinkage εsh: Eq. (A-98).',
+      'Ultimate shrinkage εshu: Eq. (A-99).',
+      'Humidity and time factors β(h), β(t): Eqs. (A-100), (A-101).',
+      'Cement factors K and strength rates s: Table A.14, Eq. [A3].',
+      'Compliance J and creep coefficient φ28: Eqs. [A5], [A6].',
+      'Drying-before-loading factor Φ(tc): piecewise, 1 when t0 = tc.',
+      'Validation: C.4.3 shrinkage rows (t = 90 row excluded with proof); C.4.4 elastic chain; structural properties.',
+    ],
+    sources: [
+      {
+        label: 'ACI 209.2R-08 full guide (Bažant copy, open PDF)',
+        url: 'http://www.civil.northwestern.edu/people/bazant/PDFs/Papers/R21.pdf',
+        note: 'Appendix A.4 equations and the C.4 worked example used for validation.',
+      },
+      {
+        label: 'VTRC 04-CR1 shrinkage model equations',
+        url: 'https://rosap.ntl.bts.gov/view/dot/19607/dot_19607_DS1.pdf',
+        note: 'Independent open transcription of the GL2000 shrinkage equations plus VDOT mixture measurements.',
+      },
+    ],
+    formulas: [
+      { label: 'Drying Shrinkage', expr: String.raw`\varepsilon_{sh}=\varepsilon_{shu}\beta(h)\beta(t)` },
+      { label: 'Ultimate Shrinkage', expr: String.raw`\varepsilon_{shu}=900K\left(\frac{30}{f_{cm28}}\right)^{1/2}\!\times\!10^{-6}` },
+      { label: 'Humidity Factor', expr: String.raw`\beta(h)=1-1.18h^4` },
+      { label: 'Time Factor', expr: String.raw`\beta(t)=\left(\frac{t-t_c}{(t-t_c)+0.12(V/S)^2}\right)^{1/2}` },
+      { label: 'Compliance', expr: String.raw`J(t,t_0)=\frac{1}{E_{cmto}}+\frac{\phi_{28}}{E_{cm28}}` },
+      { label: 'Creep Coefficient', expr: String.raw`\phi_{28}=\Phi(t_c)\cdot(\mathrm{basic}+\mathrm{drying})` },
+      { label: 'Loading-Age Factor', expr: String.raw`\Phi(t_c)=1\ (t_0=t_c)` },
+    ],
+  },
 ];
 
 

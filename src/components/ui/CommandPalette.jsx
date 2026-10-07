@@ -12,6 +12,7 @@ const MODELS = [
   { id: 'mc2010', name: 'fib Model Code 2010' },
   { id: 'b4', name: 'RILEM Model B4' },
   { id: 'b4s', name: 'RILEM Model B4s' },
+  { id: 'gl2000', name: 'GL2000' },
 ];
 
 /**
