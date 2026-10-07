@@ -270,7 +270,7 @@ export function mc2010Single({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
  * (t̃ − t̃₀) where the recommendation — and this kernel — use (t̃ + t̃₀); the
  * §1.9 benchmark below only reproduces with the plus sign.
  */
-const B4_CEMENT = {
+export const B4_CEMENT = {
   R:  { tauCem:0.016, epsilonCem:360e-6, tauAuCem:1,  epsilonAuCem:210e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1,   rT:-4.5, tauA:-0.33, tauW:-0.06, tauC:-0.1, epsA:-0.8, epsW:1.1,   epsC:0.11, p1:0.70, p2:58.6e-3, p3:39.3e-3, p4:3.4e-3, p5:777e-6,  p5H:8, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
   RS: { tauCem:0.08,  epsilonCem:860e-6, tauAuCem:41, epsilonAuCem:-84e-6, rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1.4, rT:-4.5, tauA:-0.33, tauW:-2.4,  tauC:-2.7, epsA:-0.8, epsW:-0.27, epsC:0.11, p1:0.60, p2:17.4e-3, p3:39.3e-3, p4:3.4e-3, p5:94.6e-6, p5H:1, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
   SL: { tauCem:0.01,  epsilonCem:410e-6, tauAuCem:1,  epsilonAuCem:0,      rEpsA:-0.75, rEpsW:-3.5, rTauW:3, rAlpha:1,   rT:-4.5, tauA:-0.33, tauW:3.55,  tauC:3.8,  epsA:-0.8, epsW:1,     epsC:0.11, p1:0.80, p2:40.5e-3, p3:39.3e-3, p4:3.4e-3, p5:496e-6,  p5H:8, p2w:3, p3a:-1.1, p3w:0.4, p4a:-0.9, p4w:2.45, p5a:-1, p5w:0.78, p5e:-0.85 },
@@ -282,7 +282,7 @@ const B4S_CEMENT = {
   SL: { tauAuCem:2.26, rTauF:0.27, epsilonAuCem:78.2e-6, rEpsF:1.03, alpha:1.73, rT:-1.73, tauSCem:0.032, sTauF:-1.84, epsilonSCem:640e-6, sEpsF:-0.69, p1:0.80, p5e:-0.85, p5H:8, s2:11.2e-3, s3:0.976, s4:4e-3, s5:150e-6,  s2f:-1.58, s3f:-1.61, s4f:-1.16, s5f:-0.45 },
 };
 
-const B4_AGGREGATE = {
+export const B4_AGGREGATE = {
   Diabase: { tau:0.06, epsilon:0.76 },
   Quartzite: { tau:0.59, epsilon:0.71 },
   Limestone: { tau:1.8, epsilon:0.95 },

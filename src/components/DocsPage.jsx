@@ -86,9 +86,9 @@ const MODELS = [
         note: 'Official scope, limitations, model appendix, and numerical-example index.',
       },
       {
-        label: 'ACI Committee 209 official page',
-        url: 'https://www.concrete.org/getinvolved/committees/directoryofcommittees/acommitteehome/committee_code/c0020900.aspx',
-        note: 'Committee responsible for creep and shrinkage documents.',
+        label: 'Auburn ALDOT 930-373 Table 6.2 ACI 209 correction factors',
+        url: 'https://eng.auburn.edu/files/centers/hrc/930-373-1.pdf',
+        note: 'Independent check: BT-54 correction factors reproduced factor-by-factor (pinned in aciAuburnFactors.test.js); shrinkage column is out of kernel scope by design.',
       },
     ],
     formulas: [
@@ -273,6 +273,11 @@ const MODELS = [
         label: 'Northwestern University Bažant publications repository',
         url: 'http://www.civil.northwestern.edu/people/bazant/',
         note: 'Author publications, NU database documentation, and background technical reports.',
+      },
+      {
+        label: 'Auburn ALDOT 930-989 B4 parameter tables (Tables 3-5/3-6/3-7)',
+        url: 'https://eng.auburn.edu/files/centers/hrc/aldot-930989-final1.pdf',
+        note: 'Independent third-source check: every shared cement and aggregate cell matches the kernel tables exactly (pinned in b4AuburnTables.test.js).',
       },
     ],
     formulas: [
