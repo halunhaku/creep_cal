@@ -174,4 +174,16 @@ describe('ModelCalculator workspace state', () => {
     expect(shown).toBeLessThan(100);
     expect(notice).toHaveTextContent(/Export CSV contains the full series/);
   });
+
+  // Editing an input lists old → new under the metrics so the stale badge
+  // names what moved. (Recalculating then overlays the superseded run as a
+  // dashed series — that half lives inside the SVG chart, which jsdom renders
+  // at zero size, so it is verified in a live browser instead.)
+  test('changing an input lists old and new values under the metrics', async () => {
+    const { container } = render(<Aci209Calculator engine="js" />);
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+    fireEvent.change(container.querySelector('#param-select-curingType'), { target: { value: 'steam' } });
+    await waitFor(() => expect(screen.getByText(/Changed since last run/)).toBeInTheDocument());
+    expect(screen.getByText(/moist → steam/)).toBeInTheDocument();
+  });
 });

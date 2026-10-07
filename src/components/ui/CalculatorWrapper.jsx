@@ -3,7 +3,7 @@ import DynamicParameters from './DynamicParameters';
 import Lang from './Lang';
 import { MAX_SERIES_DAYS } from '../../math/creepModels';
 import { CHART, axisTitleStyle, legendStyle, tickGap, tickStyle } from '../chartTheme';
-import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Brush, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 function downloadFile(filename, content, type = 'text/csv;charset=utf-8') {
   const link = document.createElement('a');
@@ -56,13 +56,49 @@ function formatValue(value, digits = 6) {
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(number).replace('-', '−');
 }
 
+function CopyValue({ text, label }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const area = document.createElement('textarea');
+        area.value = text;
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand('copy');
+        document.body.removeChild(area);
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      // Clipboard unavailable (permissions, insecure context) — leave the
+      // button idle rather than failing the workspace around it.
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      title={label ?? 'Copy value'}
+      aria-label={label ?? 'Copy value'}
+      className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs uppercase tracking-[.06em] text-faint transition-colors hover:border-green-border hover:text-green"
+    >
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
+
 function Metric({ eyebrow, value, unit, accent = false }) {
+  const copyText = `${formatValue(value)}${unit ? ` ${unit}` : ''}`;
   return (
     <div className="min-w-0">
       <div className="eyebrow">{eyebrow}</div>
       <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold tracking-[-0.04em] md:text-metric ${accent ? 'text-green' : 'text-primary'}`}>
         <span>{formatValue(value)}</span>
         {unit && <span className="text-1xs font-medium tracking-normal text-muted">{unit}</span>}
+        <CopyValue text={copyText} label={`Copy ${eyebrow}`} />
       </div>
     </div>
   );
@@ -84,8 +120,9 @@ function Decomposition({ items }) {
             {group.items.map((item) => (
               <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-primary' : 'text-muted'}`}>
                 <span>{item.label}</span>
-                <span className="font-mono tabular-nums text-primary">
-                  {formatValue(item.value, 3)} <small className="text-3xs font-normal text-faint">{item.unit}</small>
+                <span className="flex items-center gap-2 font-mono tabular-nums text-primary">
+                  <span>{formatValue(item.value, 3)} <small className="text-3xs font-normal text-faint">{item.unit}</small></span>
+                  <CopyValue text={`${formatValue(item.value, 3)}${item.unit ? ` ${item.unit}` : ''}`} label={`Copy ${item.label}`} />
                 </span>
               </div>
             ))}
@@ -98,14 +135,16 @@ function Decomposition({ items }) {
 
 function ScientificTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
+  const numericLabel = Number(label);
+  const title = Number.isFinite(numericLabel) ? new Intl.NumberFormat('en-US').format(numericLabel) : label;
   return (
     <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
-      <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[0.08em] text-faint">t = {label} days</div>
+      <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[0.08em] text-faint">t = {title} days</div>
       <div className="space-y-1.5">
         {payload.map((item) => (
           <div key={item.dataKey} className="flex items-center justify-between gap-5 text-1xs">
             <span className="flex items-center gap-2 text-muted">
-              <i className="h-0.5 w-3" style={{ background: item.color }} />
+              <i className="h-0.5 w-3" style={{ background: item.color || item.stroke }} />
               {item.name}
             </span>
             <span className="font-mono text-primary">{formatValue(item.value, 5)}</span>
@@ -116,13 +155,72 @@ function ScientificTooltip({ active, payload, label }) {
   );
 }
 
-function AnalysisChart({ data, lines, params, resultParams, modelName }) {
+// What moved since the numbers on screen were computed: `before` is the run
+// the results belong to (`resultParams`), `after` is what the panel holds now.
+function ParamChanges({ before, after, config }) {
+  if (!before || !after) return null;
+  const changed = config.filter((item) => {
+    const left = before[item.name];
+    const right = after[item.name];
+    return typeof left === 'number' && typeof right === 'number' ? !Object.is(left, right) : left !== right;
+  });
+  if (!changed.length) return null;
+  return (
+    <div className="mt-4 rounded-lg border border-line bg-surface-2 px-4 py-3">
+      <div className="eyebrow">Changed since last run</div>
+      <ul className="mt-2 space-y-1 text-xs">
+        {changed.map((item) => (
+          <li key={item.name} className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="text-muted">{item.label ?? item.name}</span>
+            <span className="font-mono tabular-nums text-primary">{String(before[item.name])} → {String(after[item.name])}{item.unit ? ` ${item.unit}` : ''}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function AnalysisChart({ data, lines, params, resultParams, modelName, prevData }) {
   const hasShrinkage = lines.some((line) => line.kind === 'shrinkage');
   const [view, setView] = useState('compliance');
   const [logX, setLogX] = useState(false);
+  const [logY, setLogY] = useState(false);
+  // Brush window in data days. The t domain (0–10,000) is constant across runs,
+  // so the window survives recalculation; dragging back to full width clears it.
+  const [zoom, setZoom] = useState(null);
   const visibleLines = hasShrinkage ? lines.filter((line) => line.kind === view) : lines;
+  // Shrinkage series are signed (drying shrinkage <= 0, RS autogenous can read as
+  // expansion), so a log Y axis has no meaning there — the toggle stays off.
+  const logYBlocked = visibleLines.some((line) => line.kind === 'shrinkage');
+  const useLogY = logY && !logYBlocked;
   const sampled = useMemo(() => data.filter((row, index) => index % 10 === 0 || row.t === Math.round(params.targetAge)), [data, params.targetAge]);
-  const chartData = logX ? sampled.filter((row) => row.t > 0) : sampled;
+  const baseData = logX ? sampled.filter((row) => row.t > 0) : sampled;
+  // Sampling above is unchanged (every 10th point + target age); the log-Y filter
+  // only hides non-positive points from display — export still gets `data` whole.
+  const chartData = useLogY ? baseData.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : baseData;
+  // Previous run, shaped by the same rules so the dashed overlay stays
+  // comparable point-for-point with the current series.
+  const prevBase = prevData ? prevData.filter((row, index) => index % 10 === 0 || row.t === Math.round(params.targetAge)) : null;
+  const prevNoZeroX = prevBase && logX ? prevBase.filter((row) => row.t > 0) : prevBase;
+  const prevChartData = prevNoZeroX && useLogY ? prevNoZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : prevNoZeroX;
+  // Brush reports indices into the chart's own data (`chartData` above), so the
+  // window reads t straight off it. Zoomed lines re-sample the full series to
+  // ~800 points — the overview stays cheap, the close-up stays sharp.
+  const handleBrushChange = ({ startIndex, endIndex }) => {
+    if (startIndex == null || endIndex == null || chartData.length < 2) return;
+    if (startIndex === 0 && endIndex >= chartData.length - 1) {
+      setZoom(null);
+    } else {
+      setZoom({ start: chartData[startIndex].t, end: chartData[endIndex].t });
+    }
+  };
+  const denseLines = !zoom ? null : (() => {
+    const inWindow = data.filter((row) => row.t >= zoom.start && row.t <= zoom.end);
+    const step = Math.max(1, Math.ceil(inWindow.length / 800));
+    const dense = inWindow.filter((row, index) => index % step === 0 || row.t === Math.round(params.targetAge));
+    const noZeroX = logX ? dense.filter((row) => row.t > 0) : dense;
+    return useLogY ? noZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : noZeroX;
+  })();
   const dataRows = useMemo(() => data.filter((row, index) => index % 250 === 0 || row.t === Math.round(params.targetAge)), [data, params.targetAge]);
 
   return (
@@ -148,6 +246,17 @@ function AnalysisChart({ data, lines, params, resultParams, modelName }) {
               className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
             >
               {logX ? 'Log X' : 'Linear X'}
+            </button>
+          )}
+          {view !== 'data' && (
+            <button
+              onClick={() => setLogY((value) => !value)}
+              aria-pressed={useLogY}
+              disabled={logYBlocked}
+              title={logYBlocked ? 'Log Y unavailable for signed shrinkage values' : undefined}
+              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${useLogY ? '!border-green-border !bg-green-soft !text-green' : ''} ${logYBlocked ? '!cursor-not-allowed !opacity-40' : ''}`}
+            >
+              {useLogY ? 'Log Y' : 'Linear Y'}
             </button>
           )}
           <button
@@ -204,8 +313,8 @@ function AnalysisChart({ data, lines, params, resultParams, modelName }) {
                 axisLine={{ stroke: 'var(--line-strong)' }}
                 label={{ value: 'Concrete age · days', position: 'insideBottomRight', offset: -16, ...axisTitleStyle }}
               />
-              <YAxis tick={tickStyle} tickLine={false} axisLine={false} width={58} />
-              <Tooltip content={<ScientificTooltip />} />
+              <YAxis tick={tickStyle} tickLine={false} axisLine={false} width={58} scale={useLogY ? 'log' : 'linear'} domain={useLogY || logYBlocked ? ['auto', 'auto'] : [0, 'auto']} allowDataOverflow />
+              <Tooltip content={<ScientificTooltip />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
               <Legend iconType="plainline" iconSize={18} wrapperStyle={legendStyle} />
               {Number.isFinite(Number(params.t0)) && (
                 <ReferenceLine
@@ -226,10 +335,26 @@ function AnalysisChart({ data, lines, params, resultParams, modelName }) {
               {Number.isFinite(Number(params.targetAge)) && (
                 <ReferenceLine x={Number(params.targetAge)} stroke={CHART.reference} strokeWidth={1.5} />
               )}
+              {prevChartData && prevChartData.length > 0 && visibleLines.map((line) => (
+                <Line
+                  key={`prev-${line.dataKey}`}
+                  type="monotone"
+                  data={prevChartData}
+                  dataKey={line.dataKey}
+                  name={`${line.name} · prev`}
+                  stroke="var(--text-faint)"
+                  strokeWidth={1.5}
+                  strokeDasharray="6 4"
+                  dot={false}
+                  activeDot={false}
+                  isAnimationActive={false}
+                />
+              ))}
               {visibleLines.map((line) => (
                 <Line
                   key={line.dataKey}
                   type="monotone"
+                  data={denseLines ?? undefined}
                   dataKey={line.dataKey}
                   name={line.name}
                   stroke={line.stroke}
@@ -240,6 +365,9 @@ function AnalysisChart({ data, lines, params, resultParams, modelName }) {
                   isAnimationActive={false}
                 />
               ))}
+              {chartData.length > 1 && (
+                <Brush data={chartData} dataKey="t" height={24} travellerWidth={8} stroke="var(--line-strong)" tickFormatter={(value) => String(value)} onChange={handleBrushChange} />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -318,6 +446,7 @@ export default function CalculatorWrapper({
   feedLogs,
   chartData,
   chartLines,
+  prevData,
   extraResults,
   resultLabel,
   dirty,
@@ -384,10 +513,17 @@ export default function CalculatorWrapper({
                 <div className="eyebrow">Calculated at</div>
                 <div className="mt-1 font-mono text-sm font-semibold text-primary">{formatValue(params.targetAge, 0)} days</div>
               </div>
+              <div className="flex items-center gap-2">
+              {prevData && prevData.length > 0 && !dirty && (
+                <span className="rounded-md border border-dashed border-line-strong px-2.5 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] text-faint">
+                  vs previous run
+                </span>
+              )}
               <div
                 className={`rounded-md px-2.5 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
               >
                 {dirty ? 'Results out of date' : 'Computed'}
+              </div>
               </div>
             </div>
             <div className={`grid gap-6 ${totalShrinkage ? 'sm:grid-cols-2' : ''}`}>
@@ -396,6 +532,7 @@ export default function CalculatorWrapper({
                 <Metric eyebrow="Total shrinkage" value={totalShrinkage.value} unit={totalShrinkage.unit} />
               )}
             </div>
+            {dirty && <ParamChanges before={resultParams} after={params} config={paramsConfig} />}
           </section>
 
           <Decomposition items={extraResults} />
@@ -406,7 +543,7 @@ export default function CalculatorWrapper({
             compareReady={compareReady}
           />
           {hasResults && (
-            <AnalysisChart data={chartData} lines={chartLines} params={params} resultParams={resultParams} modelName={modelName} />
+            <AnalysisChart data={chartData} lines={chartLines} params={params} resultParams={resultParams} modelName={modelName} prevData={prevData} />
           )}
 
           <details className="workbench-panel overflow-hidden">

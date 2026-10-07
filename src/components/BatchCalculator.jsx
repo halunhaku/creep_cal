@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 import { readSheet } from 'read-excel-file/browser';
 import {
   ScatterChart, Scatter, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
 import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
@@ -54,6 +54,38 @@ function isNumericCell(value) {
   if (typeof value !== 'string') return false;
   const text = value.trim();
   return text !== '' && Number.isFinite(Number(text));
+}
+function formatBatchValue(value) {
+  if (!Number.isFinite(Number(value))) return '—';
+  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(Number(value)).replace('-', '−');
+}
+
+// Same visual language as the single-analysis tooltip: title row plus x/y rows.
+// Scatter passes the point in payload[0].payload, Line passes x as `label`.
+function BatchTooltip({ active, payload, label, xKey, yKey }) {
+  if (!active || !payload?.length) return null;
+  const point = payload[0]?.payload ?? {};
+  // `value` is the x coordinate on a Scatter and the y coordinate on a Line,
+  // so the datum itself is the only source that means the same in both modes.
+  const x = point.x ?? label;
+  const y = point.y ?? payload[0]?.value;
+  return (
+    <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
+      <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[0.08em] text-faint">
+        {Number.isFinite(Number(point.row)) ? `Row #${point.row}` : 'Relation check'}
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between gap-5 text-1xs">
+          <span className="text-muted">{xKey}</span>
+          <span className="font-mono text-primary">{formatBatchValue(x)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-5 text-1xs">
+          <span className="text-muted">{yKey}</span>
+          <span className="font-mono text-primary">{formatBatchValue(y)}</span>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function computeRow(modelId, row) {
@@ -109,6 +141,10 @@ export default function BatchCalculator() {
   } = batch;
   const [isProcessing, setIsProcessing] = useState(false);
   const [batchError, setBatchError] = useState('');
+  // View-only toggles stay local: unlike xKey/yKey/chartType they are not part
+  // of the shared dataset, same split as the single-analysis chart.
+  const [logX, setLogX] = useState(false);
+  const [logY, setLogY] = useState(false);
   const model = MODELS.find((item) => item.id === activeModel);
   // A read that is still parsing must not be able to overwrite a newer one, and
   // it must resolve its model when it finishes rather than when the file was
@@ -138,6 +174,29 @@ export default function BatchCalculator() {
 
   const updateMapping = (index, source) => {
     updateBatch({ mapping: mapping.map((entry, position) => (position === index ? { ...entry, source } : entry)) });
+  };
+
+  // Fix a cell in place and recompute just that row, instead of editing the
+  // file and re-uploading. Result cells are rebuilt from scratch so a row that
+  // turns invalid cannot keep outputs from when it was valid (and vice versa).
+  const commitCell = (rowIndex, header, valueText) => {
+    const rowNumber = rowIndex + 2;
+    const base = Object.fromEntries(
+      Object.entries({ ...batchResults[rowIndex], [header]: valueText })
+        .filter(([key]) => key !== '__status' && !key.startsWith('result_')),
+    );
+    const keptIssues = issues.filter((issue) => issue.row !== rowNumber);
+    const nextRows = batchResults.slice();
+    try {
+      nextRows[rowIndex] = { ...base, ...computeRow(activeModel, base), __status: 'valid' };
+      updateBatch({ rows: nextRows, issues: keptIssues });
+    } catch (error) {
+      nextRows[rowIndex] = { ...base, __status: 'invalid' };
+      updateBatch({
+        rows: nextRows,
+        issues: [...keptIssues, { row: rowNumber, field: 'Input', value: '—', message: error.message }],
+      });
+    }
   };
 
   const applyColumnMapping = () => {
@@ -320,7 +379,17 @@ export default function BatchCalculator() {
     const link=document.createElement('a'); link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); link.download=`${activeModel}_batch_results.csv`; link.click(); URL.revokeObjectURL(link.href);
   };
 
-  const chartData = batchResults.map((row)=>({x:Number(row[xKey]),y:Number(row[yKey])})).filter((point)=>Number.isFinite(point.x)&&Number.isFinite(point.y));
+  // Points carry their matrix row so the tooltip can point back at it. Invalid
+  // rows have no result cells, so they never reach the chart — the caption
+  // below counts them instead of silently dropping them.
+  const basePoints = batchResults.map((row, index) => ({ x: Number(row[xKey]), y: Number(row[yKey]), row: index + 1 })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+  const visiblePoints = (logX || logY) ? basePoints.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : basePoints;
+  // Line mode joins points in file order, so an unsorted X column draws a
+  // meaningless zigzag — sort a copy, never the matrix order.
+  const linePoints = [...visiblePoints].sort((a, b) => a.x - b.x);
+  const yHasNegative = visiblePoints.some((point) => point.y < 0);
+  const excludedCount = batchResults.length - basePoints.length;
+  const logHiddenCount = basePoints.length - visiblePoints.length;
   const validCount=batchResults.filter((row)=>row.__status==='valid').length;
   const stage=batchResults.length ? 3 : issues.length ? 2 : 1;
 
@@ -537,7 +606,17 @@ export default function BatchCalculator() {
                   <tr key={index} className={row.__status === 'invalid' ? 'bg-[var(--error-soft)]' : ''}>
                     <td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-2xs text-faint">{index + 1}</td>
                     {batchHeaders.map((header) => (
-                      <td key={header} className={`px-3 py-2 font-mono text-1xs text-muted ${numericColumn(header) ? 'text-right' : ''}`}>{row[header]}</td>
+                      <td key={header} className={`px-3 py-2 font-mono text-1xs text-muted ${numericColumn(header) ? 'text-right' : ''}`}>
+                        {row.__status === 'invalid' ? (
+                          <input
+                            defaultValue={row[header] ?? ''}
+                            aria-label={`Row ${index + 1} ${header}`}
+                            onBlur={(event) => commitCell(index, header, event.target.value)}
+                            onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+                            className="w-full min-w-16 bg-transparent font-mono text-1xs text-primary outline-none focus:bg-surface-2"
+                          />
+                        ) : (row[header])}
+                      </td>
                     ))}
                     {model.resultKeys.map((key) => (
                       <td key={key} className="bg-green-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-primary">{row[key] ?? '—'}</td>
@@ -555,16 +634,32 @@ export default function BatchCalculator() {
               <div className="eyebrow">Result visualizer</div>
               <div className="mt-1 text-xs text-muted" lang="zh-CN">选择输入列与结果列进行快速关系检查</div>
             </div>
-            <div className="flex gap-1 rounded-md border border-line bg-surface-2 p-0.5">
-              {['scatter', 'line'].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => updateBatch({ chartType: type })}
-                  className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-primary' : 'text-faint'}`}
-                >
-                  {type}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex gap-1 rounded-md border border-line bg-surface-2 p-0.5">
+                {['scatter', 'line'].map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => updateBatch({ chartType: type })}
+                    className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-primary' : 'text-faint'}`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setLogX((value) => !value)}
+                aria-pressed={logX}
+                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+              >
+                {logX ? 'Log X' : 'Linear X'}
+              </button>
+              <button
+                onClick={() => setLogY((value) => !value)}
+                aria-pressed={logY}
+                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+              >
+                {logY ? 'Log Y' : 'Linear Y'}
+              </button>
             </div>
           </div>
           <div className="grid gap-4 border-b border-line p-4 sm:grid-cols-2">
@@ -591,6 +686,14 @@ export default function BatchCalculator() {
               </div>
             </div>
           </div>
+          <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
+            Plotting {visiblePoints.length} of {batchResults.length} rows{excludedCount > 0 ? ` · ${excludedCount} excluded (invalid or non-numeric — see red rows above)` : ''}{logHiddenCount > 0 ? ` · ${logHiddenCount} hidden by log scale (≤ 0)` : ''}
+          </div>
+          {visiblePoints.length === 0 ? (
+            <div className="flex h-[380px] items-center justify-center p-4 text-center text-xs text-muted">
+              No plottable points for {xKey} × {yKey} — rows are invalid, non-numeric, or hidden by the log scale.
+            </div>
+          ) : (
           <div className="h-[380px] p-4">
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'scatter' ? (
@@ -599,30 +702,57 @@ export default function BatchCalculator() {
                   <XAxis
                     dataKey="x"
                     type="number"
+                    scale={logX ? 'log' : 'linear'}
+                    domain={logX ? ['dataMin', 'dataMax'] : undefined}
+                    allowDataOverflow
                     tick={tickStyle}
                     minTickGap={tickGap}
                     label={{ value: xKey, position: 'insideBottomRight', offset: -14, ...axisTitleStyle }}
                   />
-                  <YAxis dataKey="y" tick={tickStyle} width={60} />
-                  <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line-strong)', borderRadius: 6 }} />
-                  <Scatter data={chartData} fill="var(--primary)" isAnimationActive={false} />
+                  <YAxis
+                    dataKey="y"
+                    scale={logY ? 'log' : 'linear'}
+                    domain={logY || yHasNegative ? ['auto', 'auto'] : [0, 'auto']}
+                    allowDataOverflow
+                    tick={tickStyle}
+                    width={60}
+                  />
+                  <Tooltip content={<BatchTooltip xKey={xKey} yKey={yKey} />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
+                  <Scatter data={visiblePoints} fill="var(--primary)" isAnimationActive={false} />
+                  {/* No Brush here: ScatterChart ignores Brush children (only the
+                      categorical charts wire it up), so one would render nothing
+                      while pretending to zoom — Line mode carries the zoom UI. */}
                 </ScatterChart>
               ) : (
-                <LineChart data={chartData} margin={{ top: 10, right: 20, left: 8, bottom: 28 }}>
+                <LineChart data={linePoints} margin={{ top: 10, right: 20, left: 8, bottom: 28 }}>
                   <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                   <XAxis
                     dataKey="x"
+                    type="number"
+                    scale={logX ? 'log' : 'linear'}
+                    domain={logX ? ['dataMin', 'dataMax'] : undefined}
+                    allowDataOverflow
                     tick={tickStyle}
                     minTickGap={tickGap}
                     label={{ value: xKey, position: 'insideBottomRight', offset: -14, ...axisTitleStyle }}
                   />
-                  <YAxis tick={tickStyle} width={60} />
-                  <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--line-strong)', borderRadius: 6 }} />
+                  <YAxis
+                    scale={logY ? 'log' : 'linear'}
+                    domain={logY || yHasNegative ? ['auto', 'auto'] : [0, 'auto']}
+                    allowDataOverflow
+                    tick={tickStyle}
+                    width={60}
+                  />
+                  <Tooltip content={<BatchTooltip xKey={xKey} yKey={yKey} />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
                   <Line dataKey="y" stroke="var(--primary)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  {linePoints.length > 1 && (
+                    <Brush data={linePoints} dataKey="x" height={20} travellerWidth={8} stroke="var(--line-strong)" tickFormatter={(value) => String(value)} />
+                  )}
                 </LineChart>
               )}
             </ResponsiveContainer>
           </div>
+          )}
         </section>
       </>}
     </div>

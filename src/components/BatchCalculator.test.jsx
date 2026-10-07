@@ -316,7 +316,13 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(state.issues.some((issue) => /relative humidity/.test(issue.message))).toBe(true);
     expect(state.issues.some((issue) => /concrete age/.test(issue.message))).toBe(true);
     // The matrix still shows the cell the user typed, so the issue can be traced.
-    expect(screen.getByText('1,200')).toBeInTheDocument();
+    // Invalid cells render as editable inputs, so the fix happens here rather
+    // than in a re-uploaded file: correcting t turns the row valid in place.
+    expect(screen.getByDisplayValue('1,200')).toBeInTheDocument();
+    const tCell = screen.getByLabelText('Row 2 t');
+    fireEvent.change(tCell, { target: { value: '1200' } });
+    fireEvent.blur(tCell);
+    await waitFor(() => expect(getState().batch.rows[1].__status).toBe('valid'));
   });
 
   test('a file with missing columns clears the previous results too', async () => {

@@ -58,6 +58,9 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   // that belonged to a different case (and the CSV export wrote that number
   // beside the new inputs).
   const [runParams, setRunParams] = useState(null);
+  // The run this one superseded, for the before/after overlay: snapshotted
+  // only when a recalculation actually moves off different inputs.
+  const [prevRun, setPrevRun] = useState(null);
   const [duration, setDuration] = useState(null);
   const [comparison, setComparison] = useState(null);
   const [comparing, setComparing] = useState(false);
@@ -88,6 +91,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     setResults([]);
     setFeedLogs(initialFeed(engine));
     setRunParams(null);
+    setPrevRun(null);
     setDuration(null);
     initialRunRef.current = false;
 
@@ -159,9 +163,14 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
         ? config.calculateRust(wasmModule, params, MAX_SERIES_DAYS)
         : config.calculateJs(params, MAX_SERIES_DAYS);
       const elapsed = performance.now() - startTime;
+      // Snapshot the run being replaced so the chart can overlay before/after —
+      // but only when the inputs actually moved (sameRunInputs already drives
+      // the staleness badge, so the two stay consistent by construction).
+      if (results.length > 0 && runParams !== null && !sameRunInputs(runParams, params)) {
+        setPrevRun({ data: results, model: config.id });
+      }
       setResults(nextResults);
       setRunParams(params);
-      setDuration(elapsed);
       dismissNotice(CALC_NOTICE);
       addLog(`Calculation completed in ${elapsed.toFixed(2)} ms.`, 'success');
     } catch (error) {
@@ -169,7 +178,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       addLog(`Calculation failed: ${detail}`, 'error');
       raiseNotice({ id: CALC_NOTICE, title: 'Calculation failed · 计算失败', message: detail });
     }
-  }, [addLog, config, dismissNotice, isRust, params, raiseNotice, wasmModule, wasmReady]);
+  }, [addLog, config, dismissNotice, isRust, params, raiseNotice, results, runParams, wasmModule, wasmReady]);
 
   // Times both kernels on the identical parameter set and series length, so the
   // dual-engine design can be judged on measurements instead of claims. Each
@@ -243,6 +252,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       feedLogs={feedLogs}
       chartData={results}
       chartLines={config.chartLines}
+      prevData={prevRun && prevRun.model === config.id ? prevRun.data : null}
       resultLabel={config.resultLabel}
       extraResults={summary.extraResults}
       notices={notices}
