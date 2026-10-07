@@ -7,7 +7,7 @@ import {
   ScatterChart, Scatter, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
-import { aci209Single, mc2010Single, b4Single, b4sSingle } from '../math/creepModels';
+import { aci209Single, mc2010Single, b4Single, b4sSingle, gl2000Single } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
 import Lang from './ui/Lang';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
@@ -32,6 +32,9 @@ const SAMPLE_DATA = {
   b4s: [28, 90, 112, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
     t0: 28, tPrime: 28, Tcur: 20, Tsh: 20, Tc: 20, h: 50, fc: 27.6, vS: 19.05,
     cementType: 'R', aggregateType: 'No Information', specimenShape: '1', t
+  })),
+  gl2000: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
+    fcm28: 32.5, h: 70, vs: 100, tc: 7, t0: 28, cementType: 'I', t
   })),
 };
 
@@ -112,6 +115,17 @@ function computeRow(modelId, row) {
   }
   if (modelId === 'b4s') {
     const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4sSingle(row);
+    return {
+      result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
+      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
+      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
+      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
+    };
+  }
+  if (modelId === 'gl2000') {
+    // No autogenous term in GL2000: epsilonAU is an explicit 0, exactly as
+    // the kernel returns it, so the matrix keeps the B4 column shape.
+    const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = gl2000Single(row);
     return {
       result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
       result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),

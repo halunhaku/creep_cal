@@ -678,3 +678,13 @@ export function gl2000Compliance(row) {
     cementType: String(row.cementType).trim(),
   });
 }
+
+/**
+ * Single-row version for batch use: compliance in 1/GPa plus the shrinkage
+ * triplet, mirroring b4Single/b4sSingle so the batch matrix stays uniform.
+ */
+export function gl2000Single(row) {
+  const { J } = gl2000Compliance(row);
+  const { epsilonSH, epsilonAU, epsilonTotal } = gl2000Shrinkage(row);
+  return { J_GPa: J * 1000, epsilonSH, epsilonAU, epsilonTotal };
+}
