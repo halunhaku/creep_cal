@@ -429,7 +429,7 @@ const MODELS = [
     id: 'aashto',
     name: 'AASHTO LRFD',
     category: 'North American Bridge Code',
-    engine: ['JS'],
+    engine: ['JS', 'RUST'],
     description: 'AASHTO LRFD (NCHRP 18-07) creep coefficient and shrinkage for bridge design: strength-based with humidity, size and time factors.',
     params: [
       { name: 'fci', description: 'Strength at loading, 2.4–15 KSI (16.5–103.5 MPa)' },

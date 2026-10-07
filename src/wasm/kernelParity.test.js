@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { beforeAll, describe, expect, test } from 'vitest';
 import * as Rust from '../wasm-pkg/creep_calculator_engine.js';
-import { aci209Phi, b4Point, b4sPoint, gl2000CompliancePoint, gl2000ShrinkagePoint, mc2010Point } from '../math/creepModels';
+import { aashtoSingle, aci209Phi, b4Point, b4sPoint, gl2000CompliancePoint, gl2000ShrinkagePoint, mc2010Point } from '../math/creepModels';
 
 const wasmBytes = readFileSync(resolve(process.cwd(), 'src/wasm-pkg/creep_calculator_engine_bg.wasm'));
 beforeAll(() => Rust.initSync({ module: wasmBytes }));
@@ -61,12 +61,21 @@ const gl2000Js = (p, t) => {
   };
 };
 
+const AASHTO_FIELDS = ['psi', 'epsilon_sh', 'epsilon_au', 'epsilon_total', 'ks', 'khc', 'khs', 'kf'];
+const aashtoParams = () => ({ fci: between(16.5, 103.5), H: between(0, 100), vs: between(5, 500), ti: between(1, 365), tc: between(0, 60), t: undefined });
+const aashtoWasm = (p) => ({ fci: p.fci, h: p.H, vs: p.vs, ti: p.ti, tc: p.tc });
+const aashtoJs = (p, t) => {
+  const r = aashtoSingle({ ...p, t });
+  return { psi: r.psi, epsilon_sh: r.epsilonSH, epsilon_au: r.epsilonAU, epsilon_total: r.epsilonTotal, ks: r.ks, khc: r.khc, khs: r.khs, kf: r.kf };
+};
+
 const MODELS = [
   { name: 'ACI 209R-92', gen: aciParams, toWasm: aciWasm, fields: null, single: 'calculate_aci209_single', js: (p, t) => aci209Phi({ ...p, t }) },
   { name: 'fib MC2010', gen: mcParams, toWasm: mcWasm, fields: ['phi', 'phi_bc', 'phi_dc', 'nonlinear_factor', 't0_adjusted'], single: 'calculate_mc2010_single', js: (p, t) => mc2010Point({ ...p, t }) },
   { name: 'RILEM B4', gen: b4Params, toWasm: b4Wasm, fields: Object.keys(B4_FIELDS), jsField: B4_FIELDS, single: 'calculate_b4_single', js: (p, t) => b4Point({ ...p, t }) },
   { name: 'RILEM B4s', gen: b4Params, toWasm: b4sWasm, fields: Object.keys(B4_FIELDS), jsField: B4_FIELDS, single: 'calculate_b4s_single', js: (p, t) => b4sPoint({ ...p, t }) },
   { name: 'GL2000', gen: gl2000Params, toWasm: gl2000Wasm, fields: GL2000_FIELDS, single: 'calculate_gl2000_single', js: gl2000Js },
+  { name: 'AASHTO LRFD', gen: aashtoParams, toWasm: aashtoWasm, fields: AASHTO_FIELDS, single: 'calculate_aashto_single', js: aashtoJs },
 ];
 
 const consistent = (jsValue, rustValue) => Number.isFinite(jsValue) && Number.isFinite(rustValue)

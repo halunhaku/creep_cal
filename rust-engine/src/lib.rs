@@ -50,7 +50,18 @@ pub struct Gl2000Point {
     pub drying: f64,
 }
 
-// ACI 209R-92 creep parameters use the units defined by the report.
+#[derive(Serialize, Deserialize)]
+pub struct AashtoPoint {
+    pub t: f64,
+    pub psi: f64,
+    pub epsilon_sh: f64,
+    pub epsilon_au: f64,
+    pub epsilon_total: f64,
+    pub ks: f64,
+    pub khc: f64,
+    pub khs: f64,
+    pub kf: f64,
+}
 #[derive(Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
 pub enum Aci209CuringType {
@@ -88,6 +99,7 @@ pub struct Mc2010Params {
 }
 
 // 模块声明
+mod aashto;
 mod aci209;
 pub(crate) mod b4;
 mod b4s;
@@ -95,6 +107,7 @@ mod gl2000;
 mod mc2010;
 mod utils;
 
+pub use aashto::*;
 pub use aci209::*;
 pub use b4::*;
 pub use b4s::*;

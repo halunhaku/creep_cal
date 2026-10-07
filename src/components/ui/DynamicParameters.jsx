@@ -14,23 +14,24 @@ const GROUPS = [
 
 const ZH = {
   t0: '开始干燥或加载龄期', tPrime: '施加持续荷载的龄期', targetAge: '读取结果的目标龄期',
+  ti: '初次加载龄期', tc: '干燥开始龄期',
   T: '恒定养护温度', Tcur: '养护阶段平均温度', Tsh: '干燥阶段平均温度', Tc: '受荷后平均温度',
   H: '环境相对湿度', RH: '环境相对湿度', h: '环境相对湿度',
-  VS: '体积与暴露表面积比', vS: '体积与暴露表面积比', Ac: '构件横截面积', u: '暴露于干燥的周长', specimenShape: '用于收缩半时的形状系数',
-  fc: '28 天圆柱体平均抗压强度', fcm: '28 天平均抗压强度', c: '单位体积水泥用量', wC: '水与水泥质量比', aC: '骨料与水泥质量比',
+  VS: '体积与暴露表面积比', vS: '体积与暴露表面积比', vs: '体积与暴露表面积比', Ac: '构件横截面积', u: '暴露于干燥的周长', specimenShape: '用于收缩半时的形状系数',
+  fc: '28 天圆柱体平均抗压强度', fcm: '28 天平均抗压强度', fcm28: '28 天平均抗压强度', fci: '加载时强度', c: '单位体积水泥用量', wC: '水与水泥质量比', aC: '骨料与水泥质量比',
   cementType: '水泥水化活性类别', aggregateType: '骨料种类修正', Cs: '水泥强度与早期强度等级', sigma: '加载时混凝土初始应力', curingType: '混凝土养护方式',
   slump: '新拌混凝土坍落度', fineAggregate: '细骨料占总骨料比例', airContent: '混凝土含气量',
   retarder: '占水泥质量百分比', flyAsh: '占水泥质量百分比', superplasticizer: '占水泥质量百分比', silicaFume: '占水泥质量百分比', airEntrainingAgent: '占水泥质量百分比', waterReducer: '占水泥质量百分比',
 };
 
-const SYMBOLS = { t0:'t₀', tPrime:'t′', targetAge:'t', T:'T', Tcur:'Tcur', Tsh:'Tsh', Tc:'Tc', H:'H', RH:'RH', h:'h', VS:'V/S', vS:'V/S', Ac:'Ac', u:'u', fc:'fc', fcm:'fcm', c:'c', wC:'w/c', aC:'a/c', sigma:'σ' };
+const SYMBOLS = { t0:'t₀', tPrime:'t′', targetAge:'t', ti:'ti', tc:'tc', T:'T', Tcur:'Tcur', Tsh:'Tsh', Tc:'Tc', H:'H', RH:'RH', h:'h', VS:'V/S', vS:'V/S', vs:'V/S', Ac:'Ac', u:'u', fc:'fc', fcm:'fcm', fcm28:'fcm28', fci:'fci', c:'c', wC:'w/c', aC:'a/c', sigma:'σ' };
 const ADMIXTURES = new Set(['retarder','flyAsh','superplasticizer','silicaFume','airEntrainingAgent','waterReducer']);
 
 function groupFor(name) {
-  if (['t0','tPrime','targetAge'].includes(name)) return 'time';
+  if (['t0','tPrime','targetAge','ti','tc'].includes(name)) return 'time';
   if (['T','Tcur','Tsh','Tc'].includes(name)) return 'temperature';
   if (['H','RH','h'].includes(name)) return 'environment';
-  if (['VS','vS','Ac','u','specimenShape'].includes(name)) return 'geometry';
+  if (['VS','vS','vs','Ac','u','specimenShape'].includes(name)) return 'geometry';
   if (ADMIXTURES.has(name)) return 'admixtures';
   return 'material';
 }

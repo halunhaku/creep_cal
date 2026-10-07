@@ -15,6 +15,16 @@ export class PerformanceTimer {
 export function benchmark_calculation(model: string, iterations: number): number;
 
 /**
+ * AASHTO LRFD time series indexed by concrete age from casting.
+ */
+export function calculate_aashto_series(params: any, max_time: number): any;
+
+/**
+ * AASHTO LRFD creep coefficient and shrinkage at concrete age t.
+ */
+export function calculate_aashto_single(params: any, t: number): any;
+
+/**
  * ACI 209R-92 batch calculation using the official input units.
  */
 export function calculate_aci209_batch(batch_data: any): any;
@@ -78,6 +88,8 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly __wbg_performancetimer_free: (a: number, b: number) => void;
     readonly benchmark_calculation: (a: number, b: number, c: number) => [number, number, number];
+    readonly calculate_aashto_series: (a: any, b: number) => [number, number, number];
+    readonly calculate_aashto_single: (a: any, b: number) => [number, number, number];
     readonly calculate_aci209_batch: (a: any) => [number, number, number];
     readonly calculate_aci209_series: (a: any, b: number) => [number, number, number];
     readonly calculate_aci209_single: (a: any, b: number) => [number, number, number];

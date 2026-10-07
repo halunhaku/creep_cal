@@ -49,6 +49,34 @@ export function benchmark_calculation(model, iterations) {
 }
 
 /**
+ * AASHTO LRFD time series indexed by concrete age from casting.
+ * @param {any} params
+ * @param {number} max_time
+ * @returns {any}
+ */
+export function calculate_aashto_series(params, max_time) {
+    const ret = wasm.calculate_aashto_series(params, max_time);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
+ * AASHTO LRFD creep coefficient and shrinkage at concrete age t.
+ * @param {any} params
+ * @param {number} t
+ * @returns {any}
+ */
+export function calculate_aashto_single(params, t) {
+    const ret = wasm.calculate_aashto_single(params, t);
+    if (ret[2]) {
+        throw takeFromExternrefTable0(ret[1]);
+    }
+    return takeFromExternrefTable0(ret[0]);
+}
+
+/**
  * ACI 209R-92 batch calculation using the official input units.
  * @param {any} batch_data
  * @returns {any}

@@ -3,6 +3,8 @@
 export const memory: WebAssembly.Memory;
 export const __wbg_performancetimer_free: (a: number, b: number) => void;
 export const benchmark_calculation: (a: number, b: number, c: number) => [number, number, number];
+export const calculate_aashto_series: (a: any, b: number) => [number, number, number];
+export const calculate_aashto_single: (a: any, b: number) => [number, number, number];
 export const calculate_aci209_batch: (a: any) => [number, number, number];
 export const calculate_aci209_series: (a: any, b: number) => [number, number, number];
 export const calculate_aci209_single: (a: any, b: number) => [number, number, number];

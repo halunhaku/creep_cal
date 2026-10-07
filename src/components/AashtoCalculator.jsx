@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { aashtoPoint } from '../math/creepModels';
+import { buildAashtoParams } from '../wasm/creepEngine';
 import ModelCalculator from './ModelCalculator';
 
 function chartPoint(t, result) {
@@ -11,12 +12,21 @@ function chartPoint(t, result) {
   };
 }
 
+function rustChartPoint(point) {
+  return {
+    t: point.t,
+    psi: point.psi,
+    epsilon_sh: point.epsilon_sh,
+    epsilon_total: point.epsilon_total,
+  };
+}
+
 const config = {
   id: 'aashto',
   name: 'AASHTO LRFD',
   descriptions: {
     js: 'AASHTO LRFD (NCHRP 18-07) creep coefficient and shrinkage: strength-based with humidity, size and time factors.',
-    rust: 'No Rust kernel for AASHTO LRFD yet — this model always runs on the JavaScript reference kernel.',
+    rust: 'AASHTO LRFD evaluated by the Rust WASM kernel with absolute concrete-age series.',
   },
   initialParams: {
     fci: 41,
@@ -46,6 +56,9 @@ const config = {
     }
     return results;
   },
+  calculateRust(wasm, params, maxDays) {
+    return wasm.calculate_aashto_series(buildAashtoParams(params), maxDays).map(rustChartPoint);
+  },
   getSummary(results, params) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(params.targetAge ?? 10000)))];
     return {
@@ -64,10 +77,5 @@ const config = {
 };
 
 export default function AashtoCalculator({ engine, onEngineFallback }) {
-  // No Rust kernel for AASHTO LRFD yet: hand control back to the JS kernel
-  // through the same fallback the app uses when WASM fails to load.
-  useEffect(() => {
-    if (engine !== 'js' && onEngineFallback) onEngineFallback();
-  }, [engine, onEngineFallback]);
-  return <ModelCalculator engine="js" config={config} onEngineFallback={onEngineFallback} />;
+  return <ModelCalculator engine={engine} config={config} onEngineFallback={onEngineFallback} />;
 }

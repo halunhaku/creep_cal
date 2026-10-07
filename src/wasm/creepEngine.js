@@ -159,6 +159,7 @@ const B4S_KEYS = [
   'cement_type', 'aggregate_type', 'specimen_shape',
 ];
 const GL2000_KEYS = ['fcm28', 'h', 'vs', 'tc', 't0', 'cement_type'];
+const AASHTO_KEYS = ['fci', 'h', 'vs', 'ti', 'tc'];
 
 /** @param {Record<string, any>} params UI parameters @returns {Aci209WasmParams} */
 export function buildAci209Params(params) {
@@ -240,4 +241,15 @@ export function buildGl2000Params(params) {
     t0: params.t0,
     cement_type: params.cementType,
   }, GL2000_KEYS);
+}
+
+/** @param {Record<string, any>} params UI parameters @returns {AashtoWasmParams} */
+export function buildAashtoParams(params) {
+  return assertContract('AASHTO LRFD', {
+    fci: params.fci,
+    h: params.H,
+    vs: params.vs,
+    ti: params.ti,
+    tc: params.tc,
+  }, AASHTO_KEYS);
 }
