@@ -49,6 +49,28 @@ describe('column mapping suggestions', () => {
     expect(suggestSource('t', ['time', 't'])).toBe('t');
   });
 
+  // Regression: the match was case-insensitive, so columns that only share a
+  // spelling were offered for each other — concrete age `t` for curing
+  // temperature `T` (365 d suggested as 365 °C), B4 `a/c` for MC2010's
+  // cross-section area `Ac`. A wrong-but-plausible suggestion beats no
+  // suggestion at producing a wrong number, so differently-cased fields that
+  // are different quantities suggest nothing.
+  test('a column owned by a differently-cased field is not suggested', () => {
+    expect(suggestSource('t', ['T'])).toBe('');
+    expect(suggestSource('T', ['t'])).toBe('');
+    expect(suggestSource('Ac', ['a/c'])).toBe('');
+    expect(suggestSource('aC', ['Ac'])).toBe('');
+  });
+
+  // Same quantity under a different case is still a match: B4 `h` and ACI `H`
+  // are both relative humidity, `VS` and `vS` are both the volume-surface ratio.
+  test('the same quantity still matches across case', () => {
+    expect(suggestSource('H', ['h'])).toBe('h');
+    expect(suggestSource('h', ['H'])).toBe('H');
+    expect(suggestSource('VS', ['vS'])).toBe('vS');
+    expect(suggestSource('vS', ['VS'])).toBe('VS');
+  });
+
   test('every missing field gets an entry, mapped or not', () => {
     expect(suggestMapping(['H', 'fc'], ['Humidity', 'vS'])).toEqual([
       { field: 'H', source: 'Humidity' },

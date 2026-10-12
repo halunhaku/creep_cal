@@ -243,6 +243,22 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(byHeader('note').className).not.toContain('text-right');
   });
 
+  // Regression: `isNumericCell` used `Number(text)` while the kernels read
+  // cells with `coerceNumber`, which only accepts a decimal literal. A hex
+  // column like `0x10` was right-aligned as numeric while every row in it
+  // failed validation as NaN — the alignment promised numbers the kernel
+  // refused to compute.
+  test('a hex column is not right-aligned as numeric', async () => {
+    const { container } = render(<BatchCalculator />);
+    upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,code,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,0x10,112\n`, 'b4.csv');
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+
+    const headerCells = [...container.querySelectorAll('thead th')];
+    const cellFor = (label) => headerCells.find((cell) => cell.textContent.trim().toLowerCase() === label);
+    expect(cellFor('code').className).not.toContain('text-right');
+    expect(cellFor('fc').className).toContain('text-right');
+  });
+
   // Regression: the batch computed with the reference kernels while the header
   // badge said the WASM kernel was active, and nothing in this workspace said
   // which kernel produced the numbers.

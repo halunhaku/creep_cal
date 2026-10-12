@@ -7,7 +7,7 @@ import {
   ScatterChart, Scatter, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
-import { aashtoSingle, aci209Single, mc2010Single, b4Single, b4sSingle, gl2000Single } from '../math/creepModels';
+import { aashtoSingle, aci209Single, b4Single, b4sSingle, coerceNumber, gl2000Single, mc2010Single } from '../math/creepModels';
 import CustomSelect from './ui/CustomSelect';
 import Lang from './ui/Lang';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
@@ -51,15 +51,14 @@ function formatResult(value, digits, label) {
 }
 
 /**
- * Is this cell a number? Blank and whitespace-only cells are not (`Number('  ')`
- * is 0, which used to right-align a column of empty-looking text as if it were
- * numeric), and neither are booleans.
+ * Is this cell a number? Must agree with `coerceNumber`, which is what the
+ * kernels actually read: `Number('0x10')` is 16 (hex), so the old check
+ * right-aligned a hex column as numeric while the kernel rejected every row
+ * in it as NaN. Blank and whitespace-only cells are not numeric, and neither
+ * are booleans.
  */
 function isNumericCell(value) {
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (typeof value !== 'string') return false;
-  const text = value.trim();
-  return text !== '' && Number.isFinite(Number(text));
+  return Number.isFinite(coerceNumber(value));
 }
 function formatBatchValue(value) {
   if (!Number.isFinite(Number(value))) return '—';

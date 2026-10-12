@@ -62,18 +62,68 @@ const ALIASES = {
  */
 const normalise = (value) => String(value).toLowerCase().replace(/[\s_.\-()/\\]/g, '');
 
+/** Punctuation and spacing are noise, but case is kept. */
+const strip = (value) => String(value).replace(/[\s_.\-()/\\]/g, '');
+
+/** Every contract field, including the two without aliases. */
+const FIELDS = [...Object.keys(ALIASES), 'Cs', 'sigma'];
+
+/**
+ * Same physical quantity under a different case: matching across case here is
+ * correct, unlike the pairs below. ACI `H` and B4 `h` are both relative
+ * humidity (%), `VS` and `vS` are both the volume-surface ratio (mm).
+ */
+const SAME_QUANTITY = [['H', 'h'], ['VS', 'vS']];
+
+function sameQuantity(a, b) {
+  return SAME_QUANTITY.some((group) => group.includes(a) && group.includes(b));
+}
+
+/**
+ * Does this header name a *different* field (or one of its aliases) when read
+ * case-sensitively? Concrete age `t` vs curing temperature `T`, and
+ * cross-section area `Ac` vs aggregate-cement ratio `aC`, share a normalised
+ * spelling, so a case-insensitive match used to offer one for the other —
+ * age 365 suggested as `T` = 365 °C, a B4 `a/c` column suggested for MC2010's
+ * `Ac`. Same-quantity pairs (`H`/`h`, `VS`/`vS`) are exempt: one manual pick
+ * beats a plausible wrong number, but refusing a correct humidity match would
+ * just be noise.
+ */
+function ownedByOther(field, header) {
+  const key = strip(header);
+  for (const other of FIELDS) {
+    if (other === field) continue;
+    if (sameQuantity(field, other)) continue;
+    if (strip(other) === key) return true;
+    for (const alias of ALIASES[other] ?? []) {
+      if (strip(alias) === key) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * @param {string} field one of the model's required columns
  * @param {string[]} headers the columns the uploaded file actually has
  * @returns {string} the suggested source column, or '' when nothing is convincing
  */
 export function suggestSource(field, headers) {
+  // The file's own spelling wins first: an exact-case match is never ambiguous.
+  const exactSensitive = headers.find((header) => strip(header) === strip(field));
+  if (exactSensitive) return exactSensitive;
+  for (const alias of ALIASES[field] ?? []) {
+    const match = headers.find((header) => strip(header) === strip(alias));
+    if (match) return match;
+  }
+  // Then the lenient match, skipping columns owned by another field.
   const wanted = normalise(field);
-  const exact = headers.find((header) => normalise(header) === wanted);
+  const exact = headers.find((header) => normalise(header) === wanted && !ownedByOther(field, header));
   if (exact) return exact;
 
   for (const alias of ALIASES[field] ?? []) {
-    const match = headers.find((header) => normalise(header) === normalise(alias));
+    const match = headers.find(
+      (header) => normalise(header) === normalise(alias) && !ownedByOther(field, header),
+    );
     if (match) return match;
   }
   return '';

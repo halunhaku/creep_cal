@@ -43,6 +43,27 @@ describe('navigation state lives in the URL', () => {
     expect(screen.getByRole('button', { name: /JS Ref\./i })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  test('a batch deep link applies its model to the batch workspace', async () => {
+    goTo('/?mode=batch&model=aashto&kernel=js');
+    const { container } = render(<App />);
+
+    await screen.findByRole('heading', { name: BATCH_HEADING });
+    expect(container.querySelector('#batch-model')).toHaveValue('aashto');
+  });
+
+  test('switching workspaces writes the model actually selected in Batch', async () => {
+    render(<App />);
+    await screen.findByRole('heading', { name: CALC_HEADING });
+
+    fireEvent.click(screen.getByRole('button', { name: /AASHTO LRFD/i }));
+    await waitFor(() => expect(param('model')).toBe('aashto'));
+    fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
+
+    await screen.findByRole('heading', { name: BATCH_HEADING });
+    expect(screen.getByLabelText(/Prediction model/i)).toHaveValue('b4');
+    await waitFor(() => expect(param('model')).toBeNull());
+  });
+
   test('changing workspace writes the URL, and Back returns to the previous one', async () => {
     render(<App />);
     await screen.findByRole('heading', { name: CALC_HEADING });
@@ -140,6 +161,7 @@ describe('URL parsing', () => {
 
   test('omits defaults so a plain visit has a clean URL', () => {
     expect(buildSearch({ mode: 'single', model: 'aci209', engine: 'rust' })).toBe('');
-    expect(buildSearch({ mode: 'batch', model: 'b4', engine: 'js' })).toBe('?mode=batch&model=b4&kernel=js');
+    expect(buildSearch({ mode: 'batch', model: 'aci209', batch: { modelId: 'b4' }, engine: 'js' })).toBe('?mode=batch&kernel=js');
+    expect(buildSearch({ mode: 'batch', model: 'aci209', batch: { modelId: 'aashto' }, engine: 'js' })).toBe('?mode=batch&model=aashto&kernel=js');
   });
 });

@@ -163,6 +163,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
         ? config.calculateRust(wasmModule, params, MAX_SERIES_DAYS)
         : config.calculateJs(params, MAX_SERIES_DAYS);
       const elapsed = performance.now() - startTime;
+      setDuration(elapsed);
       // Snapshot the run being replaced so the chart can overlay before/after —
       // but only when the inputs actually moved (sameRunInputs already drives
       // the staleness badge, so the two stay consistent by construction).

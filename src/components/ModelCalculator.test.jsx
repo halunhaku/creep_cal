@@ -12,6 +12,11 @@ describe('ModelCalculator workspace state', () => {
     expect(screen.getByText(/1\.17756/)).toBeInTheDocument();
   });
 
+  test('reports the elapsed time of the last calculation', async () => {
+    render(<Aci209Calculator engine="js" />);
+    expect(await screen.findByText(/^\d+\.\d{2} ms$/)).toBeInTheDocument();
+  });
+
   // Regression: every parameter change set `dirty`, including `targetAge`, which
   // only selects a point of the already-computed 0–10,000 day series. The metric
   // updated immediately while the badge claimed the results were out of date.

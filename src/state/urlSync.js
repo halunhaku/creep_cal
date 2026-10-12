@@ -1,4 +1,4 @@
-import { getState, setEngine, setMode, setModel, subscribe } from './appStore';
+import { getState, setEngine, setMode, setModel, subscribe, updateBatch } from './appStore';
 
 /**
  * Keeps the navigation state in the URL.
@@ -18,9 +18,9 @@ const MODES = new Set(['single', 'batch', 'docs']);
 const MODELS = new Set(['aci209', 'mc2010', 'b4', 'b4s', 'gl2000', 'aashto']);
 const KERNELS = new Set(['rust', 'js']);
 const DEFAULTS = { mode: 'single', model: 'aci209', engine: 'rust' };
+const DEFAULT_MODEL_BY_MODE = { single: 'aci209', batch: 'b4', docs: 'aci209' };
 
 const KEYS = { mode: 'mode', model: 'model', engine: 'kernel' };
-const SETTERS = { mode: setMode, model: setModel, engine: setEngine };
 
 export function readUrl(search) {
   const query = new URLSearchParams(search ?? (typeof window === 'undefined' ? '' : window.location.search));
@@ -36,7 +36,13 @@ export function readUrl(search) {
 export function buildSearch(state) {
   const query = new URLSearchParams();
   for (const [field, key] of Object.entries(KEYS)) {
-    if (state[field] !== DEFAULTS[field]) query.set(key, state[field]);
+    const value = field === 'model' && state.mode === 'batch'
+      ? (state.batch?.modelId ?? state.model)
+      : state[field];
+    const defaultValue = field === 'model'
+      ? DEFAULT_MODEL_BY_MODE[state.mode]
+      : DEFAULTS[field];
+    if (value !== defaultValue) query.set(key, value);
   }
   const value = query.toString();
   return value ? `?${value}` : '';
@@ -65,11 +71,27 @@ export function initUrlSync() {
 
   const apply = (complete = false) => {
     const parsed = readUrl();
+    const nextMode = parsed.mode ?? (complete ? DEFAULTS.mode : getState().mode);
+    const nextModel = parsed.model ?? (complete ? DEFAULT_MODEL_BY_MODE[nextMode] : undefined);
+    const nextEngine = parsed.engine ?? (complete ? DEFAULTS.engine : undefined);
+
     applyingFromUrl = true;
-    for (const field of Object.keys(KEYS)) {
-      const next = parsed[field] ?? (complete ? DEFAULTS[field] : undefined);
-      if (next !== undefined) SETTERS[field](next);
+    if (parsed.mode !== undefined || complete) setMode(nextMode);
+    if (nextModel !== undefined) {
+      if (nextMode === 'batch') {
+        if (getState().batch.modelId !== nextModel) {
+          // A URL cannot carry the uploaded dataset. Clear it rather than leave
+          // results computed by one model under another model's heading.
+          updateBatch({
+            modelId: nextModel, rows: [], headers: [], issues: [], fileName: '',
+            xKey: '', yKey: '', pendingRows: [], mapping: [],
+          });
+        }
+      } else {
+        setModel(nextModel);
+      }
     }
+    if (nextEngine !== undefined) setEngine(nextEngine);
     applyingFromUrl = false;
     // The URL now describes this mode, so the next in-workspace change replaces
     // rather than pushing a second entry for the same workspace.
