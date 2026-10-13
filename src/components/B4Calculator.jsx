@@ -22,10 +22,10 @@ const shapeOptions = [
 ].map(([value, label]) => ({ value, label }));
 
 const chartLines = [
-  { dataKey: 'j_micro_mpa', stroke: 'var(--primary)', name: 'Compliance J (10⁻⁶/MPa)', kind: 'compliance' },
+  { dataKey: 'j_micro_mpa', stroke: 'var(--series-1)', name: 'Compliance J (10⁻⁶/MPa)', kind: 'compliance' },
   { dataKey: 'epsilon_total', stroke: 'var(--text)', name: 'Total Shrinkage εsh,total (με)', kind: 'shrinkage' },
-  { dataKey: 'epsilon_sh', stroke: 'var(--accent)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
-  { dataKey: 'epsilon_au', stroke: 'var(--cyan)', name: 'Autogenous Shrinkage εau (με)', kind: 'shrinkage' },
+  { dataKey: 'epsilon_sh', stroke: 'var(--series-2)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
+  { dataKey: 'epsilon_au', stroke: 'var(--series-3)', name: 'Autogenous Shrinkage εau (με)', kind: 'shrinkage' },
 ];
 
 function chartPoint(point) {

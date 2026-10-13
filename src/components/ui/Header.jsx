@@ -26,22 +26,22 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
   return (
     <header className="sticky top-0 z-50 border-b border-line" style={{ background: 'var(--header-bg)', backdropFilter: 'blur(16px)' }}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] button-primary">Skip to content</a>
-      <div className="mx-auto flex h-16 max-w-content items-center gap-5 px-4 md:px-7 lg:px-9">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-mark border border-line-strong bg-surface font-mono text-2xs font-bold text-green">CL</div>
+      <div className="mx-auto flex h-16 max-w-content items-center gap-2 px-2 min-[380px]:gap-4 min-[380px]:px-4 md:gap-5 md:px-7 lg:px-9">
+        <div className="flex min-w-[33px] flex-1 items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-mark border border-line-strong bg-surface font-mono text-2xs font-bold text-action">CL</div>
           {/* Two gates instead of one shrinking block: below 600px the mark stands
               alone, from 600px the wordmark fits (it needs 83px), and the tagline
               only appears once it fits too (~220px, from 900px). Previously the
               text shrank to a sliver and then to "CRE…" between those widths. */}
           <div className="hidden min-w-0 leading-none min-[600px]:block">
-            <div className="truncate text-body-sm font-bold tracking-[0.09em] text-primary">CREEP LAB</div>
+            <div className="truncate text-body-sm font-bold tracking-[0.09em] text-ink">CREEP LAB</div>
             <div className="mt-1 hidden truncate font-mono text-3xs uppercase tracking-[0.11em] text-faint min-[900px]:block">
               Concrete time-dependent analysis
             </div>
           </div>
         </div>
 
-        <nav aria-label="Workspace" className="flex h-full items-stretch gap-1">
+        <nav aria-label="Workspace" className="flex h-full items-stretch min-[380px]:gap-1">
           {navItems.map((item) => {
             const active = activeMode === item.id;
             return (
@@ -49,19 +49,19 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
                 key={item.id}
                 onClick={() => item.id === 'docs' ? onOpenDocs() : onModeChange(item.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`relative px-3 text-sm font-semibold transition-colors duration-150 md:px-4 ${active ? 'text-primary' : 'text-muted hover:text-primary'}`}
+                className={`relative px-1.5 text-xs font-semibold transition-colors duration-150 min-[380px]:px-2.5 min-[380px]:text-sm md:px-4 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}
               >
                 {item.label}
-                {active && <span className="absolute inset-x-3 bottom-0 h-0.5 bg-green" aria-hidden="true" />}
+                {active && <span className="absolute inset-x-1.5 bottom-0 h-0.5 bg-action min-[380px]:inset-x-2.5 md:inset-x-3" aria-hidden="true" />}
               </button>
             );
           })}
         </nav>
 
-        <div className="flex flex-1 items-center justify-end gap-2">
+        <div className="flex min-w-[36px] flex-1 items-center justify-end gap-2">
           <button
             onClick={onOpenPalette}
-            className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-line-strong hover:text-primary md:flex"
+            className="touch-target hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-line-strong hover:text-ink md:flex"
             aria-label="Search commands"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-none stroke-current" aria-hidden="true">
@@ -76,7 +76,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
             onClick={() => window.toggleTheme?.()}
             aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
             title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
-            className="flex h-9 w-9 items-center justify-center rounded-md border border-line bg-surface text-muted transition-colors hover:border-line-strong hover:text-primary [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.8]"
+            className="touch-target flex h-9 w-9 items-center justify-center rounded-md border border-line bg-surface text-muted transition-colors hover:border-line-strong hover:text-ink [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.8]"
           >
             <ThemeIcon dark={theme === 'dark'} />
           </button>

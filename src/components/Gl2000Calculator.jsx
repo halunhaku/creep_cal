@@ -114,8 +114,8 @@ const config = {
     };
   },
   chartLines: [
-    { dataKey: 'j_micro_mpa', stroke: 'var(--primary)', name: 'Compliance J (10⁻⁶/MPa)', kind: 'compliance' },
-    { dataKey: 'epsilon_sh', stroke: 'var(--accent)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
+    { dataKey: 'j_micro_mpa', stroke: 'var(--series-1)', name: 'Compliance J (10⁻⁶/MPa)', kind: 'compliance' },
+    { dataKey: 'epsilon_sh', stroke: 'var(--series-2)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
   ],
   resultLabel: 'Compliance J(t,t₀) · 1/GPa',
 };

@@ -83,7 +83,7 @@ function CopyValue({ text, label }) {
       onClick={onCopy}
       title={label ?? 'Copy value'}
       aria-label={label ?? 'Copy value'}
-      className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs uppercase tracking-[.06em] text-faint transition-colors hover:border-green-border hover:text-green"
+      className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs uppercase tracking-[.06em] text-faint transition-colors hover:border-action-border hover:text-action"
     >
       {copied ? 'Copied' : 'Copy'}
     </button>
@@ -95,7 +95,7 @@ function Metric({ eyebrow, value, unit, accent = false }) {
   return (
     <div className="min-w-0">
       <div className="eyebrow">{eyebrow}</div>
-      <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold tracking-[-0.04em] md:text-metric ${accent ? 'text-green' : 'text-primary'}`}>
+      <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold tracking-[-0.04em] md:text-metric ${accent ? 'text-action' : 'text-ink'}`}>
         <span>{formatValue(value)}</span>
         {unit && <span className="text-1xs font-medium tracking-normal text-muted">{unit}</span>}
         <CopyValue text={copyText} label={`Copy ${eyebrow}`} />
@@ -118,9 +118,9 @@ function Decomposition({ items }) {
           <div className="eyebrow">{group.label}</div>
           <div className="mt-3 divide-y divide-line">
             {group.items.map((item) => (
-              <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-primary' : 'text-muted'}`}>
+              <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-ink' : 'text-muted'}`}>
                 <span>{item.label}</span>
-                <span className="flex items-center gap-2 font-mono tabular-nums text-primary">
+                <span className="flex items-center gap-2 font-mono tabular-nums text-ink">
                   <span>{formatValue(item.value, 3)} <small className="text-3xs font-normal text-faint">{item.unit}</small></span>
                   <CopyValue text={`${formatValue(item.value, 3)}${item.unit ? ` ${item.unit}` : ''}`} label={`Copy ${item.label}`} />
                 </span>
@@ -147,7 +147,7 @@ function ScientificTooltip({ active, payload, label }) {
               <i className="h-0.5 w-3" style={{ background: item.color || item.stroke }} />
               {item.name}
             </span>
-            <span className="font-mono text-primary">{formatValue(item.value, 5)}</span>
+            <span className="font-mono text-ink">{formatValue(item.value, 5)}</span>
           </div>
         ))}
       </div>
@@ -172,7 +172,7 @@ function ParamChanges({ before, after, config }) {
         {changed.map((item) => (
           <li key={item.name} className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-muted">{item.label ?? item.name}</span>
-            <span className="font-mono tabular-nums text-primary">{String(before[item.name])} → {String(after[item.name])}{item.unit ? ` ${item.unit}` : ''}</span>
+            <span className="font-mono tabular-nums text-ink">{String(before[item.name])} → {String(after[item.name])}{item.unit ? ` ${item.unit}` : ''}</span>
           </li>
         ))}
       </ul>
@@ -235,7 +235,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               key={id}
               onClick={() => setView(id)}
               aria-pressed={view === id}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-green-soft text-green' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
             >
               {label}
             </button>
@@ -246,7 +246,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
             <button
               onClick={() => setLogX((value) => !value)}
               aria-pressed={logX}
-              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
             >
               {logX ? 'Log X' : 'Linear X'}
             </button>
@@ -257,7 +257,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               aria-pressed={useLogY}
               disabled={logYBlocked}
               title={logYBlocked ? 'Log Y unavailable for signed shrinkage values' : undefined}
-              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${useLogY ? '!border-green-border !bg-green-soft !text-green' : ''} ${logYBlocked ? '!cursor-not-allowed !opacity-40' : ''}`}
+              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${useLogY ? '!border-action-border !bg-action-soft !text-action' : ''} ${logYBlocked ? '!cursor-not-allowed !opacity-40' : ''}`}
             >
               {useLogY ? 'Log Y' : 'Linear Y'}
             </button>
@@ -288,10 +288,10 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
             </thead>
             <tbody className="divide-y divide-line">
               {dataRows.map((row) => (
-                <tr key={row.t} className={row.t === Math.round(params.targetAge) ? 'bg-green-soft' : ''}>
+                <tr key={row.t} className={row.t === Math.round(params.targetAge) ? 'bg-action-soft' : ''}>
                   <td className="px-4 py-2 font-mono text-muted">{row.t}</td>
                   {lines.map((line) => (
-                    <td key={line.dataKey} className="px-4 py-2 font-mono text-primary">{formatValue(row[line.dataKey], 5)}</td>
+                    <td key={line.dataKey} className="px-4 py-2 font-mono text-ink">{formatValue(row[line.dataKey], 5)}</td>
                   ))}
                 </tr>
               ))}
@@ -400,15 +400,15 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady, comp
         <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4" role="status">
           <div>
             <div className="eyebrow">JS reference</div>
-            <div className="mt-1 font-mono text-body text-primary">{formatValue(comparison.js, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
+            <div className="mt-1 font-mono text-body text-ink">{formatValue(comparison.js, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
           </div>
           <div>
             <div className="eyebrow">Rust WASM</div>
-            <div className="mt-1 font-mono text-body text-primary">{formatValue(comparison.rust, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
+            <div className="mt-1 font-mono text-body text-ink">{formatValue(comparison.rust, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
           </div>
           <div>
             <div className="eyebrow">Rust speed-up</div>
-            <div className="mt-1 font-mono text-body text-green">{speedup && Number.isFinite(speedup) ? `${formatValue(speedup, 2)}×` : '—'}</div>
+            <div className="mt-1 font-mono text-body text-action">{speedup && Number.isFinite(speedup) ? `${formatValue(speedup, 2)}×` : '—'}</div>
           </div>
         </div>
       )}
@@ -483,13 +483,13 @@ export default function CalculatorWrapper({
             <span className="status-dot" />
             <span className="eyebrow">{engine === 'rust' ? 'Rust WebAssembly' : 'JavaScript reference'}</span>
           </div>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-primary">{modelName}</h2>
+          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">{modelName}</h2>
           <p className="mt-1.5 max-w-[72ch] text-body-sm leading-relaxed text-muted">{modelDescription}</p>
         </div>
         {duration != null && (
           <div className="rounded-md border border-line bg-surface px-3 py-2 text-right">
             <div className="eyebrow">Last compute</div>
-            <div className="mt-1 font-mono text-1xs text-primary">{duration.toFixed(2)} ms</div>
+            <div className="mt-1 font-mono text-1xs text-ink">{duration.toFixed(2)} ms</div>
           </div>
         )}
       </header>
@@ -515,7 +515,7 @@ export default function CalculatorWrapper({
             <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-4">
               <div>
                 <div className="eyebrow">Calculated at</div>
-                <div className="mt-1 font-mono text-sm font-semibold text-primary">{formatValue(params.targetAge, 0)} days</div>
+                <div className="mt-1 font-mono text-sm font-semibold text-ink">{formatValue(params.targetAge, 0)} days</div>
               </div>
               <div className="flex items-center gap-2">
               {prevData && prevData.length > 0 && !dirty && (

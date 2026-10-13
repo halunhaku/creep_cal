@@ -12,8 +12,8 @@ const LoadingSpinner = ({
         style={{
           width: `${size}px`,
           height: `${size}px`,
-          border: `3px solid var(--green-soft)`,
-          borderTop: `3px solid var(--green)`,
+          border: `3px solid var(--action-soft)`,
+          borderTop: `3px solid var(--action)`,
         }}
       />
       

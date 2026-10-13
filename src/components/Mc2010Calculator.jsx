@@ -79,9 +79,9 @@ const config = {
     };
   },
   chartLines: [
-    { dataKey: 'phi', stroke: 'var(--primary)', name: 'Total Creep Coefficient φ' },
-    { dataKey: 'phi_bc', stroke: 'var(--cyan)', name: 'Basic Creep φbc' },
-    { dataKey: 'phi_dc', stroke: 'var(--accent)', name: 'Drying Creep φdc' },
+    { dataKey: 'phi', stroke: 'var(--series-1)', name: 'Total Creep Coefficient φ' },
+    { dataKey: 'phi_bc', stroke: 'var(--series-3)', name: 'Basic Creep φbc' },
+    { dataKey: 'phi_dc', stroke: 'var(--series-2)', name: 'Drying Creep φdc' },
   ],
 };
 

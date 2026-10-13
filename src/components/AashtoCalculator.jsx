@@ -70,8 +70,8 @@ const config = {
     };
   },
   chartLines: [
-    { dataKey: 'psi', stroke: 'var(--primary)', name: 'Creep Coefficient ψ', kind: 'compliance' },
-    { dataKey: 'epsilon_sh', stroke: 'var(--accent)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
+    { dataKey: 'psi', stroke: 'var(--series-1)', name: 'Creep Coefficient ψ', kind: 'compliance' },
+    { dataKey: 'epsilon_sh', stroke: 'var(--series-2)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
   ],
   resultLabel: 'Creep Coefficient ψ(t,ti)',
 };

@@ -13,7 +13,7 @@ function FormulaExpression({ expr }) {
 
   return (
     <div
-      className="formula-render flex-1 overflow-x-auto rounded-md border border-line bg-surface px-4 py-4 text-primary"
+      className="formula-render flex-1 overflow-x-auto rounded-md border border-line bg-surface px-4 py-4 text-ink"
       tabIndex={0}
       dangerouslySetInnerHTML={{ __html: html }}
     />
@@ -502,7 +502,7 @@ export default function DocsPage() {
     <div className="animate-fade-in">
       <header className="mb-6 border-b border-line pb-5">
         <div className="eyebrow">Reference library</div>
-        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-display-sm">Model standards and equations</h1>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-ink md:text-display-sm">Model standards and equations</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Implementation scope, calibrated ranges, formula mapping, and primary sources for every prediction model.</p>
       </header>
 
@@ -515,10 +515,10 @@ export default function DocsPage() {
                 key={item.id}
                 onClick={() => setModel(item.id)}
                 aria-pressed={item.id === selected}
-                className={`relative min-w-[180px] rounded-md px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id === selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
+                className={`relative min-w-[180px] rounded-md px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id === selected ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
               >
                 {item.id === selected && (
-                  <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green" />
+                  <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-action" />
                 )}
                 <div className="flex gap-2">
                   <span className="font-mono text-3xs text-faint">{String(index + 1).padStart(2, '0')}</span>
@@ -535,7 +535,7 @@ export default function DocsPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="eyebrow">{model.category}</div>
-                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-primary">{model.name}</h2>
+                <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em] text-ink">{model.name}</h2>
                 <p className="mt-3 max-w-[75ch] text-body-sm leading-7 text-muted">{model.description}</p>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-2">
@@ -556,7 +556,7 @@ export default function DocsPage() {
             <div className="mt-6 grid gap-4 border-t border-line pt-5 md:grid-cols-2">
               <div>
                 <div className="eyebrow">Implementation output</div>
-                <p className="mt-2 text-sm leading-6 text-primary">{model.output}</p>
+                <p className="mt-2 text-sm leading-6 text-ink">{model.output}</p>
               </div>
               <div>
                 <div className="eyebrow">Primary reference</div>
@@ -569,7 +569,7 @@ export default function DocsPage() {
             <div className="mb-4 flex items-end justify-between">
               <div>
                 <div className="eyebrow">Inputs & units</div>
-                <h3 className="mt-1 text-lg font-semibold text-primary">Parameter contract</h3>
+                <h3 className="mt-1 text-lg font-semibold text-ink">Parameter contract</h3>
               </div>
               <span className="font-mono text-3xs text-faint">{model.params.length} parameters</span>
             </div>
@@ -585,7 +585,7 @@ export default function DocsPage() {
                 <tbody className="divide-y divide-line">
                   {model.params.map((param) => (
                     <tr key={param.name}>
-                      <td className="w-32 px-4 py-3 align-top font-mono text-1xs font-semibold text-green">{param.name}</td>
+                      <td className="w-32 px-4 py-3 align-top font-mono text-1xs font-semibold text-action">{param.name}</td>
                       <td className="w-20 px-4 py-3 align-top font-mono text-1xs text-muted">{unitLabelFor(param.name)}</td>
                       <td className="px-4 py-3 text-body-sm leading-5 text-muted">{param.description}</td>
                     </tr>
@@ -598,7 +598,7 @@ export default function DocsPage() {
           {model.applicability && (
             <section id="applicability" className="border-b border-line p-5 md:p-7">
               <div className="eyebrow">Applicability</div>
-              <h3 className="mt-1 text-lg font-semibold text-primary">Calibrated use and limitations</h3>
+              <h3 className="mt-1 text-lg font-semibold text-ink">Calibrated use and limitations</h3>
               <div className="mt-5 grid gap-5 md:grid-cols-2">
                 <div>
                   <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[.08em] text-[var(--success)]">Recommended domain</div>
@@ -634,8 +634,8 @@ export default function DocsPage() {
               <div className="mt-4 space-y-3">
                 {model.officialDocuments.map((doc) => (
                   <div key={doc.designation} className="rounded-lg border border-line bg-surface-2 p-4">
-                    <div className="font-mono text-3xs font-semibold uppercase tracking-[.07em] text-green">{doc.designation}</div>
-                    <h4 className="mt-1.5 text-sm font-semibold text-primary">{doc.title}</h4>
+                    <div className="font-mono text-3xs font-semibold uppercase tracking-[.07em] text-action">{doc.designation}</div>
+                    <h4 className="mt-1.5 text-sm font-semibold text-ink">{doc.title}</h4>
                     <p className="mt-1 text-xs text-muted">{doc.status}</p>
                     <p className="mt-2 text-body-sm leading-5 text-muted">{doc.coverage}</p>
                   </div>
@@ -649,7 +649,7 @@ export default function DocsPage() {
               <div className="mb-5 flex items-end justify-between">
                 <div>
                   <div className="eyebrow">Core equations</div>
-                  <h3 className="mt-1 text-lg font-semibold text-primary">Implemented formulation</h3>
+                  <h3 className="mt-1 text-lg font-semibold text-ink">Implemented formulation</h3>
                 </div>
                 <span className="font-mono text-3xs text-faint">{model.formulas.length} equations</span>
               </div>
@@ -658,7 +658,7 @@ export default function DocsPage() {
                   <div key={formula.label} className="grid gap-3 rounded-lg border border-line bg-surface-2 p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-center">
                     <div>
                       <span className="font-mono text-3xs text-faint">EQ {String(index + 1).padStart(2, '0')}</span>
-                      <div className="mt-1 text-xs font-semibold text-primary">{formula.label}</div>
+                      <div className="mt-1 text-xs font-semibold text-ink">{formula.label}</div>
                     </div>
                     <FormulaExpression expr={formula.expr} />
                   </div>
@@ -691,9 +691,9 @@ export default function DocsPage() {
                     href={source.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="group rounded-lg border border-line p-4 transition-colors hover:border-green-border hover:bg-green-soft"
+                    className="group rounded-lg border border-line p-4 transition-colors hover:border-action-border hover:bg-action-soft"
                   >
-                    <div className="text-sm font-semibold text-primary group-hover:text-green">{source.label}</div>
+                    <div className="text-sm font-semibold text-ink group-hover:text-action">{source.label}</div>
                     <p className="mt-1 text-xs leading-5 text-muted">{source.note}</p>
                     <span className="mt-3 block truncate font-mono text-3xs text-faint">{source.url}</span>
                   </a>
@@ -710,7 +710,7 @@ export default function DocsPage() {
               <a
                 key={id}
                 href={`#${id}`}
-                className="block border-l border-transparent px-3 py-1.5 text-xs text-muted hover:border-green hover:text-primary"
+                className="block border-l border-transparent px-3 py-1.5 text-xs text-muted hover:border-action hover:text-ink"
               >
                 {label}
               </a>

@@ -196,6 +196,18 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(reads).toBeLessThan(5000);
   });
 
+  test('the result matrix scrolls horizontally from the keyboard', async () => {
+    render(<BatchCalculator />);
+    fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
+    const matrix = await screen.findByRole('region', { name: /batch result matrix/i });
+
+    matrix.focus();
+    fireEvent.keyDown(matrix, { key: 'ArrowRight' });
+    expect(matrix.scrollLeft).toBe(120);
+    fireEvent.keyDown(matrix, { key: 'ArrowLeft' });
+    expect(matrix.scrollLeft).toBe(0);
+  });
+
   test('the previous model\'s output columns are dropped, not carried over', async () => {    const { container } = render(<BatchCalculator />);
     fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
     await waitFor(() => expect(resultSections()).toHaveLength(1));
@@ -390,6 +402,7 @@ describe('BatchCalculator dataset pipeline', () => {
     try {
       const { container } = render(<BatchCalculator />);
       selectModel(container, 'b4');
+      fireEvent.click(screen.getByText('Schema & templates'));
       fireEvent.click(screen.getByRole('button', { name: /Download template/i }));
       const text = await created[0].text();
       expect(text.split(/\r?\n/)[0].split(',')).toEqual(B4_REQUIRED);   // Papa.unparse emits CRLF

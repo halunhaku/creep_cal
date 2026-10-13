@@ -119,7 +119,7 @@ export default function CommandPalette({ onClose }) {
         className="w-full max-w-[560px] overflow-hidden rounded-lg border border-line-strong bg-surface shadow-[var(--shadow-popover)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="flex items-center gap-3 border-b border-line px-4">
+        <div className="flex items-center gap-3 border-b border-line px-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-action">
           <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 fill-none stroke-current text-faint" aria-hidden="true">
             <circle cx="11" cy="11" r="6.5" strokeWidth="1.7" />
             <path d="m16 16 4 4" strokeWidth="1.7" strokeLinecap="round" />
@@ -134,8 +134,10 @@ export default function CommandPalette({ onClose }) {
             aria-controls="command-list"
             aria-activedescendant={matches[active] ? `command-${matches[active].id}` : undefined}
             aria-label="Search commands"
+            name="command-search"
+            autoComplete="off"
             placeholder="Go to a workspace, model, kernel, saved set…"
-            className="h-12 min-w-0 flex-1 border-0 bg-transparent text-sm text-primary outline-none placeholder:text-faint focus:ring-0"
+            className="h-12 min-w-0 flex-1 border-0 bg-transparent text-sm text-ink outline-none placeholder:text-faint focus:ring-0"
           />
           <kbd className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs text-faint">ESC</kbd>
         </div>
@@ -156,7 +158,7 @@ export default function CommandPalette({ onClose }) {
                   aria-selected={index === active}
                   onMouseEnter={() => setActive(index)}
                   onClick={() => runCommand(command)}
-                  className={`mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm ${index === active ? 'bg-green-soft text-primary' : 'text-muted'}`}
+                  className={`mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm ${index === active ? 'bg-action-soft text-ink' : 'text-muted'}`}
                 >
                   <span className="truncate">{command.label}</span>
                   {command.hint && <span className="shrink-0 font-mono text-3xs text-faint">{command.hint}</span>}

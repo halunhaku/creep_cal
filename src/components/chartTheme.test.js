@@ -12,12 +12,12 @@ const THEMES = { light: cssVariables(':root'), dark: cssVariables('[data-theme="
 describe('chart colours', () => {
   for (const [theme, vars] of Object.entries(THEMES)) {
     test(`${theme}: the reference label clears 4.5:1 on both the card and the page`, () => {
-      expect(contrast(vars['--accent-text'], vars['--surface'])).toBeGreaterThanOrEqual(4.5);
-      expect(contrast(vars['--accent-text'], vars['--bg'])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(vars['--reference-text'], vars['--surface'])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(vars['--reference-text'], vars['--bg'])).toBeGreaterThanOrEqual(4.5);
     });
 
     test(`${theme}: the reference line clears 3:1 as a graphic`, () => {
-      expect(contrast(vars['--accent'], vars['--surface'])).toBeGreaterThanOrEqual(3);
+      expect(contrast(vars['--reference'], vars['--surface'])).toBeGreaterThanOrEqual(3);
     });
 
     test(`${theme}: the ticks and axis titles clear 4.5:1`, () => {
@@ -27,8 +27,8 @@ describe('chart colours', () => {
   }
 
   test('the accent is split into a graphic colour and a text colour', () => {
-    // Where they are equal (the dark theme) the accent already clears 4.5:1.
-    const { '--accent': accent, '--accent-text': accentText } = THEMES.light;
+    // Where they are equal (the dark theme) the reference colour already clears 4.5:1.
+    const { '--reference': accent, '--reference-text': accentText } = THEMES.light;
     expect(accentText).not.toBe(accent);
   });
 

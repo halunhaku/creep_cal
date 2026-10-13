@@ -216,7 +216,7 @@ build.bat
 
 ## Design Language
 
-CREEP_LAB uses a Scientific Workbench system with a light-default and persistent dark variant:
+CREEP_LAB uses a Scientific Workbench system with a light-default and persistent dark variant. The complete visual, responsive, interaction, and accessibility contract lives in [`docs/design-system.md`](docs/design-system.md):
 
 | Token | Light (default) | Dark |
 | --- | --- | --- |

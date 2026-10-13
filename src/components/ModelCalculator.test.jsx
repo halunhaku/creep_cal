@@ -74,7 +74,7 @@ describe('ModelCalculator workspace state', () => {
     },
     calculateRust() { return this.calculateJs(); },
     getSummary: () => ({ primary: 1 }),
-    chartLines: [{ dataKey: 'v', stroke: 'var(--primary)', name: 'V' }],
+    chartLines: [{ dataKey: 'v', stroke: 'var(--series-1)', name: 'V' }],
   });
 
   test('a rejected calculation shows the engine message in a visible alert', async () => {

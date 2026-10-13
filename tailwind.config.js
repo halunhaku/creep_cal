@@ -6,9 +6,11 @@ module.exports = {
     extend: {
       colors: {
         background: 'var(--bg)', surface: 'var(--surface)', 'surface-soft': 'var(--surface-2)', 'surface-3': 'var(--surface-3)',
-        primary: 'var(--text)', muted: 'var(--text-muted)', faint: 'var(--text-faint)', green: 'var(--primary)',
-        'green-dark': 'var(--primary)', 'green-soft': 'var(--primary-soft)', 'green-border': 'var(--primary-border)',
-        amber: 'var(--accent)', cyan: 'var(--cyan)', line: 'var(--line)', 'line-strong': 'var(--line-strong)', error: 'var(--error)',
+        ink: 'var(--text)', muted: 'var(--text-muted)', faint: 'var(--text-faint)',
+        action: 'var(--action)', 'action-hover': 'var(--action-hover)', 'action-soft': 'var(--action-soft)', 'action-border': 'var(--action-border)',
+        reference: 'var(--reference)', 'reference-text': 'var(--reference-text)', 'reference-soft': 'var(--reference-soft)',
+        success: 'var(--success)', 'success-soft': 'var(--success-soft)', warning: 'var(--warning)', 'warning-soft': 'var(--warning-soft)',
+        line: 'var(--line)', 'line-strong': 'var(--line-strong)', error: 'var(--error)', 'error-soft': 'var(--error-soft)',
       },
       fontFamily: {
         sans: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'], body: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'],

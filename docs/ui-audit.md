@@ -6,7 +6,7 @@
 >
 > | 条目 | 状态 | 复核证据 | 提交 |
 > | --- | --- | --- | --- |
-> | P0-1 深色主按钮 2.53:1 | ✅ 已修 | 浏览器实测：浅色 6.16:1、深色 7.34:1；`--on-green` 令牌已接线 | `80b64c3` |
+> | P0-1 深色主按钮 2.53:1 | ✅ 已修 | 浏览器实测：浅色 6.16:1、深色 7.34:1；`--on-action` 令牌已接线 | `80b64c3` |
 > | P0-2 切换工作区丢工作 | ✅ 已修 | 实测参数 `35 → 切走 → 切回 → 35`；数据集 9 行与 Export CSV 均存活；3 条回归测试（其中 2 条验证过"打瘸 store 就会失败"） | `efb952e` |
 > | P0-3 无 URL 状态 | ✅ 已修 | 实测 `?mode=docs&model=b4s&kernel=js` 打开 B4s；Back/Forward 在工作区间往返；刷新后参数、模型、内核全部保留；6 条路由测试 | `3dc6500` |
 > | P1-1 锚点被页头盖住 | ✅ 已修 | 实测 `#formulas` 落在 97px（页头 65px），`scroll-margin-top: 88px` | `3fc0887` |
@@ -20,6 +20,12 @@
 > **复核中新发现的一项，已单独清扫完毕（2026-10-04）**：中文片段没有标 `lang="zh-CN"`，`<html lang="en">` 会让屏幕阅读器用英语音素念中文。静态 JSX 已就地包 `<span lang="zh-CN">`，数据来的字符串经 `<Lang>` 按字符类切分后标记；守护测试走查真实 DOM，覆盖三个工作区、命令面板、告警、映射面板、问题表与超限提示，任何含汉字的文本节点或 `aria-label`/`title`/`placeholder`/`alt` 都必须落在带 `lang="zh…"` 的元素内，且文本内容逐字符不变。详见 [`docs/bug-audit.md`](bug-audit.md)（N-18）。
 >
 > **审计中提到的其余结构债**（单行 JSX、无令牌层）已随第 1 步处理完毕：六个组件全部拆行，字号/圆角/图表尺寸均有令牌，`src/` 中不再有 `text-[Npx]` 字面量。
+>
+> **窄屏精修（2026-10-13）**：320px 实测页头 Logo 32px，主题按钮在触控设备由 36px 补到 44px，三组控件间各保留 8px 间距，`documentWidth === innerWidth === 320`；移动模型选择器补充可访问名称与横向吸附。键盘 Space 可切换模型，焦点保留在新选项，选择器自动滚动到 `scrollLeft = 186`。390px 与 1440px 视觉复核未发现桌面回归。
+>
+> **Batch 移动端精修（2026-10-13）**：Schema、模板和内核说明改为渐进披露；320px 下上传区起点从 1018.5px 提前到 621px，160px 上传面板完整落在 844px 首屏内。文件输入恢复键盘焦点并由整块拖放区显示焦点环。结果矩阵补充可聚焦 `region`、横向滚动名称和操作提示；实测 ArrowRight 将 286px 视口滚动 215px，行号保持冻结。320/390/1440 均无页面级横向溢出；Batch 29 条测试、ESLint、生产构建与文档截图生成通过。
+>
+> **设计系统规范化（2026-10-13）**：新增 [`docs/design-system.md`](design-system.md)，将视觉、令牌、组件、响应式、动效与可访问性收敛为单一契约；清除色相命名和历史别名，统一为 `action` / `reference` / `series-*`，图表数据不再借用操作色令牌。Hanken Grotesk 与 Azeret Mono 改为本地 Fontsource Latin 子集并使用 `font-display: swap`，运行时零外部字体资源。命令面板、参数集和批量修正输入补齐可见焦点与表单属性，触控核心控件为 44×44px。Chrome 实测 3 工作区 × 3 宽度（320/390/1440）× 2 主题共 18 种组合：全部 `scrollWidth === innerWidth`，浅深主题背景正确，本地字体均已加载；命令面板与参数集焦点环、reduced motion 均通过。相关 86 条测试、全量 311 条测试、ESLint、生产构建和 11 张文档截图生成通过。
 
 ## 方法与证据等级
 
@@ -28,7 +34,7 @@
 | 真实渲染探测（headless Chrome + DevTools Protocol） | 对比度、锚点滚动位置、字号分布、跨工作区状态、history 行为 |
 | 对比度计算（WCAG 相对亮度公式） | 两套主题全部 12 组令牌配对 |
 | 静态检查（grep + 逐文件阅读） | 规范合规项、结构债、信息架构 |
-| 现有测试与截图脚本 | 93 测试 / ESLint / `npm run screenshots` 作为改造安全网 |
+| 现有测试与截图脚本 | 311 测试 / ESLint / 生产构建 / `npm run screenshots` 作为改造安全网 |
 
 标注 **[实测]** 的结论来自真实浏览器渲染，不是推断。
 
@@ -44,18 +50,18 @@
 渲染实测（dark）：color rgb(255,255,255) on background rgb(127,159,255) = 2.53:1  FAIL
 ```
 
-`--primary` 在深色主题是浅蓝 `#7f9fff`，而 [index.css:122](src/index.css#L122) 把按钮文字硬编码成 `#fff`：
+`--action` 在深色主题是浅蓝 `#7f9fff`，而 [index.css:122](src/index.css#L122) 把按钮文字硬编码成 `#fff`：
 
 ```css
-.button-primary, .btn-primary { background: var(--primary); color: #fff; }
+.button-primary, .btn-primary { background: var(--action); color: #fff; }
 ```
 
-**讽刺的是正确令牌已经存在却从未被使用**：`--on-green` 在浅色是 `#fff`、在深色是 `#101412`（[index.css:37](src/index.css#L37) / [index.css:73](src/index.css#L73)），全仓 0 处引用。
+**讽刺的是正确令牌已经存在却从未被使用**：`--on-action` 在浅色是 `#fff`、在深色是 `#101412`（[index.css:37](src/index.css#L37) / [index.css:73](src/index.css#L73)），全仓 0 处引用。
 
-同一根因还影响选中文本：[index.css:97](src/index.css#L97) `::selection { background: var(--primary); color: #fff; }`。
+同一根因还影响选中文本：[index.css:97](src/index.css#L97) `::selection { background: var(--action); color: #fff; }`。
 
 影响面：深色模式下每一个主 CTA（Calculate、Export CSV、Download template 等）以及全部文本选中态。
-修法：两处 `#fff` → `var(--on-green)`。一行级改动，零风险。
+修法：两处 `#fff` → `var(--on-action)`。一行级改动，零风险。
 
 ### P0-2 · 切换工作区会静默丢弃用户的工作 **[实测]**
 
@@ -147,9 +153,9 @@ light: accent #c9532d on bg #f4f2ed = 3.94:1  → 仅够 AA-large/UI，不够正
 ```text
 ## src/index.css
 
-index.css:122 - .button-primary 硬编码 color:#fff → 深色主题 2.53:1，应使用 var(--on-green)
+index.css:122 - .button-primary 硬编码 color:#fff → 深色主题 2.53:1，应使用 var(--on-action)
 index.css:97  - ::selection 同样硬编码 #fff
-index.css:37,73 - --on-green 两套主题均已定义但零引用（死令牌）
+index.css:37,73 - --on-action 两套主题均已定义但零引用（死令牌）
 index.css:111 - .eyebrow 定 10px，组件再压到 8–9px；建议建立字号下限令牌
 index.css     - 缺 scroll-margin-top（锚点被吸顶页头遮挡）
 index.css     - 缺 touch-action: manipulation、overscroll-behavior: contain
@@ -184,7 +190,7 @@ DynamicParameters.jsx     - 6 处 text-[8px]/[9px]/[10px]
 
 ## src/components/ui/CalculatorWrapper.jsx
 
-CalculatorWrapper.jsx:140 - 9px 图表标签用 var(--accent)，浅色仅 3.94:1
+CalculatorWrapper.jsx:140 - 9px 图表标签用 var(--reference)，浅色仅 3.94:1
 CalculatorWrapper.jsx     - 14 处 text-[8px]/[9px]/[10px]（全仓最密集）
 CalculatorWrapper.jsx     - 数字列已用 font-mono（等宽即表格数字 ✓），但混排处无 tabular-nums
 
@@ -265,10 +271,10 @@ Header.jsx    - 3 处 text-[9px]
 | --- | --- | --- |
 | **超长单行 JSX** | [CalculatorWrapper.jsx:142](src/components/ui/CalculatorWrapper.jsx#L142)、[BatchCalculator.jsx:232](src/components/BatchCalculator.jsx#L232)、[DocsPage.jsx:400](src/components/DocsPage.jsx#L400) 单行 300–900 字符、内联十几个 Tailwind 类 | 无法 diff、无法局部重构、改一个间距要在巨行里做手术 |
 | **令牌层不完整** | 有颜色令牌 ✓，但无字号/间距/圆角尺度令牌；`text-[8px]`…`text-[13px]` 全是硬编码；圆角在组件里散落 `rounded-[7px]`/`rounded-lg`/`rounded-md` | 改视觉方向要逐文件改几十处字面量 |
-| **死令牌** | `--on-green` 定义两套主题、零引用；`--trace-glow: transparent` 疑似遗留 | 令牌层不可信 |
+| **死令牌** | `--on-action` 定义两套主题、零引用；`--trace-glow: transparent` 疑似遗留 | 令牌层不可信 |
 | **自建类语义过载** | `.workbench-panel` 同时承担卡片/容器/分节三种角色；`.eyebrow` 同时是标签、表头、序号 | 无法按角色分别调整 |
 | **图表主题化靠 `!important` 覆盖** | [index.css:165-167](src/index.css#L165-L167) 覆盖 recharts 内部类名 | recharts 升级即碎 |
-| **字体走 Google CDN** | [index.html:17](index.html#L17) 单个 `fonts.googleapis.com` 请求，无 `preconnect`、无自托管 | 离线/内网直接掉字体（与"本地优先"定位冲突）；字体到达前有 FOUT |
+| **远程字体依赖（已修）** | Hanken Grotesk 与 Azeret Mono 已由 Fontsource 本地打包；浏览器实测零外部字体资源 | 离线/内网字体稳定，`font-display: swap` 保留可读回退 |
 | **组件与文档强耦合** | DocsPage 内嵌 4 个模型的 300+ 行硬编码数据 | 改版式要穿过大段数据 |
 
 ---

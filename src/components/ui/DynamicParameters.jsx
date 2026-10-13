@@ -65,7 +65,7 @@ function NumericInput({ config, value, onChange }) {
             if (event.key === 'Enter') event.currentTarget.blur();
             if (event.key === 'Escape') { cancelRef.current = true; setDraft(String(value)); event.currentTarget.blur(); }
           }}
-          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-body-sm font-medium text-primary outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-10 min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-body-sm font-medium text-ink outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
         />
         {unit && (
           <span className="flex min-w-[54px] items-center justify-center border-l border-line bg-surface-2 px-2 font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-muted">
@@ -85,7 +85,7 @@ function ParameterField({ config, value, onChange }) {
     <div className="py-3 first:pt-1">
       <div className="mb-2 flex items-start justify-between gap-3">
         <label htmlFor={config.options ? `param-select-${config.name}` : `param-input-${config.name}`} className="min-w-0">
-          <span className="block text-body-sm font-semibold leading-tight text-primary">{config.label}</span>
+          <span className="block text-body-sm font-semibold leading-tight text-ink">{config.label}</span>
           <span className="mt-1 block text-1xs leading-tight text-muted"><Lang text={ZH[config.name] || '模型输入参数'} /></span>
         </label>
         {SYMBOLS[config.name] && <span className="shrink-0 font-mono text-2xs italic text-faint">{SYMBOLS[config.name]}</span>}

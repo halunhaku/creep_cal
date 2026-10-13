@@ -2,7 +2,7 @@
 
 CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。项目集成 ACI 209R-92、fib Model Code 2010、B4、B4S 四类常用预测模型，提供单点参数分析、批量数据计算和模型公式文档浏览能力。
 
-平台采用 React + Vite 构建前端界面，使用 Tailwind CSS 和项目内的 HALUNHAKU 设计规范统一视觉风格。计算层同时提供 JavaScript 参考实现与 Rust WebAssembly 高性能实现，用户可以在单点计算场景中切换引擎，便于对比结果、验证模型和观察性能差异。
+平台采用 React + Vite 构建前端界面，使用 Tailwind CSS 和项目内的 [HALUNHAKU 设计规范](docs/design-system.md) 统一视觉风格。计算层同时提供 JavaScript 参考实现与 Rust WebAssembly 高性能实现，用户可以在单点计算场景中切换引擎，便于对比结果、验证模型和观察性能差异。
 
 ## 核心功能
 

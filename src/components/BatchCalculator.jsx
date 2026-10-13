@@ -15,6 +15,7 @@ import { MODELS } from './batchModels';
 import { applyMapping, suggestMapping } from './columnMapping';
 import { axisTitleStyle, tickGap, tickStyle } from './chartTheme';
 
+const BATCH_KERNEL_NOTE = 'Every row is evaluated with the reference kernels, for all four models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.';
 
 const SAMPLE_DATA = {
   aci209: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
@@ -82,11 +83,11 @@ function BatchTooltip({ active, payload, label, xKey, yKey }) {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-5 text-1xs">
           <span className="text-muted">{xKey}</span>
-          <span className="font-mono text-primary">{formatBatchValue(x)}</span>
+          <span className="font-mono text-ink">{formatBatchValue(x)}</span>
         </div>
         <div className="flex items-center justify-between gap-5 text-1xs">
           <span className="text-muted">{yKey}</span>
-          <span className="font-mono text-primary">{formatBatchValue(y)}</span>
+          <span className="font-mono text-ink">{formatBatchValue(y)}</span>
         </div>
       </div>
     </div>
@@ -173,6 +174,7 @@ export default function BatchCalculator() {
   const [logX, setLogX] = useState(false);
   const [logY, setLogY] = useState(false);
   const model = MODELS.find((item) => item.id === activeModel);
+  const requiredColumns = useMemo(() => model.req.split(', '), [model.req]);
   // A read that is still parsing must not be able to overwrite a newer one, and
   // it must resolve its model when it finishes rather than when the file was
   // chosen (see readFile).
@@ -424,14 +426,20 @@ export default function BatchCalculator() {
     <div className="animate-fade-in">
       <header className="mb-6 border-b border-line pb-5">
         <div className="eyebrow">Batch calculation</div>
-        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-display-sm">Dataset pipeline</h1>
+        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-ink md:text-display-sm">Dataset pipeline</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Upload a calibrated input table, validate every row, calculate model outputs, and export a reproducible result matrix.</p>
         {/* The audit found the batch silently computing with a different kernel than
             the header badge implied. State it, and state why. */}
-        <p className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] text-muted">JavaScript reference kernel</span>
-          <span>Every row is evaluated with the reference kernels, for all four models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.</span>
-        </p>
+        <details className="group mt-3 text-xs text-muted">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+            <span className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] text-muted">JavaScript reference kernel</span>
+            <span className="font-semibold text-action">Kernel details</span>
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current text-faint transition-transform group-open:rotate-180" aria-hidden="true">
+              <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </summary>
+          <p className="mt-2 max-w-4xl">{BATCH_KERNEL_NOTE}</p>
+        </details>
       </header>
 
       <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-lg border border-line bg-surface">
@@ -442,10 +450,11 @@ export default function BatchCalculator() {
         ].map(([number, label, zh], index) => (
           <div
             key={label}
-            className={`border-r border-line px-4 py-3 last:border-r-0 ${stage === index + 1 ? 'bg-green-soft' : ''}`}
+            aria-current={stage === index + 1 ? 'step' : undefined}
+            className={`border-r border-line px-4 py-3 last:border-r-0 ${stage === index + 1 ? 'bg-action-soft' : ''}`}
           >
-            <div className={`font-mono text-3xs font-semibold ${stage >= index + 1 ? 'text-green' : 'text-faint'}`}>{number}</div>
-            <div className="mt-1 text-xs font-semibold text-primary">{label}</div>
+            <div className={`font-mono text-3xs font-semibold ${stage >= index + 1 ? 'text-action' : 'text-faint'}`}>{number}</div>
+            <div className="mt-1 text-xs font-semibold text-ink">{label}</div>
             <div className="text-2xs text-muted"><Lang text={zh} /></div>
           </div>
         ))}
@@ -464,59 +473,70 @@ export default function BatchCalculator() {
                 options={MODELS.map((item) => ({ value: item.id, label: item.name }))}
               />
             </div>
-            <div className="mt-5">
-              <div className="eyebrow">Required schema</div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {model.req.split(', ').map((column) => (
-                  <code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
-                ))}
+            <details className="group mt-4 overflow-hidden rounded-md border border-line bg-surface-2">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--action)] [&::-webkit-details-marker]:hidden">
+                <span className="eyebrow">Schema & templates</span>
+                <span className="flex items-center gap-1.5 font-mono text-3xs text-faint">
+                  {requiredColumns.length} fields
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current transition-transform group-open:rotate-180" aria-hidden="true">
+                    <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </summary>
+              <div className="border-t border-line bg-surface p-3">
+                <div className="eyebrow">Required schema</div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {requiredColumns.map((column) => (
+                    <code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
+                  ))}
+                </div>
+                <button onClick={downloadTemplate} className="button-secondary mt-4 w-full">Download template</button>
+                {model.sampleFiles && <div className="mt-4">
+                  <div className="eyebrow">Shipped samples · <span lang="zh-CN">官方示例</span></div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {model.sampleFiles.map((file) => (
+                      <a
+                        key={file}
+                        href={encodeURI(`/模型示例/${file}`)}
+                        download
+                        className="button-secondary !min-h-8 !px-2.5 !text-3xs"
+                      >
+                        {file.endsWith('.csv') ? 'CSV' : 'XLSX'}
+                      </a>
+                    ))}
+                  </div>
+                </div>}
               </div>
-            </div>
-            <button onClick={downloadTemplate} className="button-secondary mt-5 w-full">Download template</button>
-            {model.sampleFiles && <div className="mt-5">
-              <div className="eyebrow">Shipped samples · <span lang="zh-CN">官方示例</span></div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {model.sampleFiles.map((file) => (
-                  <a
-                    key={file}
-                    href={encodeURI(`/模型示例/${file}`)}
-                    download
-                    className="button-secondary !min-h-8 !px-2.5 !text-3xs"
-                  >
-                    {file.endsWith('.csv') ? 'CSV' : 'XLSX'}
-                  </a>
-                ))}
-              </div>
-            </div>}
+            </details>
           </div>
 
-          <div className="p-5">
+          <div className="p-4 sm:p-5">
             <label
               onDragOver={(event)=>event.preventDefault()} onDrop={(event)=>{event.preventDefault(); readFile(event.dataTransfer.files[0]);}}
-              className="flex min-h-[205px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface-2 px-6 text-center transition-colors hover:border-green-border hover:bg-green-soft"
+              className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface-2 px-4 text-center transition-colors hover:border-action-border hover:bg-action-soft focus-within:border-action-border focus-within:ring-2 focus-within:ring-[var(--action)] focus-within:ring-offset-2 sm:min-h-[205px] sm:px-6"
             >
-              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current text-green" aria-hidden="true">
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current text-action" aria-hidden="true">
                 <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="mt-3 text-sm font-semibold text-primary">Drop CSV or XLSX here</span>
+              <span className="mt-3 text-sm font-semibold text-ink">Drop CSV or XLSX here</span>
               <span className="mt-1 text-xs text-muted" lang="zh-CN">拖入文件，或点击选择本地数据表</span>
               <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs uppercase tracking-[.06em] text-muted">
                 {isProcessing ? 'Processing…' : 'Choose file'}
               </span>
               <input
                 type="file"
-                className="hidden"
+                className="sr-only"
                 accept=".csv,.xlsx"
                 disabled={isProcessing}
                 onChange={(event) => readFile(event.target.files[0])}
               />
             </label>
-            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted">
+            <div className="mt-3 flex flex-col items-start justify-between gap-1 text-xs text-muted min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-3">
               <span>{fileName || 'No dataset selected'}</span>
               <button
                 onClick={loadSampleDataset}
                 disabled={isProcessing}
-                className="font-semibold text-green hover:underline"
+                className="inline-flex min-h-8 items-center font-semibold text-action hover:underline"
               >
                 Load demo sweep
               </button>
@@ -536,7 +556,7 @@ export default function BatchCalculator() {
           <div className="grid gap-3 px-4 py-4 md:grid-cols-2">
             {mapping.map((entry, index) => (
               <label key={entry.field} className="flex items-center gap-3 text-xs">
-                <span className="w-32 shrink-0 font-mono text-3xs font-semibold uppercase tracking-[.06em] text-green">{entry.field}</span>
+                <span className="w-32 shrink-0 font-mono text-3xs font-semibold uppercase tracking-[.06em] text-action">{entry.field}</span>
                 <CustomSelect
                   name={`map-${entry.field}`}
                   ariaLabel={`Source column for ${entry.field}`}
@@ -564,7 +584,7 @@ export default function BatchCalculator() {
         <div className="grid grid-cols-3 border-b border-line bg-surface-2" role="status">
           <div className="p-4">
             <div className="eyebrow">Rows detected</div>
-            <div className="mt-1 font-mono text-xl text-primary">{batchResults.length}</div>
+            <div className="mt-1 font-mono text-xl text-ink">{batchResults.length}</div>
           </div>
           <div className="border-x border-line p-4">
             <div className="eyebrow">Valid</div>
@@ -615,7 +635,25 @@ export default function BatchCalculator() {
             </div>
             <button onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button>
           </div>
-          <div className="max-h-[470px] overflow-auto">
+          <div id="batch-matrix-scroll-hint" className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint md:hidden">
+            <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 fill-none stroke-current" aria-hidden="true">
+              <path d="M3 10h14M6 7l-3 3 3 3m8-6 3 3-3 3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Use ←/→ or swipe to inspect all columns
+          </div>
+          <div
+            className="max-h-[470px] overflow-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--action)]"
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+              event.preventDefault();
+              const distance = Math.max(120, event.currentTarget.clientWidth * 0.75);
+              event.currentTarget.scrollLeft += event.key === 'ArrowRight' ? distance : -distance;
+            }}
+            role="region"
+            aria-label="Batch result matrix, horizontally scrollable"
+            aria-describedby="batch-matrix-scroll-hint"
+            tabIndex={0}
+          >
             <table className="min-w-max w-full border-collapse text-left">
               <thead className="sticky top-0 z-10 bg-surface-2">
                 <tr>
@@ -624,7 +662,7 @@ export default function BatchCalculator() {
                     <th key={header} className={`border-b border-line px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-faint ${numericColumn(header) ? 'text-right' : ''}`}>{header}</th>
                   ))}
                   {model.resultKeys.map((key, index) => (
-                    <th key={key} className="border-b border-line bg-green-soft px-3 py-2.5 text-right font-mono text-3xs uppercase tracking-[.05em] text-green">{model.labels[index]}</th>
+                    <th key={key} className="border-b border-line bg-action-soft px-3 py-2.5 text-right font-mono text-3xs uppercase tracking-[.05em] text-action">{model.labels[index]}</th>
                   ))}
                 </tr>
               </thead>
@@ -638,15 +676,17 @@ export default function BatchCalculator() {
                           <input
                             defaultValue={row[header] ?? ''}
                             aria-label={`Row ${index + 1} ${header}`}
+                            name={`batch-${index}-${header}`}
+                            autoComplete="off"
                             onBlur={(event) => commitCell(index, header, event.target.value)}
                             onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-                            className="w-full min-w-16 bg-transparent font-mono text-1xs text-primary outline-none focus:bg-surface-2"
+                            className="w-full min-w-16 rounded-sm bg-transparent font-mono text-1xs text-ink outline-none focus:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-action"
                           />
                         ) : (row[header])}
                       </td>
                     ))}
                     {model.resultKeys.map((key) => (
-                      <td key={key} className="bg-green-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-primary">{row[key] ?? '—'}</td>
+                      <td key={key} className="bg-action-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-ink">{row[key] ?? '—'}</td>
                     ))}
                   </tr>
                 ))}
@@ -667,7 +707,7 @@ export default function BatchCalculator() {
                   <button
                     key={type}
                     onClick={() => updateBatch({ chartType: type })}
-                    className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-primary' : 'text-faint'}`}
+                    className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
                   >
                     {type}
                   </button>
@@ -676,14 +716,14 @@ export default function BatchCalculator() {
               <button
                 onClick={() => setLogX((value) => !value)}
                 aria-pressed={logX}
-                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
               >
                 {logX ? 'Log X' : 'Linear X'}
               </button>
               <button
                 onClick={() => setLogY((value) => !value)}
                 aria-pressed={logY}
-                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-green-border !bg-green-soft !text-green' : ''}`}
+                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-action-border !bg-action-soft !text-action' : ''}`}
               >
                 {logY ? 'Log Y' : 'Linear Y'}
               </button>
@@ -745,7 +785,7 @@ export default function BatchCalculator() {
                     width={60}
                   />
                   <Tooltip content={<BatchTooltip xKey={xKey} yKey={yKey} />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
-                  <Scatter data={visiblePoints} fill="var(--primary)" isAnimationActive={false} />
+                  <Scatter data={visiblePoints} fill="var(--action)" isAnimationActive={false} />
                   {/* No Brush here: ScatterChart ignores Brush children (only the
                       categorical charts wire it up), so one would render nothing
                       while pretending to zoom — Line mode carries the zoom UI. */}
@@ -771,7 +811,7 @@ export default function BatchCalculator() {
                     width={60}
                   />
                   <Tooltip content={<BatchTooltip xKey={xKey} yKey={yKey} />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
-                  <Line dataKey="y" stroke="var(--primary)" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line dataKey="y" stroke="var(--action)" strokeWidth={2} dot={false} isAnimationActive={false} />
                   {linePoints.length > 1 && (
                     <Brush data={linePoints} dataKey="x" height={20} travellerWidth={8} stroke="var(--line-strong)" tickFormatter={(value) => String(value)} />
                   )}

@@ -55,7 +55,7 @@ const config = {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(targetAge ?? 10000)))];
     return { primary: current?.phi ?? NaN };
   },
-  chartLines: [{ dataKey: 'phi', stroke: 'var(--primary)', name: 'Creep Coefficient φ' }],
+  chartLines: [{ dataKey: 'phi', stroke: 'var(--series-1)', name: 'Creep Coefficient φ' }],
 };
 
 export default function Aci209Calculator({ engine, onEngineFallback }) {

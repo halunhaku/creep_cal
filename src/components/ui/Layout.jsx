@@ -19,7 +19,7 @@ export default function Layout({ activeMode, onModeChange, onOpenDocs, children 
   }, []);
 
   return (
-    <div className="min-h-[100dvh] bg-background text-primary font-body">
+    <div className="min-h-[100dvh] bg-background text-ink font-body">
       <Header
         activeMode={activeMode}
         onModeChange={onModeChange}

@@ -6,11 +6,11 @@
  * 10px, both below the floor the rest of the app now holds, and the reference
  * label was drawn in the accent colour at 4.38:1 on the chart surface.
  *
- * Two colours for the accent, because it does two jobs:
- *   --accent       graphics: the reference line. WCAG asks 3:1 of non-text, and
+ * Two reference colours, because the role has two contrast requirements:
+ *   --reference       graphics: the reference line. WCAG asks 3:1 of non-text, and
  *                  #c9532d is 3.94:1 on the page and 4.38:1 on the surface.
- *   --accent-text  text: the reference label. Must clear 4.5:1; #b34420 is 5.53:1
- *                  on the surface and 4.99:1 on the page. The dark theme's accent
+ *   --reference-text  text: the reference label. Must clear 4.5:1; #b34420 is 5.53:1
+ *                  on the surface and 4.99:1 on the page. The dark theme's reference colour
  *                  is already 6.95:1, so there it is used for both.
  *
  * Measured with the WCAG 2.1 relative-luminance formula against both the card
@@ -24,8 +24,8 @@ export const CHART = {
   tick: 'var(--text-muted)',
   axisTitle: 'var(--text-faint)',
   grid: 'var(--chart-grid)',
-  reference: 'var(--accent)',
-  referenceText: 'var(--accent-text)',
+  reference: 'var(--reference)',
+  referenceText: 'var(--reference-text)',
   target: 'var(--text-muted)',
 };
 

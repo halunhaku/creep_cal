@@ -86,7 +86,7 @@ describe('Chinese fragments are marked with their language', () => {
       },
       calculateRust() { return this.calculateJs(); },
       getSummary: () => ({ primary: 1 }),
-      chartLines: [{ dataKey: 'v', stroke: 'var(--primary)', name: 'V' }],
+      chartLines: [{ dataKey: 'v', stroke: 'var(--series-1)', name: 'V' }],
     };
 
     const { container } = render(<ModelCalculator engine="js" config={config} />);

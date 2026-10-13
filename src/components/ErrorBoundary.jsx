@@ -24,8 +24,8 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="card p-10 text-center mx-8 my-12 max-w-lg mx-auto">
-          <div className="font-mono text-xl uppercase tracking-[0.2em] text-green-dark mb-6">// Error</div>
-          <h2 className="text-xl font-sans font-semibold text-primary mb-4">
+          <div className="font-mono text-xl uppercase tracking-[0.2em] text-action mb-6">// Error</div>
+          <h2 className="text-xl font-sans font-semibold text-ink mb-4">
             Something went wrong
           </h2>
           <p className="text-muted mb-8 text-sm leading-relaxed">

@@ -42,7 +42,7 @@ export default function SingleCalculationDashboard() {
       <header className="mb-6 flex flex-col gap-2 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="eyebrow">Calculation workspace</div>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-primary md:text-display-sm">Time-dependent concrete analysis</h1>
+          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-ink md:text-display-sm">Time-dependent concrete analysis</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">Select a prediction model, define calibrated inputs, then explicitly calculate the complete 10,000-day response.</p>
         </div>
         <div className="font-mono text-3xs uppercase tracking-[0.1em] text-faint">Float64 · 0–10,000 days</div>
@@ -51,7 +51,7 @@ export default function SingleCalculationDashboard() {
       <div className="grid items-start gap-5 xl:grid-cols-[216px_minmax(0,1fr)]">
         <aside className="workbench-panel overflow-hidden xl:sticky xl:top-[88px]">
           <div className="border-b border-line px-3.5 py-3"><div className="eyebrow">Prediction model</div></div>
-          <div className="flex gap-1 overflow-x-auto p-2 xl:block xl:space-y-1">
+          <div role="group" aria-label="Prediction models" className="flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-px-2 p-2 xl:block xl:space-y-1">
             {MODELS.map((model) => {
               const selected = model.id === algorithm;
               return (
@@ -60,9 +60,9 @@ export default function SingleCalculationDashboard() {
                   ref={selected ? activeModelRef : null}
                   onClick={() => setModel(model.id)}
                   aria-pressed={selected}
-                  className={`relative min-w-[190px] rounded-md px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full ${selected ? 'bg-green-soft text-primary' : 'text-muted hover:bg-surface-2 hover:text-primary'}`}
+                  className={`relative min-w-[190px] snap-start scroll-ml-2 rounded-md px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full xl:snap-none ${selected ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
                 >
-                  {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-green" aria-hidden="true" />}
+                  {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-action" aria-hidden="true" />}
                   <div className="flex items-baseline gap-2">
                     <span className="font-mono text-3xs text-faint">{model.index}</span>
                     <span className="text-body-sm font-semibold">{model.name}</span>
@@ -74,7 +74,7 @@ export default function SingleCalculationDashboard() {
           </div>
           <div className="border-t border-line px-3.5 py-4">
             <div className="eyebrow">Active model</div>
-            <p className="mt-2 text-xs font-medium text-primary">{active.note}</p>
+            <p className="mt-2 text-xs font-medium text-ink">{active.note}</p>
             <p className="mt-1 text-1xs text-muted">Calibrated · {active.range}</p>
           </div>
           <div className="border-t border-line px-3.5 py-4">
@@ -85,7 +85,7 @@ export default function SingleCalculationDashboard() {
                   key={id}
                   onClick={() => setEngine(id)}
                   aria-pressed={engine === id}
-                  className={`rounded-chip px-2 py-2 font-mono text-3xs font-semibold uppercase tracking-[0.05em] ${engine === id ? 'bg-surface text-primary shadow-sm' : 'text-faint hover:text-primary'}`}
+                  className={`rounded-chip px-2 py-2 font-mono text-3xs font-semibold uppercase tracking-[0.05em] ${engine === id ? 'bg-surface text-ink shadow-sm' : 'text-faint hover:text-ink'}`}
                 >
                   {label}
                 </button>
