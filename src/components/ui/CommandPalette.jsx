@@ -111,12 +111,12 @@ export default function CommandPalette({ onClose }) {
 
   let lastGroup = '';
   return (
-    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-[rgba(18,22,15,0.45)] px-4 pt-[12vh]" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 px-4 pt-[12vh]" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-full max-w-[560px] overflow-hidden rounded-lg border border-line-strong bg-surface shadow-[var(--shadow-popover)]"
+        className="w-full max-w-[560px] overflow-hidden rounded-none border border-line-strong bg-surface shadow-[var(--shadow-popover)]"
         onMouseDown={(event) => event.stopPropagation()}
       >
         <div className="flex items-center gap-3 border-b border-line px-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-action">
@@ -139,7 +139,7 @@ export default function CommandPalette({ onClose }) {
             placeholder="Go to a workspace, model, kernel, saved set…"
             className="h-12 min-w-0 flex-1 border-0 bg-transparent text-sm text-ink outline-none placeholder:text-faint focus:ring-0"
           />
-          <kbd className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs text-faint">ESC</kbd>
+          <kbd className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint">ESC</kbd>
         </div>
 
         <ul id="command-list" role="listbox" aria-label="Commands" className="max-h-[52vh] overflow-y-auto py-1">
@@ -151,14 +151,14 @@ export default function CommandPalette({ onClose }) {
             lastGroup = command.group;
             return (
               <React.Fragment key={command.id}>
-                {header && <li className="px-4 pb-1 pt-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint" aria-hidden="true">{header}</li>}
+                {header && <li className="px-4 pb-1 pt-2.5 font-mono text-3xs text-faint" aria-hidden="true">{header}</li>}
                 <li
                   id={`command-${command.id}`}
                   role="option"
                   aria-selected={index === active}
                   onMouseEnter={() => setActive(index)}
                   onClick={() => runCommand(command)}
-                  className={`mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-md px-3 py-2 text-sm ${index === active ? 'bg-action-soft text-ink' : 'text-muted'}`}
+                  className={`mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-none px-3 py-2 text-sm ${index === active ? 'bg-action-soft text-ink' : 'text-muted'}`}
                 >
                   <span className="truncate">{command.label}</span>
                   {command.hint && <span className="shrink-0 font-mono text-3xs text-faint">{command.hint}</span>}

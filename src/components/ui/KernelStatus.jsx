@@ -50,13 +50,13 @@ export default function KernelStatus({ workspace }) {
 
   return (
     <div
-      className="hidden items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-1.5 sm:flex"
+      className="hidden items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 sm:flex"
       title={badge.title}
       role="status"
       aria-live="polite"
     >
       <span className="status-dot" aria-hidden="true" style={badge.warn ? { background: 'var(--warning)' } : undefined} />
-      <span className={`font-mono text-3xs font-semibold uppercase tracking-[0.1em] ${badge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
+      <span className={`font-mono text-3xs font-semibold ${badge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
         {badge.label}
       </span>
     </div>

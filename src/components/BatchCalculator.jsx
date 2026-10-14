@@ -13,7 +13,7 @@ import Lang from './ui/Lang';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
 import { applyMapping, suggestMapping } from './columnMapping';
-import { axisTitleStyle, tickGap, tickStyle } from './chartTheme';
+import { CHART, axisTitleStyle, formatLogTick, tickGap, tickStyle } from './chartTheme';
 
 const BATCH_KERNEL_NOTE = 'Every row is evaluated with the reference kernels, for all four models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.';
 
@@ -76,8 +76,8 @@ function BatchTooltip({ active, payload, label, xKey, yKey }) {
   const x = point.x ?? label;
   const y = point.y ?? payload[0]?.value;
   return (
-    <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
-      <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[0.08em] text-faint">
+    <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
+      <div className="mb-2 font-mono text-3xs font-semibold text-faint">
         {Number.isFinite(Number(point.row)) ? `Row #${point.row}` : 'Relation check'}
       </div>
       <div className="space-y-1.5">
@@ -412,7 +412,8 @@ export default function BatchCalculator() {
   // rows have no result cells, so they never reach the chart — the caption
   // below counts them instead of silently dropping them.
   const basePoints = batchResults.map((row, index) => ({ x: Number(row[xKey]), y: Number(row[yKey]), row: index + 1 })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
-  const visiblePoints = (logX || logY) ? basePoints.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : basePoints;
+  const filteredPoints = (logX || logY) ? basePoints.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : basePoints;
+  const visiblePoints = logX ? filteredPoints.map((point) => ({ ...point, plotX: Math.log10(point.x) })) : filteredPoints;
   // Line mode joins points in file order, so an unsorted X column draws a
   // meaningless zigzag — sort a copy, never the matrix order.
   const linePoints = [...visiblePoints].sort((a, b) => a.x - b.x);
@@ -426,13 +427,13 @@ export default function BatchCalculator() {
     <div className="animate-fade-in">
       <header className="mb-6 border-b border-line pb-5">
         <div className="eyebrow">Batch calculation</div>
-        <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-ink md:text-display-sm">Dataset pipeline</h1>
+        <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">Dataset pipeline</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Upload a calibrated input table, validate every row, calculate model outputs, and export a reproducible result matrix.</p>
         {/* The audit found the batch silently computing with a different kernel than
             the header badge implied. State it, and state why. */}
         <details className="group mt-3 text-xs text-muted">
-          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
-            <span className="rounded border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] text-muted">JavaScript reference kernel</span>
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+            <span className="rounded-none border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold text-muted">JavaScript reference kernel</span>
             <span className="font-semibold text-action">Kernel details</span>
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current text-faint transition-transform group-open:rotate-180" aria-hidden="true">
               <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -442,7 +443,7 @@ export default function BatchCalculator() {
         </details>
       </header>
 
-      <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-none border border-line bg-surface">
         {[
           ['01', 'Upload', '上传数据'],
           ['02', 'Validate', '校验字段'],
@@ -473,7 +474,7 @@ export default function BatchCalculator() {
                 options={MODELS.map((item) => ({ value: item.id, label: item.name }))}
               />
             </div>
-            <details className="group mt-4 overflow-hidden rounded-md border border-line bg-surface-2">
+            <details className="group mt-4 overflow-hidden rounded-none border border-line bg-surface-2">
               <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--action)] [&::-webkit-details-marker]:hidden">
                 <span className="eyebrow">Schema & templates</span>
                 <span className="flex items-center gap-1.5 font-mono text-3xs text-faint">
@@ -487,7 +488,7 @@ export default function BatchCalculator() {
                 <div className="eyebrow">Required schema</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {requiredColumns.map((column) => (
-                    <code key={column} className="rounded border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
+                    <code key={column} className="rounded-none border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
                   ))}
                 </div>
                 <button onClick={downloadTemplate} className="button-secondary mt-4 w-full">Download template</button>
@@ -513,14 +514,14 @@ export default function BatchCalculator() {
           <div className="p-4 sm:p-5">
             <label
               onDragOver={(event)=>event.preventDefault()} onDrop={(event)=>{event.preventDefault(); readFile(event.dataTransfer.files[0]);}}
-              className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-line-strong bg-surface-2 px-4 text-center transition-colors hover:border-action-border hover:bg-action-soft focus-within:border-action-border focus-within:ring-2 focus-within:ring-[var(--action)] focus-within:ring-offset-2 sm:min-h-[205px] sm:px-6"
+              className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-none border border-dashed border-line-strong bg-surface-2 px-4 text-center transition-colors hover:border-action-border hover:bg-action-soft focus-within:border-action-border focus-within:ring-2 focus-within:ring-[var(--action)] focus-within:ring-offset-2 sm:min-h-[205px] sm:px-6"
             >
               <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current text-action" aria-hidden="true">
                 <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="mt-3 text-sm font-semibold text-ink">Drop CSV or XLSX here</span>
               <span className="mt-1 text-xs text-muted" lang="zh-CN">拖入文件，或点击选择本地数据表</span>
-              <span className="mt-3 rounded-md border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs uppercase tracking-[.06em] text-muted">
+              <span className="mt-3 rounded-none border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs text-muted">
                 {isProcessing ? 'Processing…' : 'Choose file'}
               </span>
               <input
@@ -556,7 +557,7 @@ export default function BatchCalculator() {
           <div className="grid gap-3 px-4 py-4 md:grid-cols-2">
             {mapping.map((entry, index) => (
               <label key={entry.field} className="flex items-center gap-3 text-xs">
-                <span className="w-32 shrink-0 font-mono text-3xs font-semibold uppercase tracking-[.06em] text-action">{entry.field}</span>
+                <span className="w-32 shrink-0 font-mono text-3xs font-semibold text-action">{entry.field}</span>
                 <CustomSelect
                   name={`map-${entry.field}`}
                   ariaLabel={`Source column for ${entry.field}`}
@@ -604,7 +605,7 @@ export default function BatchCalculator() {
               <thead className="sticky top-0 bg-surface">
                 <tr>
                   {['Row', 'Field', 'Value', 'Issue'].map((head) => (
-                    <th key={head} className="border-b border-line px-4 py-2 font-mono text-3xs uppercase tracking-[.08em] text-faint">{head}</th>
+                    <th key={head} className="border-b border-line px-4 py-2 font-mono text-3xs text-faint">{head}</th>
                   ))}
                 </tr>
               </thead>
@@ -659,10 +660,10 @@ export default function BatchCalculator() {
                 <tr>
                   <th className="sticky left-0 z-20 border-b border-r border-line bg-surface-2 px-3 py-2.5 font-mono text-3xs text-faint">#</th>
                   {batchHeaders.map((header) => (
-                    <th key={header} className={`border-b border-line px-3 py-2.5 font-mono text-3xs uppercase tracking-[.05em] text-faint ${numericColumn(header) ? 'text-right' : ''}`}>{header}</th>
+                    <th key={header} className={`border-b border-line px-3 py-2.5 font-mono text-3xs text-faint ${numericColumn(header) ? 'text-right' : ''}`}>{header}</th>
                   ))}
                   {model.resultKeys.map((key, index) => (
-                    <th key={key} className="border-b border-line bg-action-soft px-3 py-2.5 text-right font-mono text-3xs uppercase tracking-[.05em] text-action">{model.labels[index]}</th>
+                    <th key={key} className="border-b border-line bg-action-soft px-3 py-2.5 text-right font-mono text-3xs text-action">{model.labels[index]}</th>
                   ))}
                 </tr>
               </thead>
@@ -680,7 +681,7 @@ export default function BatchCalculator() {
                             autoComplete="off"
                             onBlur={(event) => commitCell(index, header, event.target.value)}
                             onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-                            className="w-full min-w-16 rounded-sm bg-transparent font-mono text-1xs text-ink outline-none focus:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-action"
+                            className="w-full min-w-16 rounded-none bg-transparent font-mono text-1xs text-ink outline-none focus:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-action"
                           />
                         ) : (row[header])}
                       </td>
@@ -702,12 +703,12 @@ export default function BatchCalculator() {
               <div className="mt-1 text-xs text-muted" lang="zh-CN">选择输入列与结果列进行快速关系检查</div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex gap-1 rounded-md border border-line bg-surface-2 p-0.5">
+              <div className="flex gap-1 rounded-none border border-line bg-surface-2 p-0.5">
                 {['scatter', 'line'].map((type) => (
                   <button
                     key={type}
                     onClick={() => updateBatch({ chartType: type })}
-                    className={`rounded px-3 py-1.5 font-mono text-3xs uppercase ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
+                    className={`rounded-none px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
                   >
                     {type}
                   </button>
@@ -767,14 +768,17 @@ export default function BatchCalculator() {
                 <ScatterChart margin={{ top: 10, right: 20, left: 8, bottom: 28 }}>
                   <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                   <XAxis
-                    dataKey="x"
+                    dataKey={logX ? 'plotX' : 'x'}
                     type="number"
-                    scale={logX ? 'log' : 'linear'}
+                    scale="linear"
                     domain={logX ? ['dataMin', 'dataMax'] : undefined}
+                    tickCount={logX ? 5 : undefined}
+                    tickFormatter={logX ? formatLogTick : undefined}
                     allowDataOverflow
                     tick={tickStyle}
                     minTickGap={tickGap}
-                    label={{ value: xKey, position: 'insideBottomRight', offset: -14, ...axisTitleStyle }}
+                    height={48}
+                    label={{ value: xKey, position: 'insideBottom', offset: 12, ...axisTitleStyle }}
                   />
                   <YAxis
                     dataKey="y"
@@ -794,14 +798,17 @@ export default function BatchCalculator() {
                 <LineChart data={linePoints} margin={{ top: 10, right: 20, left: 8, bottom: 28 }}>
                   <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
                   <XAxis
-                    dataKey="x"
+                    dataKey={logX ? 'plotX' : 'x'}
                     type="number"
-                    scale={logX ? 'log' : 'linear'}
+                    scale="linear"
                     domain={logX ? ['dataMin', 'dataMax'] : undefined}
+                    tickCount={logX ? 5 : undefined}
+                    tickFormatter={logX ? formatLogTick : undefined}
                     allowDataOverflow
                     tick={tickStyle}
                     minTickGap={tickGap}
-                    label={{ value: xKey, position: 'insideBottomRight', offset: -14, ...axisTitleStyle }}
+                    height={48}
+                    label={{ value: xKey, position: 'insideBottom', offset: 12, ...axisTitleStyle }}
                   />
                   <YAxis
                     scale={logY ? 'log' : 'linear'}
@@ -813,7 +820,15 @@ export default function BatchCalculator() {
                   <Tooltip content={<BatchTooltip xKey={xKey} yKey={yKey} />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
                   <Line dataKey="y" stroke="var(--action)" strokeWidth={2} dot={false} isAnimationActive={false} />
                   {linePoints.length > 1 && (
-                    <Brush data={linePoints} dataKey="x" height={20} travellerWidth={8} stroke="var(--line-strong)" tickFormatter={(value) => String(value)} />
+                    <Brush
+                      data={linePoints}
+                      dataKey="x"
+                      height={18}
+                      travellerWidth={5}
+                      fill={CHART.brushTrack}
+                      stroke={CHART.brushSelection}
+                      tickFormatter={(value) => String(value)}
+                    />
                   )}
                 </LineChart>
               )}

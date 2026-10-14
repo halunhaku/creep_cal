@@ -25,7 +25,9 @@
 >
 > **Batch 移动端精修（2026-10-13）**：Schema、模板和内核说明改为渐进披露；320px 下上传区起点从 1018.5px 提前到 621px，160px 上传面板完整落在 844px 首屏内。文件输入恢复键盘焦点并由整块拖放区显示焦点环。结果矩阵补充可聚焦 `region`、横向滚动名称和操作提示；实测 ArrowRight 将 286px 视口滚动 215px，行号保持冻结。320/390/1440 均无页面级横向溢出；Batch 29 条测试、ESLint、生产构建与文档截图生成通过。
 >
-> **设计系统规范化（2026-10-13）**：新增 [`docs/design-system.md`](design-system.md)，将视觉、令牌、组件、响应式、动效与可访问性收敛为单一契约；清除色相命名和历史别名，统一为 `action` / `reference` / `series-*`，图表数据不再借用操作色令牌。Hanken Grotesk 与 Azeret Mono 改为本地 Fontsource Latin 子集并使用 `font-display: swap`，运行时零外部字体资源。命令面板、参数集和批量修正输入补齐可见焦点与表单属性，触控核心控件为 44×44px。Chrome 实测 3 工作区 × 3 宽度（320/390/1440）× 2 主题共 18 种组合：全部 `scrollWidth === innerWidth`，浅深主题背景正确，本地字体均已加载；命令面板与参数集焦点环、reduced motion 均通过。相关 86 条测试、全量 311 条测试、ESLint、生产构建和 11 张文档截图生成通过。
+> **IBM/Carbon 视觉切换（2026-10-14）**：项目视觉规范与实现已切换为 IBM Plex Sans、IBM Blue、Gray 中性色阶、方角控件和无阴影面板；浅色与 Carbon Gray 100 深色令牌均通过现有 WCAG AA 对比度测试，三工作区及响应式截图已重新生成。
+>
+> **设计系统规范化（2026-10-13，历史）**：新增 [`docs/design-system.md`](design-system.md)，将视觉、令牌、组件、响应式、动效与可访问性收敛为单一契约；清除色相命名和历史别名，统一为 `action` / `reference` / `series-*`，图表数据不再借用操作色令牌。Hanken Grotesk 与 Azeret Mono 改为本地 Fontsource Latin 子集并使用 `font-display: swap`，运行时零外部字体资源。命令面板、参数集和批量修正输入补齐可见焦点与表单属性，触控核心控件为 44×44px。Chrome 实测 3 工作区 × 3 宽度（320/390/1440）× 2 主题共 18 种组合：全部 `scrollWidth === innerWidth`，浅深主题背景正确，本地字体均已加载；命令面板与参数集焦点环、reduced motion 均通过。相关 86 条测试、全量 311 条测试、ESLint、生产构建和 11 张文档截图生成通过。
 
 ## 方法与证据等级
 

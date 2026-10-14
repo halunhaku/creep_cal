@@ -68,7 +68,7 @@ function NumericInput({ config, value, onChange }) {
           className="h-10 min-w-0 flex-1 border-0 bg-transparent px-3 font-mono text-body-sm font-medium text-ink outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
         />
         {unit && (
-          <span className="flex min-w-[54px] items-center justify-center border-l border-line bg-surface-2 px-2 font-mono text-3xs font-semibold uppercase tracking-[0.05em] text-muted">
+          <span className="flex min-w-[54px] items-center justify-center border-l border-line bg-surface-2 px-2 font-mono text-3xs font-semibold text-muted">
             {unit === 'Days' ? 'days' : unit}
           </span>
         )}
@@ -184,13 +184,13 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
       </div>
       <div className="sticky bottom-0 border-t border-line bg-surface p-3.5">
         {dirty && (
-          <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
+          <div className="mb-2.5 flex items-center gap-2 rounded-none bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             Inputs changed · <span lang="zh-CN">当前结果待更新</span>
           </div>
         )}
         {inputIssue && (
-          <div className="mb-2.5 flex items-center gap-2 rounded-md bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
+          <div className="mb-2.5 flex items-center gap-2 rounded-none bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             <Lang text={inputIssue.message} />
           </div>

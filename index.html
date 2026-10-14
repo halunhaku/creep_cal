@@ -9,7 +9,7 @@
     <!-- viewport-fit=cover so env(safe-area-inset-*) reports the real insets when
          the app is installed and there is no browser chrome. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f4f2ed" />
+    <meta name="theme-color" content="#ffffff" />
     <meta
       name="description"
       content="混凝土徐变多模型平台，集成ACI209、MC2010、B4、B4S等主流模型，支持批量导入导出、可视化，适用于科研与工程设计。"
@@ -27,8 +27,9 @@
       (function () {
         function applyTheme(theme) {
           localStorage.setItem('theme-mode', theme);
+          document.documentElement.setAttribute('data-theme', theme);
           document.body.setAttribute('data-theme', theme);
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#101412' : '#f4f2ed');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#161616' : '#ffffff');
         }
         window.toggleTheme = function () {
           applyTheme(document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');

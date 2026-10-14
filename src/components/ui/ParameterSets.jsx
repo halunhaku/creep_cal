@@ -40,7 +40,7 @@ export default function ParameterSets({ modelId, params }) {
       <div className="mb-2.5 flex items-center justify-between">
         <span className="eyebrow">Parameter sets</span>
         {edited && (
-          <button onClick={() => resetModelParams(modelId)} className="font-mono text-3xs uppercase tracking-[.06em] text-faint hover:text-ink">
+          <button onClick={() => resetModelParams(modelId)} className="font-mono text-3xs text-faint hover:text-ink">
             Reset
           </button>
         )}
@@ -83,7 +83,7 @@ export default function ParameterSets({ modelId, params }) {
           aria-label="New parameter set name"
           name="parameter-set-name"
           autoComplete="off"
-          className="h-8 min-w-0 flex-1 rounded-md border border-line bg-surface px-2 font-mono text-1xs text-ink outline-none placeholder:text-faint focus:border-action focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
+          className="h-8 min-w-0 flex-1 rounded-none border border-line bg-surface px-2 font-mono text-1xs text-ink outline-none placeholder:text-faint focus:border-action focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
         />
         <button onClick={save} className="button-secondary !min-h-8 !px-2.5 !text-3xs">Save</button>
       </div>

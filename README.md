@@ -216,17 +216,17 @@ build.bat
 
 ## Design Language
 
-CREEP_LAB uses a Scientific Workbench system with a light-default and persistent dark variant. The complete visual, responsive, interaction, and accessibility contract lives in [`docs/design-system.md`](docs/design-system.md):
+CREEP_LAB uses the IBM/Carbon design language defined in [`docs/design-system.md`](docs/design-system.md). The workbench is flat, square, dense, and structured by surface changes and 1px rules instead of rounded cards or decorative shadows.
 
-| Token | Light (default) | Dark |
+| Token | Light (default) | Carbon dark |
 | --- | --- | --- |
-| Background | Warm paper `#f4f2ed` | Warm graphite `#101412` |
-| Emphasis | Engineering blue `#2457d6`, oxide orange `#c9532d` | Soft blue `#7f9fff`, warm orange `#f18a5b` |
-| Surfaces | Paper-white panels, 1px borders, restrained 6–10px radii | Graphite panels with the same hierarchy |
-| Type | Hanken Grotesk UI, Azeret Mono engineering data, KaTeX equations | Same |
-| Interaction | Explicit calculation, stale-result state, keyboard shortcut, grouped calibrated inputs | Same |
+| Background | White `#ffffff` | Gray 100 `#161616` |
+| Emphasis | IBM Blue `#0f62fe` | Carbon Blue 40 `#78a9ff` |
+| Surfaces | White / Gray 10 / Gray 20, square corners | Gray 90 / Gray 80 / Gray 70 |
+| Type | IBM Plex Sans 300/400/600, locally bundled; KaTeX equations | Same |
+| Interaction | 48px targets, blue focus treatment, explicit calculation and keyboard shortcuts | Same |
 
-The header toggle switches between light and dark and stores the choice in `localStorage`. Both themes meet WCAG AA contrast checks on the calculation workspace.
+The header toggle stores the theme in `localStorage`. The dark variant uses Carbon's Gray 100 companion palette; both variants are covered by the WCAG AA token contrast tests.
 
 ---
 

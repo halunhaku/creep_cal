@@ -13,8 +13,8 @@ module.exports = {
         line: 'var(--line)', 'line-strong': 'var(--line-strong)', error: 'var(--error)', 'error-soft': 'var(--error-soft)',
       },
       fontFamily: {
-        sans: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'], body: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'],
-        label: ['"Hanken Grotesk"', '"PingFang SC"', 'sans-serif'], mono: ['"Azeret Mono"', '"SFMono-Regular"', 'monospace'],
+        sans: ['"IBM Plex Sans"', '"PingFang SC"', 'sans-serif'], body: ['"IBM Plex Sans"', '"PingFang SC"', 'sans-serif'],
+        label: ['"IBM Plex Sans"', '"PingFang SC"', 'sans-serif'], mono: ['"IBM Plex Sans"', '"PingFang SC"', 'sans-serif'],
       },
       // The dense instrument type scale. The audit's P1-2: ~50 nodes rendered at
       // 8-10px, which is below any comfortable reading size — 8px mono labels are
@@ -33,17 +33,17 @@ module.exports = {
         '2xs': '12px',      // eyebrow / label
         '1xs': '13px',      // helper text, small buttons, log lines
         'body-sm': '14px',  // dense body copy
-        'body': '15px',     // default body size, matches body{} in index.css
-        'display-sm': '28px', // page headings
+        'body': '16px',     // IBM body
+        'display-sm': '32px', // IBM headline
         'metric-sm': '27px',  // metric value, narrow viewports
         'metric': '32px',     // metric value
       },
       borderRadius: {
-        card: '10px', 'card-lg': '10px', 'card-xl': '12px', pill: '9999px', input: '6px',
-        mark: '7px', // brand mark in the header
-        chip: '4px', // segmented control
+        DEFAULT: '0px', sm: '0px', md: '0px', lg: '0px', xl: '0px', '2xl': '0px',
+        card: '0px', 'card-lg': '0px', 'card-xl': '0px', pill: '0px', input: '0px',
+        mark: '0px', chip: '0px', full: '9999px'
       },
-      maxWidth: { content: '1540px', read: '760px' },
+      maxWidth: { content: '1584px', read: '760px' },
     },
   },
   plugins: [require('@tailwindcss/forms'), require('@tailwindcss/container-queries')],

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import DynamicParameters from './DynamicParameters';
 import Lang from './Lang';
 import { MAX_SERIES_DAYS } from '../../math/creepModels';
-import { CHART, axisTitleStyle, legendStyle, tickGap, tickStyle } from '../chartTheme';
+import { CHART, axisTitleStyle, formatLogTick, legendStyle, tickGap, tickStyle } from '../chartTheme';
 import { Brush, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 function downloadFile(filename, content, type = 'text/csv;charset=utf-8') {
@@ -83,7 +83,7 @@ function CopyValue({ text, label }) {
       onClick={onCopy}
       title={label ?? 'Copy value'}
       aria-label={label ?? 'Copy value'}
-      className="rounded border border-line px-1.5 py-0.5 font-mono text-3xs uppercase tracking-[.06em] text-faint transition-colors hover:border-action-border hover:text-action"
+      className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action"
     >
       {copied ? 'Copied' : 'Copy'}
     </button>
@@ -95,7 +95,7 @@ function Metric({ eyebrow, value, unit, accent = false }) {
   return (
     <div className="min-w-0">
       <div className="eyebrow">{eyebrow}</div>
-      <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold tracking-[-0.04em] md:text-metric ${accent ? 'text-action' : 'text-ink'}`}>
+      <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold md:text-metric ${accent ? 'text-action' : 'text-ink'}`}>
         <span>{formatValue(value)}</span>
         {unit && <span className="text-1xs font-medium tracking-normal text-muted">{unit}</span>}
         <CopyValue text={copyText} label={`Copy ${eyebrow}`} />
@@ -114,7 +114,7 @@ function Decomposition({ items }) {
   return (
     <div className={`grid gap-4 ${groups.length > 1 ? 'md:grid-cols-2' : ''}`}>
       {groups.map((group) => (
-        <div key={group.id} className="rounded-lg border border-line bg-surface-2 p-4">
+        <div key={group.id} className="rounded-none border border-line bg-surface-2 p-4">
           <div className="eyebrow">{group.label}</div>
           <div className="mt-3 divide-y divide-line">
             {group.items.map((item) => (
@@ -135,11 +135,12 @@ function Decomposition({ items }) {
 
 function ScientificTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
-  const numericLabel = Number(label);
-  const title = Number.isFinite(numericLabel) ? new Intl.NumberFormat('en-US').format(numericLabel) : label;
+  const sourceTime = payload[0]?.payload?.t ?? label;
+  const numericLabel = Number(sourceTime);
+  const title = Number.isFinite(numericLabel) ? new Intl.NumberFormat('en-US').format(numericLabel) : sourceTime;
   return (
-    <div className="rounded-md border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
-      <div className="mb-2 font-mono text-3xs font-semibold uppercase tracking-[0.08em] text-faint">t = {title} days</div>
+    <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
+      <div className="mb-2 font-mono text-3xs font-semibold text-faint">t = {title} days</div>
       <div className="space-y-1.5">
         {payload.map((item) => (
           <div key={item.dataKey} className="flex items-center justify-between gap-5 text-1xs">
@@ -166,7 +167,7 @@ function ParamChanges({ before, after, config }) {
   });
   if (!changed.length) return null;
   return (
-    <div className="mt-4 rounded-lg border border-line bg-surface-2 px-4 py-3">
+    <div className="mt-4 rounded-none border border-line bg-surface-2 px-4 py-3">
       <div className="eyebrow">Changed since last run</div>
       <ul className="mt-2 space-y-1 text-xs">
         {changed.map((item) => (
@@ -191,20 +192,39 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
   // Brush window in data days. The t domain (0–10,000) is constant across runs,
   // so the window survives recalculation; dragging back to full width clears it.
   const [zoom, setZoom] = useState(null);
-  const visibleLines = hasShrinkage ? lines.filter((line) => line.kind === view) : lines;
+  const visibleLines = useMemo(
+    () => (hasShrinkage ? lines.filter((line) => line.kind === view) : lines),
+    [hasShrinkage, lines, view],
+  );
   // Shrinkage series are signed (drying shrinkage <= 0, RS autogenous can read as
   // expansion), so a log Y axis has no meaning there — the toggle stays off.
   const logYBlocked = visibleLines.some((line) => line.kind === 'shrinkage');
   const useLogY = logY && !logYBlocked;
-  const sampled = useMemo(() => data.filter((row, index) => index % 10 === 0 || row.t === Math.round(params.targetAge)), [data, params.targetAge]);
-  const baseData = logX ? sampled.filter((row) => row.t > 0) : sampled;
-  // Sampling above is unchanged (every 10th point + target age); the log-Y filter
-  // only hides non-positive points from display — export still gets `data` whole.
-  const chartData = useLogY ? baseData.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : baseData;
+  const sampled = useMemo(
+    () => data.filter((row, index) => index % 10 === 0 || (logX && row.t > 0 && row.t < 10) || row.t === Math.round(params.targetAge)),
+    [data, logX, params.targetAge],
+  );
+  const baseData = useMemo(
+    () => (logX
+      ? sampled.filter((row) => row.t > 0).map((row) => ({ ...row, plotT: Math.log10(row.t) }))
+      : sampled),
+    [logX, sampled],
+  );
+  // The log-Y filter only hides non-positive points from display — export still
+  // gets `data` whole. Memoization keeps Brush data stable while it emits a
+  // range change; a fresh array here makes Recharts reset the handles to full.
+  const chartData = useMemo(
+    () => (useLogY
+      ? baseData.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0))
+      : baseData),
+    [baseData, useLogY, visibleLines],
+  );
   // Previous run, shaped by the same rules so the dashed overlay stays
   // comparable point-for-point with the current series.
   const prevBase = prevData ? prevData.filter((row, index) => index % 10 === 0 || row.t === Math.round(params.targetAge)) : null;
-  const prevNoZeroX = prevBase && logX ? prevBase.filter((row) => row.t > 0) : prevBase;
+  const prevNoZeroX = prevBase && logX
+    ? prevBase.filter((row) => row.t > 0).map((row) => ({ ...row, plotT: Math.log10(row.t) }))
+    : prevBase;
   const prevChartData = prevNoZeroX && useLogY ? prevNoZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : prevNoZeroX;
   // Brush reports indices into the chart's own data (`chartData` above), so the
   // window reads t straight off it. Zoomed lines re-sample the full series to
@@ -221,7 +241,9 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
     const inWindow = data.filter((row) => row.t >= zoom.start && row.t <= zoom.end);
     const step = Math.max(1, Math.ceil(inWindow.length / 800));
     const dense = inWindow.filter((row, index) => index % step === 0 || row.t === Math.round(params.targetAge));
-    const noZeroX = logX ? dense.filter((row) => row.t > 0) : dense;
+    const noZeroX = logX
+      ? dense.filter((row) => row.t > 0).map((row) => ({ ...row, plotT: Math.log10(row.t) }))
+      : dense;
     return useLogY ? noZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : noZeroX;
   })();
   const dataRows = useMemo(() => data.filter((row, index) => index % 250 === 0 || row.t === Math.round(params.targetAge)), [data, params.targetAge]);
@@ -235,7 +257,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               key={id}
               onClick={() => setView(id)}
               aria-pressed={view === id}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
+              className={`rounded-none px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
             >
               {label}
             </button>
@@ -280,9 +302,9 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-surface-2">
               <tr>
-                <th className="px-4 py-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint">Time · days</th>
+                <th className="px-4 py-2.5 font-mono text-3xs text-faint">Time · days</th>
                 {lines.map((line) => (
-                  <th key={line.dataKey} className="px-4 py-2.5 font-mono text-3xs uppercase tracking-[.08em] text-faint">{line.name}</th>
+                  <th key={line.dataKey} className="px-4 py-2.5 font-mono text-3xs text-faint">{line.name}</th>
                 ))}
               </tr>
             </thead>
@@ -305,23 +327,26 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
             <LineChart data={chartData} margin={{ top:12, right:18, left:0, bottom:24 }}>
               <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
               <XAxis
-                dataKey="t"
+                dataKey={logX ? 'plotT' : 't'}
                 type="number"
-                scale={logX ? 'log' : 'linear'}
+                scale="linear"
                 domain={logX ? ['dataMin', 'dataMax'] : [0, 'dataMax']}
+                tickCount={logX ? 5 : undefined}
+                tickFormatter={logX ? formatLogTick : undefined}
                 allowDataOverflow
                 tick={tickStyle}
                 minTickGap={tickGap}
                 tickLine={false}
                 axisLine={{ stroke: 'var(--line-strong)' }}
-                label={{ value: 'Concrete age · days', position: 'insideBottomRight', offset: -16, ...axisTitleStyle }}
+                height={48}
+                label={{ value: 'Concrete age · days', position: 'insideBottom', offset: 12, ...axisTitleStyle }}
               />
               <YAxis tick={tickStyle} tickLine={false} axisLine={false} width={58} scale={useLogY ? 'log' : 'linear'} domain={useLogY || logYBlocked ? ['auto', 'auto'] : [0, 'auto']} allowDataOverflow />
               <Tooltip content={<ScientificTooltip />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
               <Legend iconType="plainline" iconSize={18} wrapperStyle={legendStyle} />
               {Number.isFinite(Number(params.t0)) && (
                 <ReferenceLine
-                  x={Number(params.t0)}
+                  x={logX ? Math.log10(Number(params.t0)) : Number(params.t0)}
                   stroke={CHART.reference}
                   strokeDasharray="4 4"
                   label={{ value: `t₀ ${params.t0}d`, fill: CHART.referenceText, fontSize: CHART.labelFont, position: 'insideTopLeft' }}
@@ -329,14 +354,14 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               )}
               {Number.isFinite(Number(params.tPrime)) && params.tPrime !== params.t0 && (
                 <ReferenceLine
-                  x={Number(params.tPrime)}
+                  x={logX ? Math.log10(Number(params.tPrime)) : Number(params.tPrime)}
                   stroke={CHART.target}
                   strokeDasharray="2 3"
                   label={{ value: `t′ ${params.tPrime}d`, fill: CHART.target, fontSize: CHART.labelFont, position: 'insideTopRight' }}
                 />
               )}
               {Number.isFinite(Number(params.targetAge)) && (
-                <ReferenceLine x={Number(params.targetAge)} stroke={CHART.reference} strokeWidth={1.5} />
+                <ReferenceLine x={logX ? Math.log10(Number(params.targetAge)) : Number(params.targetAge)} stroke={CHART.reference} strokeWidth={1.5} />
               )}
               {prevChartData && prevChartData.length > 0 && visibleLines.map((line) => (
                 <Line
@@ -369,7 +394,16 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
                 />
               ))}
               {chartData.length > 1 && (
-                <Brush data={chartData} dataKey="t" height={24} travellerWidth={8} stroke="var(--line-strong)" tickFormatter={(value) => String(value)} onChange={handleBrushChange} />
+                <Brush
+                  data={chartData}
+                  dataKey="t"
+                  height={18}
+                  travellerWidth={5}
+                  fill={CHART.brushTrack}
+                  stroke={CHART.brushSelection}
+                  tickFormatter={(value) => String(value)}
+                  onChange={handleBrushChange}
+                />
               )}
             </LineChart>
           </ResponsiveContainer>
@@ -421,9 +455,9 @@ function NoticeBanner({ notices, onDismiss }) {
   return (
     <div className="mb-5 space-y-3">
       {notices.map((notice) => (
-        <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-lg border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-none border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="font-mono text-2xs font-semibold uppercase tracking-[.08em] text-[var(--warning)]"><Lang text={notice.title} /></div>
+            <div className="font-mono text-2xs font-semibold text-[var(--warning)]"><Lang text={notice.title} /></div>
             <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]"><Lang text={notice.message} /></p>
           </div>
           {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-3xs">Dismiss</button>}
@@ -483,11 +517,11 @@ export default function CalculatorWrapper({
             <span className="status-dot" />
             <span className="eyebrow">{engine === 'rust' ? 'Rust WebAssembly' : 'JavaScript reference'}</span>
           </div>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] text-ink">{modelName}</h2>
+          <h2 className="mt-2 text-xl font-semibold text-ink">{modelName}</h2>
           <p className="mt-1.5 max-w-[72ch] text-body-sm leading-relaxed text-muted">{modelDescription}</p>
         </div>
         {duration != null && (
-          <div className="rounded-md border border-line bg-surface px-3 py-2 text-right">
+          <div className="rounded-none border border-line bg-surface px-3 py-2 text-right">
             <div className="eyebrow">Last compute</div>
             <div className="mt-1 font-mono text-1xs text-ink">{duration.toFixed(2)} ms</div>
           </div>
@@ -519,12 +553,12 @@ export default function CalculatorWrapper({
               </div>
               <div className="flex items-center gap-2">
               {prevData && prevData.length > 0 && !dirty && (
-                <span className="rounded-md border border-dashed border-line-strong px-2.5 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] text-faint">
+                <span className="rounded-none border border-dashed border-line-strong px-2.5 py-1 font-mono text-3xs font-semibold text-faint">
                   vs previous run
                 </span>
               )}
               <div
-                className={`rounded-md px-2.5 py-1 font-mono text-3xs font-semibold uppercase tracking-[.07em] ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
+                className={`rounded-none px-2.5 py-1 font-mono text-3xs font-semibold ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
               >
                 {dirty ? 'Results out of date' : 'Computed'}
               </div>

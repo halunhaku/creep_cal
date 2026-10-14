@@ -4,11 +4,8 @@ import { contrast, cssVariables } from '../testUtils/contrast';
 
 const THEMES = { light: cssVariables(':root'), dark: cssVariables('[data-theme="dark"]') };
 
-/**
- * The audit's P1-3: the accent was 3.94:1 on the page and 4.38:1 on a card, and
- * it was drawing the reference-line label — text, at 9px. These assert the
- * separation by measuring the tokens themselves.
- */
+/** Carbon uses neutral ink for reference geometry and labels. These tests
+ * protect the consumer-visible contrast and chart type floor, not token identity. */
 describe('chart colours', () => {
   for (const [theme, vars] of Object.entries(THEMES)) {
     test(`${theme}: the reference label clears 4.5:1 on both the card and the page`, () => {
@@ -25,12 +22,6 @@ describe('chart colours', () => {
       expect(contrast(vars['--text-faint'], vars['--surface'])).toBeGreaterThanOrEqual(4.5);
     });
   }
-
-  test('the accent is split into a graphic colour and a text colour', () => {
-    // Where they are equal (the dark theme) the reference colour already clears 4.5:1.
-    const { '--reference': accent, '--reference-text': accentText } = THEMES.light;
-    expect(accentText).not.toBe(accent);
-  });
 
   test('chart text is not below the type floor', () => {
     expect(CHART.font).toBeGreaterThanOrEqual(11);

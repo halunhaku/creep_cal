@@ -26,13 +26,13 @@ export default function Layout({ activeMode, onModeChange, onOpenDocs, children 
         onOpenDocs={onOpenDocs}
         onOpenPalette={() => setPaletteOpen(true)}
       />
-      <main id="main-content" className="mx-auto min-h-[calc(100dvh-65px)] max-w-content px-4 py-6 md:px-7 lg:px-9 lg:py-8">
+      <main id="main-content" className="mx-auto min-h-[calc(100dvh-49px)] max-w-content px-4 py-8 md:px-8 lg:py-12">
         {children}
       </main>
-      <footer className="border-t border-line bg-surface">
-        <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-4 text-xs text-muted sm:flex-row sm:items-center sm:justify-between md:px-7 lg:px-9">
+      <footer className="border-t border-[#393939] bg-[#161616] text-white">
+        <div className="mx-auto flex max-w-content flex-col gap-2 px-4 py-8 text-sm text-[#c6c6c6] sm:flex-row sm:items-center sm:justify-between md:px-8">
           <span>Concrete creep calculation workspace</span>
-          <span className="font-mono text-3xs uppercase tracking-[0.09em] text-faint">Float64 · Rust WASM · JS reference</span>
+          <span className="font-sans text-xs text-[#c6c6c6]">Float64 · Rust WASM · JS reference</span>
         </div>
       </footer>
       {/* Mounted only while open, so each opening starts from a clean query. */}

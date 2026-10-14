@@ -24,7 +24,7 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="card p-10 text-center mx-8 my-12 max-w-lg mx-auto">
-          <div className="font-mono text-xl uppercase tracking-[0.2em] text-action mb-6">// Error</div>
+          <div className="font-mono text-xl text-action mb-6">// Error</div>
           <h2 className="text-xl font-sans font-semibold text-ink mb-4">
             Something went wrong
           </h2>
@@ -49,7 +49,7 @@ class ErrorBoundary extends React.Component {
           </div>
 
           {import.meta.env.DEV && this.state.error && (
-            <details className="mt-8 text-left bg-red-50/10 p-4 rounded-card border border-red-200/30">
+            <details className="mt-8 border border-error bg-error-soft p-4 text-left">
               <summary className="cursor-pointer font-bold text-error mb-2">
                 Error details (dev mode)
               </summary>

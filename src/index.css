@@ -4,78 +4,80 @@
 
 :root {
   color-scheme: light;
-  --bg: #f4f2ed;
-  --surface: #fffefb;
-  --surface-2: #eceae4;
-  --surface-3: #e4e7e3;
-  --line: #d5d9d4;
-  --line-strong: #b7c0ba;
-  --text: #17201d;
-  --text-muted: #303a35;
-  --text-faint: #3f4944;
-  --action: #2457d6;
-  --action-hover: #1947bc;
-  --action-soft: #e9eefc;
-  --action-border: #aebff2;
-  /* Two reference tokens, because the role has two contrast requirements. Graphics (the chart's reference line)
-     need 3:1 and #c9532d gives 3.94 on the page. Text needs 4.5:1 and #c9532d
-     only gives 3.94 there / 4.38 on the card, so labels use a darker step:
-     5.53 on the card, 4.99 on the page. */
-  --reference: #c9532d;
-  --reference-text: #b34420;
-  --reference-soft: #f9e9e2;
-  --series-1: var(--action);
-  --series-2: var(--reference);
-  --series-3: #17857c;
-  /* #247a52 was 4.23:1 on --surface-3 and 4.39:1 on --surface-2, and the batch
-     page prints the valid-row count in this colour on a --surface-2 panel. */
-  --success: #1f6b48;
-  --success-soft: #e4f2eb;
-  --warning: #7a4900;
-  --warning-soft: #faefd9;
-  --error: #b42318;
-  --error-soft: #fbe8e6;
-  --header-bg: rgba(244, 242, 237, 0.9);
-  --header-h: 64px;
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f4f4f4;
+  --surface-3: #e0e0e0;
+  --line: #e0e0e0;
+  --line-strong: #161616;
+  --text: #161616;
+  --text-muted: #525252;
+  --text-faint: #525252;
+  --text-subtle: #8c8c8c;
+  --action: #0f62fe;
+  --action-hover: #0050e6;
+  --action-active: #002d9c;
+  --action-soft: #edf5ff;
+  --action-border: #0f62fe;
+  --reference: #161616;
+  --reference-text: #161616;
+  --reference-soft: #f4f4f4;
+  --series-1: #0f62fe;
+  --series-2: #525252;
+  --series-3: #8c8c8c;
+  --success: #0e6027;
+  --success-soft: #defbe6;
+  --warning: #684e00;
+  --warning-soft: #fff1c2;
+  --error: #da1e28;
+  --error-soft: #fff1f1;
+  --header-bg: #ffffff;
+  --header-h: 48px;
   --sticky-offset: calc(var(--header-h) + 24px);
-  --chart-grid: #dfe3df;
-  --shadow-popover: 0 18px 48px rgba(29, 39, 34, 0.14), 0 2px 8px rgba(29, 39, 34, 0.08);
-  --on-action: #fff;
+  --chart-grid: #e0e0e0;
+  --shadow-popover: 0 12px 24px rgba(0, 0, 0, 0.18);
+  --on-action: #ffffff;
+  --secondary-bg: #161616;
+  --secondary-hover: #393939;
+  --on-secondary: #ffffff;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #101412;
-  --surface: #171d1a;
-  --surface-2: #202724;
-  --surface-3: #27302c;
-  --line: #343d39;
-  --line-strong: #4a5751;
-  --text: #f2f0e9;
-  --text-muted: #bcc5c0;
-  --text-faint: #a4aea9;
-  --action: #7f9fff;
-  --action-hover: #9bb4ff;
-  --action-soft: #202d52;
-  --action-border: #425b9a;
-  /* The dark reference colour is already 6.95:1 on the card and 7.54:1 on the page, so it
-     serves both jobs. */
-  --reference: #f18a5b;
-  --reference-text: #f18a5b;
-  --reference-soft: #3b251d;
-  --series-1: var(--action);
-  --series-2: var(--reference);
-  --series-3: #5fc0b6;
-  --success: #62b68b;
-  --success-soft: #1c3529;
-  --warning: #d8a550;
-  --warning-soft: #392d19;
-  --error: #eb776d;
-  --error-soft: #3c201e;
-  --header-bg: rgba(16, 20, 18, 0.9);
-  --chart-grid: #303934;
-  --shadow-popover: 0 20px 56px rgba(0, 0, 0, 0.46), 0 2px 8px rgba(0, 0, 0, 0.32);
-  --on-action: #101412;
+  --bg: #161616;
+  --surface: #262626;
+  --surface-2: #393939;
+  --surface-3: #525252;
+  --line: #525252;
+  --line-strong: #c6c6c6;
+  --text: #f4f4f4;
+  --text-muted: #c6c6c6;
+  --text-faint: #c6c6c6;
+  --text-subtle: #8d8d8d;
+  --action: #78a9ff;
+  --action-hover: #a6c8ff;
+  --action-active: #4589ff;
+  --action-soft: #002d9c;
+  --action-border: #78a9ff;
+  --reference: #f4f4f4;
+  --reference-text: #f4f4f4;
+  --reference-soft: #393939;
+  --series-1: #78a9ff;
+  --series-2: #c6c6c6;
+  --series-3: #8d8d8d;
+  --success: #6fdc8c;
+  --success-soft: #044317;
+  --warning: #fddc69;
+  --warning-soft: #4d3800;
+  --error: #ff8389;
+  --error-soft: #520408;
+  --header-bg: #161616;
+  --chart-grid: #525252;
+  --shadow-popover: 0 12px 24px rgba(0, 0, 0, 0.5);
+  --on-action: #161616;
+  --secondary-bg: #f4f4f4;
+  --secondary-hover: #e0e0e0;
+  --on-secondary: #161616;
 }
 
 @layer base {
@@ -87,83 +89,109 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: "Hanken Grotesk", "PingFang SC", sans-serif;
-    font-size: theme('fontSize.body');
+    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-size: 16px;
     line-height: 1.5;
+    letter-spacing: .16px;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
-  /* Installed as a PWA there is no browser chrome, so the notch would sit on the
-     header and the home indicator on the footer. The insets are 0 in a browser
-     tab, so this costs nothing there. */
   header { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
   main { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
   footer { padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-  /* "Time-dependent concrete analysis" broke with an orphan on narrow screens. */
   h1, h2 { text-wrap: balance; }
+  h1 { font-weight: 300; letter-spacing: 0; }
+  h2, h3 { font-weight: 400; letter-spacing: 0; }
   button, input, select, textarea { font: inherit; }
-  /* Taps should not wait 300ms to find out whether a double-tap is coming. */
   button, a, select, summary { touch-action: manipulation; }
-  /* The option list of a native select is drawn by the OS: without an explicit
-     colour it can be unreadable against a dark system theme. */
   option { background-color: var(--surface); color: var(--text); }
-  button { -webkit-tap-highlight-color: transparent; }
-  /* A jumped-to section must clear the sticky header, or its heading lands
-     underneath it (#applicability used to arrive at y=12px under a 65px header).
-     The offset matches where the sticky sidebars sit. */
+  button { -webkit-tap-highlight-color: rgba(15, 98, 254, .18); }
   [id] { scroll-margin-top: var(--sticky-offset); }
-  button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible {
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible {
     outline: 2px solid var(--action);
     outline-offset: 2px;
   }
-  /* Text on --action must come from the token: in the dark theme --action is a
-     light blue (#7f9fff), where white would be 2.53:1 and fail WCAG AA. */
   ::selection { background: var(--action); color: var(--on-action); }
-  /* A pane that scrolls to its end should stop there, not start scrolling the page. */
   [class*="overflow-y-auto"], [class*="overflow-x-auto"] { overscroll-behavior: contain; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 3px solid transparent; border-radius: 99px; background-clip: padding-box; }
+  ::-webkit-scrollbar-track { background: var(--surface-2); }
+  ::-webkit-scrollbar-thumb { background: var(--text-subtle); border: 2px solid var(--surface-2); border-radius: 0; }
 }
 
 @layer components {
-  .workbench-panel {
+  .workbench-panel,
+  .card {
     border: 1px solid var(--line);
-    border-radius: 10px;
+    border-radius: 0;
     background: var(--surface);
+    box-shadow: none;
   }
-  .card { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); box-shadow: none; }
   .surface-inset { background: var(--surface-2); }
   .eyebrow {
-    font-family: "Azeret Mono", monospace;
-    font-size: theme('fontSize.2xs');
-    font-weight: 600;
-    letter-spacing: .13em;
-    text-transform: uppercase;
-    color: var(--text-faint);
+    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.29;
+    letter-spacing: .16px;
+    text-transform: none;
+    color: var(--text-muted);
   }
-  .mono-data { font-family: "Azeret Mono", monospace; font-variant-numeric: tabular-nums lining-nums; }
+  .mono-data {
+    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-variant-numeric: tabular-nums lining-nums;
+  }
   .button-primary, .btn-primary {
-    display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 8px;
-    border: 1px solid var(--action); border-radius: 6px; background: var(--action); color: var(--on-action);
-    padding: 0 16px; font-family: "Azeret Mono", monospace; font-size: theme('fontSize.1xs'); font-weight: 650;
-    letter-spacing: .06em; text-transform: uppercase; transition: background-color 140ms ease, transform 100ms ease;
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--action);
+    border-radius: 0;
+    background: var(--action);
+    color: var(--on-action);
+    padding: 12px 16px;
+    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.29;
+    letter-spacing: .16px;
+    text-transform: none;
+    transition: background-color 110ms ease;
   }
   .button-primary:hover, .btn-primary:hover { background: var(--action-hover); }
-  .button-primary:active, .btn-primary:active { transform: scale(.985); }
-  .button-primary:disabled, .btn-primary:disabled { cursor: not-allowed; opacity: .48; }
+  .button-primary:active, .btn-primary:active { background: var(--action-active); }
+  .button-primary:disabled, .btn-primary:disabled { cursor: not-allowed; opacity: .5; }
   .button-secondary, .btn-secondary {
-    display: inline-flex; min-height: 38px; align-items: center; justify-content: center; gap: 8px;
-    border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--text);
-    padding: 0 14px; font-family: "Azeret Mono", monospace; font-size: theme('fontSize.1xs'); font-weight: 600;
-    letter-spacing: .04em; text-transform: uppercase; transition: border-color 140ms ease, background-color 140ms ease;
+    display: inline-flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--secondary-bg);
+    border-radius: 0;
+    background: var(--secondary-bg);
+    color: var(--on-secondary);
+    padding: 12px 16px;
+    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.29;
+    letter-spacing: .16px;
+    text-transform: none;
+    transition: background-color 110ms ease, border-color 110ms ease;
   }
-  .button-secondary:hover, .btn-secondary:hover { border-color: var(--action); background: var(--action-soft); }
+  .button-secondary:hover, .btn-secondary:hover { border-color: var(--secondary-hover); background: var(--secondary-hover); }
+  .button-secondary:disabled, .btn-secondary:disabled { cursor: not-allowed; opacity: .5; }
   .field-control {
-    min-height: 42px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface);
-    transition: border-color 140ms ease, box-shadow 140ms ease;
+    min-height: 48px;
+    border: 0;
+    border-bottom: 1px solid var(--line-strong);
+    border-radius: 0;
+    background: var(--surface-2);
+    transition: border-color 110ms ease;
   }
-  .field-control:focus-within { border-color: var(--action); box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 12%, transparent); }
+  .field-control:focus-within { border-bottom: 2px solid var(--action); box-shadow: none; }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
   .chart-stage { background: var(--surface); }
 }
@@ -183,20 +211,39 @@
   .border-line { border-color: var(--line); }
   .border-line-strong { border-color: var(--line-strong); }
   .border-action-border { border-color: var(--action-border); }
-  .font-mono { font-family: "Azeret Mono", monospace; font-variant-numeric: tabular-nums lining-nums; }
-  .font-body, .font-sans { font-family: "Hanken Grotesk", "PingFang SC", sans-serif; }
-  .animate-fade-in { animation: fade-in 180ms ease-out both; }
+  .font-mono, .font-body, .font-sans {
+    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+  }
+  .font-mono { font-variant-numeric: tabular-nums lining-nums; }
+  .font-bold { font-weight: 600; }
+  .uppercase { text-transform: none; }
+  .animate-fade-in { animation: fade-in 160ms ease-out both; }
 }
 
-.recharts-cartesian-axis-tick-value, .recharts-legend-item-text { fill: var(--text-muted) !important; font-family: "Azeret Mono", monospace; }
-.recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line-strong) !important; }
+.recharts-cartesian-axis-tick-value,
+.recharts-legend-item-text {
+  fill: var(--text-muted) !important;
+  font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+.recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line-strong) !important; border-radius: 0 !important; }
 
-@keyframes fade-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
 @media (pointer: coarse) {
-  .touch-target { min-width: 44px; min-height: 44px; }
-  .button-primary, .btn-primary, .button-secondary, .btn-secondary, .field-control { min-height: 44px; }
+  .touch-target { min-width: 48px; min-height: 48px; }
+  .button-primary, .btn-primary, .button-secondary, .btn-secondary, .field-control { min-height: 48px; }
+}
+
+@media (pointer: fine) {
+  html { overscroll-behavior: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }

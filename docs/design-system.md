@@ -1,187 +1,550 @@
-# HALUNHAKU Design System
+---
+version: alpha
+name: IBM-design-analysis
+description: "An enterprise-marketing canvas faithful to Carbon Design System: white surfaces, charcoal type, IBM Blue (#0f62fe) as the single confident accent, and a deliberately flat-square aesthetic where corners stay at 0–4px. Type runs IBM Plex Sans at light weight 300 for display sizes (a brand signature) and 400/600 for body and emphasis. Cards live as thin-bordered tiles with no shadow; sections separate via subtle gray rows. The chrome is square, the typography is light, and the only color in the system is one assertive blue — the result reads as old-world enterprise gravitas reframed for the cloud era."
 
-> CREEP_LAB 的界面契约。实现源为 `src/index.css`、`tailwind.config.js` 与 `src/components/chartTheme.js`；本文定义它们必须表达的语义，而不是另一套平行样式。
+colors:
+  primary: "#0f62fe"
+  on-primary: "#ffffff"
+  ink: "#161616"
+  ink-muted: "#525252"
+  ink-subtle: "#8c8c8c"
+  canvas: "#ffffff"
+  surface-1: "#f4f4f4"
+  surface-2: "#e0e0e0"
+  inverse-canvas: "#161616"
+  inverse-surface-1: "#262626"
+  inverse-ink: "#ffffff"
+  inverse-ink-muted: "#c6c6c6"
+  hairline: "#e0e0e0"
+  hairline-strong: "#161616"
+  blue-60: "#0043ce"
+  blue-80: "#002d9c"
+  blue-hover: "#0050e6"
+  semantic-success: "#24a148"
+  semantic-warning: "#f1c21b"
+  semantic-error: "#da1e28"
+  semantic-info: "#0f62fe"
 
-## 1. 设计目标
+typography:
+  display-xl:
+    fontFamily: IBM Plex Sans
+    fontSize: 76px
+    fontWeight: 300
+    lineHeight: 1.17
+    letterSpacing: -0.5px
+  display-lg:
+    fontFamily: IBM Plex Sans
+    fontSize: 60px
+    fontWeight: 300
+    lineHeight: 1.17
+    letterSpacing: -0.4px
+  display-md:
+    fontFamily: IBM Plex Sans
+    fontSize: 42px
+    fontWeight: 300
+    lineHeight: 1.20
+    letterSpacing: 0
+  headline:
+    fontFamily: IBM Plex Sans
+    fontSize: 32px
+    fontWeight: 400
+    lineHeight: 1.25
+    letterSpacing: 0
+  card-title:
+    fontFamily: IBM Plex Sans
+    fontSize: 24px
+    fontWeight: 400
+    lineHeight: 1.33
+    letterSpacing: 0
+  subhead:
+    fontFamily: IBM Plex Sans
+    fontSize: 20px
+    fontWeight: 400
+    lineHeight: 1.40
+    letterSpacing: 0
+  body-lg:
+    fontFamily: IBM Plex Sans
+    fontSize: 18px
+    fontWeight: 400
+    lineHeight: 1.50
+    letterSpacing: 0
+  body:
+    fontFamily: IBM Plex Sans
+    fontSize: 16px
+    fontWeight: 400
+    lineHeight: 1.50
+    letterSpacing: 0.16px
+  body-sm:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.29
+    letterSpacing: 0.16px
+  body-emphasis:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 600
+    lineHeight: 1.29
+    letterSpacing: 0.16px
+  caption:
+    fontFamily: IBM Plex Sans
+    fontSize: 12px
+    fontWeight: 400
+    lineHeight: 1.33
+    letterSpacing: 0.32px
+  button:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.29
+    letterSpacing: 0.16px
+  eyebrow:
+    fontFamily: IBM Plex Sans
+    fontSize: 14px
+    fontWeight: 400
+    lineHeight: 1.29
+    letterSpacing: 0.16px
 
-HALUNHAKU 是一套 **Scientific Workbench** 设计语言：像工程仪器，不像营销页。
+rounded:
+  none: 0px
+  xs: 2px
+  sm: 4px
+  md: 6px
+  lg: 8px
+  pill: 9999px
+  full: 9999px
 
-1. **数据优先**：输入、单位、结果和适用范围先于装饰。
-2. **语义优先**：令牌按用途命名，不按色相命名。蓝色是 action，橙色是 reference；不得新增 `green`、`amber`、`blue` 一类业务令牌。
-3. **密度可控**：桌面允许紧凑，320px 起仍必须完整、可读、可操作。
-4. **状态明确**：计算、失效、错误、警告、成功不能只靠颜色表达。
-5. **渐进披露**：高级模型说明、模板和批量 schema 默认不抢占主任务空间。
-6. **无装饰性动效**：动效只解释状态变化，并尊重 reduced motion。
+spacing:
+  xxs: 4px
+  xs: 8px
+  sm: 12px
+  md: 16px
+  lg: 24px
+  xl: 32px
+  xxl: 48px
+  section: 96px
 
-## 2. 令牌
+components:
+  button-primary:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: 12px 16px
+  button-primary-pressed:
+    backgroundColor: "{colors.blue-80}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+  button-secondary:
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.inverse-ink}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: 12px 16px
+  button-tertiary:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: 12px 16px
+  button-ghost:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: 12px 16px
+  button-danger:
+    backgroundColor: "{colors.semantic-error}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.button}"
+    rounded: "{rounded.none}"
+    padding: 12px 16px
+  feature-card:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 24px
+  feature-card-elevated:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 24px
+  product-card:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 32px
+  hero-card:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.display-md}"
+    rounded: "{rounded.none}"
+    padding: 48px
+  cta-banner:
+    backgroundColor: "{colors.primary}"
+    textColor: "{colors.on-primary}"
+    typography: "{typography.headline}"
+    rounded: "{rounded.none}"
+    padding: 48px
+  text-input:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 11px 16px
+  text-input-focused:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 11px 16px
+  text-input-error:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 11px 16px
+  newsletter-input:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body}"
+    rounded: "{rounded.none}"
+    padding: 11px 16px
+  product-tab:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.none}"
+    padding: 16px 20px
+  product-tab-selected:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-emphasis}"
+    rounded: "{rounded.none}"
+    padding: 16px 20px
+  resource-tile:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.none}"
+    padding: 16px
+  customer-logo-tile:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.caption}"
+    rounded: "{rounded.none}"
+    padding: 24px
+  top-nav:
+    backgroundColor: "{colors.canvas}"
+    textColor: "{colors.ink}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.none}"
+    height: 48px
+  utility-bar:
+    backgroundColor: "{colors.surface-1}"
+    textColor: "{colors.ink-muted}"
+    typography: "{typography.caption}"
+    rounded: "{rounded.none}"
+    height: 32px
+  footer:
+    backgroundColor: "{colors.inverse-canvas}"
+    textColor: "{colors.inverse-ink-muted}"
+    typography: "{typography.body-sm}"
+    rounded: "{rounded.none}"
+    padding: 64px 32px
+---
 
-### 2.1 颜色
+## Overview
 
-| 语义 | CSS 令牌 | Light | Dark | 用途 |
-| --- | --- | --- | --- | --- |
-| Canvas | `--bg` | `#f4f2ed` | `#101412` | 页面底色 |
-| Surface | `--surface` | `#fffefb` | `#171d1a` | 主面板 |
-| Inset | `--surface-2` | `#eceae4` | `#202724` | 表格、输入分组 |
-| Raised inset | `--surface-3` | `#e4e7e3` | `#27302c` | 分段控件、次级层级 |
-| Text | `--text` | `#17201d` | `#f2f0e9` | 正文与主标题 |
-| Muted text | `--text-muted` | `#303a35` | `#bcc5c0` | 次要正文 |
-| Faint text | `--text-faint` | `#3f4944` | `#a4aea9` | 标签与辅助信息 |
-| Action | `--action` | `#2457d6` | `#7f9fff` | 主按钮、链接、焦点、选中态 |
-| Action hover | `--action-hover` | `#1947bc` | `#9bb4ff` | Action hover |
-| Action soft | `--action-soft` | `#e9eefc` | `#202d52` | 选中背景 |
-| Action border | `--action-border` | `#aebff2` | `#425b9a` | Action 弱边框 |
-| On action | `--on-action` | `#ffffff` | `#101412` | Action 实心背景上的文字 |
-| Reference | `--reference` | `#c9532d` | `#f18a5b` | 图表参考线与第二数据系列 |
-| Reference text | `--reference-text` | `#b34420` | `#f18a5b` | Reference 文本标签 |
-| Reference soft | `--reference-soft` | `#f9e9e2` | `#3b251d` | Reference 弱背景 |
-| Success | `--success` | `#1f6b48` | `#62b68b` | 成功状态 |
-| Warning | `--warning` | `#7a4900` | `#d8a550` | 警告状态 |
-| Error | `--error` | `#b42318` | `#eb776d` | 错误状态 |
+IBM's marketing system is a faithful application of **Carbon Design System** — IBM's open-source enterprise design system. The dominant surface is `{colors.canvas}` pure white with `{colors.surface-1}` light gray for elevation, charcoal `{colors.ink}` (#161616) for text, and IBM Blue `{colors.primary}` (#0f62fe) as the single brand accent.
 
-规则：
+The defining choice is **flat geometry**: every CTA, every card, every input, every container uses square corners (`{rounded.none}` 0px) with thin 1px borders. There are no rounded pills, no soft shadows, no atmospheric gradients. The system is engineered, not stylized.
 
-- 正文对比度必须达到 WCAG AA 4.5:1；非文本图形和控件边界至少 3:1。
-- `--reference` 负责图形，`--reference-text` 负责小字号文字，不能互换。
-- Success / warning / error 必须同时有文字、图标或结构提示，不能只换颜色。
-- 图表数据系列只使用 `--series-1`、`--series-2`、`--series-3`；组件不得借用 action 令牌绘制数据。
+**IBM Plex Sans** carries the entire type hierarchy. Display sizes (76 / 60 / 42px) run at weight **300** — IBM's signature light display treatment that makes 76px feel calmer than competing brands' 700-weight display. Body type sits at weight 400 with `letter-spacing: 0.16px` (a Carbon precision detail) and line-height 1.50. The voice reads as careful, technical, and trustworthy.
 
-### 2.2 字体与数字
+The system reaches for color rarely — IBM Blue marks links, primary CTAs, and the rare full-bleed CTA banner. Charcoal carries every other surface that isn't white. The result is enterprise gravitas without the enterprise stiffness: rigorous, light-weighted, and intentionally restrained.
 
-| 角色 | 字体 | 字重 | 尺寸 |
-| --- | --- | --- | --- |
-| UI / 正文 | Hanken Grotesk | 400–700 | 14–15px |
-| 工程数据 / 控件 | Azeret Mono | 400–700 | 11–13px |
-| 页面标题 | Hanken Grotesk | 700 | 28px |
-| 主指标 | Azeret Mono | 600–700 | 27–32px |
+**Key Characteristics:**
+- **Carbon Design System** — IBM's marketing chrome IS Carbon. Buttons are square, inputs are square-with-bottom-rule, corners stay at 0px.
+- **Light-weight display type**: Plex Sans at weight 300 for 42–76px headlines is the brand's typographic signature.
+- **One accent color**: `{colors.primary}` IBM Blue carries every link, primary CTA, and CTA banner. There is no second brand color.
+- White canvas + light gray (`{colors.surface-1}`) + charcoal (`{colors.ink}`) cover 95% of surfaces.
+- Footer inverts to charcoal (`{colors.inverse-canvas}` #161616) — the only dark surface above the page break.
+- Card hierarchy is carried by 1px hairlines and surface change, never by drop shadow.
+- `letter-spacing: 0.16px` on body is a Carbon precision detail — the small positive tracking is part of the brand voice.
+- Page rhythm: utility bar → top nav → hero with light-weight headline → feature card grid → customer logo marquee → enterprise feature row → training section → newsletter / sign-in CTA → dark footer.
 
-- 两套字体必须本地打包；运行时不得依赖 Google Fonts。
-- 数值、单位、表头和图例使用 `tabular-nums lining-nums`。
-- 正文最小 14px；只允许单位、chip、表头、公式编号降到 11px。
-- 工程数值固定使用小数点与英文千位分隔，不跟随系统 locale。
-- 截断必须使用省略号字符 `…`，不使用三个句点。
+## Colors
 
-### 2.3 空间与尺寸
+> Source pages: ibm.com (home), /software/ai-productivity, /consulting, /products/cloud-pak-for-aiops, /products/bare-metal-servers, community.ibm.com.
 
-以 4px 为基准网格：
+### Brand & Accent
+- **IBM Blue** ({colors.primary}): The single brand accent. Links, primary CTAs, CTA banner backgrounds, focus rings.
+- **Blue 60** ({colors.blue-60}): Hovered link state.
+- **Blue 80** ({colors.blue-80}): Pressed primary button.
+- **Blue Hover** ({colors.blue-hover}): Hover state for primary buttons.
 
-| 角色 | 值 |
-| --- | --- |
-| 微间距 | 4 / 6px |
-| 控件内部与同组间距 | 8px |
-| 字段间距 | 12px |
-| 面板内边距 | 16 / 20px |
-| 区段间距 | 20 / 24 / 32px |
-| 页头高度 | 64px |
-| 普通按钮 | 40px |
-| 输入控件 | 42px |
-| 触屏核心目标 | 至少 44 × 44px |
+### Surface
+- **Canvas** ({colors.canvas}): Default page background.
+- **Surface 1** ({colors.surface-1}): Light gray (#f4f4f4) — input fields, alternate-row stripes, subtle section bands.
+- **Surface 2** ({colors.surface-2}): Slightly darker gray (#e0e0e0) — disabled fields, hairline-as-fill for separators.
+- **Hairline** ({colors.hairline}): 1px borders on cards, inputs, dividers.
+- **Hairline Strong** ({colors.hairline-strong}): 1px charcoal underline on focused inputs (Carbon's signature focus treatment).
+- **Inverse Canvas** ({colors.inverse-canvas}): Charcoal #161616 — footer surface.
+- **Inverse Surface 1** ({colors.inverse-surface-1}): One step lighter than inverse canvas — footer column dividers, hovered footer items.
 
-紧凑控件可以低于 44px，但必须位于有明确间隔的密集数据区域；主操作、图标按钮、上传和导航不得使用该例外。
+### Text
+- **Ink** ({colors.ink}): All headlines and emphasized body type — charcoal #161616.
+- **Ink Muted** ({colors.ink-muted}): Secondary type at #525252 — meta, sub-headlines, footer body.
+- **Ink Subtle** ({colors.ink-subtle}): Tertiary type at #8c8c8c — disabled, helper text, captions.
+- **Inverse Ink** ({colors.inverse-ink}): White on charcoal — footer headings.
+- **Inverse Ink Muted** ({colors.inverse-ink-muted}): Light gray on charcoal — footer body.
 
-### 2.4 圆角、边框与阴影
+### Semantic
+- **Success Green** ({colors.semantic-success}): Carbon green-50 — success states.
+- **Warning Yellow** ({colors.semantic-warning}): Carbon yellow-30 — warning states.
+- **Error Red** ({colors.semantic-error}): Carbon red-60 — error states; danger button background.
+- **Info Blue** ({colors.semantic-info}): Identical to primary — informational badges.
 
-- 输入与按钮：6px。
-- 品牌标记：7px。
-- 面板：10px；大型浮层：12px。
-- 所有结构边界使用 1px `--line` / `--line-strong`。
-- 普通面板不加阴影；阴影只用于浮层和命令面板。
-- 不使用胶囊形容器承载普通文案或操作；pill 只用于状态标签。
+## Typography
 
-## 3. 组件契约
+### Font Family
 
-### 按钮
+- **IBM Plex Sans** — IBM's open-source proprietary typeface (free for any use). Geometric, slightly humanist, designed specifically for enterprise UI. Fallback: `Helvetica Neue, Arial, sans-serif`.
 
-- Primary：`.button-primary` / `.btn-primary`，仅用于每一区域的主动作。
-- Secondary：`.button-secondary` / `.btn-secondary`。
-- 必须覆盖 default、hover、active、focus-visible、disabled、loading。
-- 图标按钮必须有 `aria-label`；loading 文案使用 `…`，并保持按钮宽度稳定。
+The same family carries display, body, and caption — there is no display + body pairing. Hierarchy is carried by **size + weight** rather than by family change. Plex Sans is also free / open-source under the SIL Open Font License — making it the easiest custom face on this list to substitute for in implementation.
 
-### 字段
+### Hierarchy
 
-- 可见 label 与控件必须建立 `htmlFor` / `id` 关联。
-- 文本输入必须定义 `name` 与合适的 `autocomplete`。
-- `.field-control` 负责边框、背景和 `:focus-within`；内部 input/select 可以清除原生 outline，但外层焦点环不得消失。
-- 校验错误要靠近字段，首个错误字段必须可聚焦。
+| Token | Size | Weight | Line Height | Letter Spacing | Use |
+|---|---|---|---|---|---|
+| `{typography.display-xl}` | 76px | 300 | 1.17 | -0.5px | Largest hero headline |
+| `{typography.display-lg}` | 60px | 300 | 1.17 | -0.4px | Section opener headlines |
+| `{typography.display-md}` | 42px | 300 | 1.20 | 0 | Sub-section headlines, hero card title |
+| `{typography.headline}` | 32px | 400 | 1.25 | 0 | Card collection heading, FAQ category |
+| `{typography.card-title}` | 24px | 400 | 1.33 | 0 | Feature card title |
+| `{typography.subhead}` | 20px | 400 | 1.40 | 0 | Lead body next to display headlines |
+| `{typography.body-lg}` | 18px | 400 | 1.50 | 0 | Hero subhead, lead paragraphs |
+| `{typography.body}` | 16px | 400 | 1.50 | 0.16px | Default body |
+| `{typography.body-sm}` | 14px | 400 | 1.29 | 0.16px | Card body, footer columns |
+| `{typography.body-emphasis}` | 14px | 600 | 1.29 | 0.16px | Selected tab label, emphasized body line |
+| `{typography.caption}` | 12px | 400 | 1.33 | 0.32px | Captions, meta, utility bar |
+| `{typography.button}` | 14px | 400 | 1.29 | 0.16px | All button labels |
+| `{typography.eyebrow}` | 14px | 400 | 1.29 | 0.16px | Section eyebrows (Carbon avoids strong eyebrows; uses sentence case 14px) |
 
-### 面板与披露
+### Principles
 
-- `.workbench-panel` 是主结构；`.card` 是同层卡片；`.surface-inset` 是内部数据层。
-- `details/summary` 用于高级说明和模板，summary 必须有 focus-visible 状态。
-- 不嵌套超过三层 surface；层级优先由标题、间距和边框表达。
+- **Light-weight display is the brand voice.** Plex Sans at weight 300 for 76px headlines reads as quietly authoritative — switching to 700 would make it look like every other enterprise site.
+- **Carbon's `letter-spacing: 0.16px`** on body sizes is a precision detail. Don't remove it.
+- **No mono** on marketing surfaces (Plex Mono exists but lives in product surfaces only).
+- **Eyebrow typography uses sentence case 14px** — Carbon resists the all-caps tracked eyebrow common to other enterprise brands.
+- **Line-heights tighten on display, relax on body**: 1.17 at display-xl, 1.50 at body — proportional to size.
 
-### 表格与结果矩阵
+### Note on Font Substitutes
 
-- 表头、单位与数值使用 mono；数值右对齐并使用 tabular nums。
-- 宽表必须在自己的可聚焦 region 内横向滚动，提供可访问名称和键盘滚动提示。
-- 冻结行号或主键列；页面本身不得产生横向滚动。
-- 空、错误、处理中和成功状态必须有明确文案。
+IBM Plex Sans is **free and open-source** (SIL OFL license) and available on Google Fonts. It is the recommended implementation. The Plex family also includes Plex Mono and Plex Serif if expanded typographic needs arise.
 
-### 图表
+## Layout
 
-- 所有 Recharts 样式从 `src/components/chartTheme.js` 获取。
-- 网格弱于数据线；reference line 使用 reference 图形令牌，标签使用 reference text。
-- Tooltip、轴标题、图例不得低于 11px；只靠 hover 暴露的信息必须同时可通过键盘或表格读取。
+### Spacing System
 
-## 4. 响应式行为
+- **Base unit**: 4px (Carbon's signature 4-pixel grid).
+- **Tokens (front matter)**: `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.md}` 16px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.xxl}` 48px · `{spacing.section}` 96px.
+- Card interior padding: `{spacing.lg}` 24px on feature cards; `{spacing.xl}` 32px on product cards; `{spacing.xxl}` 48px on hero cards and CTA banners.
+- Button padding: 12px vertical · 16px horizontal — Carbon spec.
+- Form input padding: 11px vertical · 16px horizontal.
 
-| 范围 | 契约 |
-| --- | --- |
-| 320–379px | 最小支持宽度；单列；页头压缩；模型选择横向吸附；高级内容折叠 |
-| 380–639px | 单列移动布局；完整品牌标记；结果卡可换行 |
-| 640–767px | 字段可双列；批量上传与映射仍优先纵向 |
-| 768–1023px | 双列工作区；文档导航按空间决定 sticky 或折叠 |
-| ≥1024px | 主工作台与结果并排；侧栏 sticky |
-| ≥1280px | 使用完整数据密度；内容最大宽度 1540px |
+### Grid & Container
 
-通用不变量：
+- Carbon's 16-column grid at desktop, scaling to 8 / 4 columns at tablet / mobile.
+- Max content width sits around 1584px (Carbon's max-grid breakpoint).
+- Card grids are 4-up at desktop, 2-up at tablet, 1-up at mobile.
+- The customer logo marquee uses fixed-width tiles in a flex row, scrolling horizontally on smaller viewports.
 
-- `html` / `body` 最小宽度 320px。
-- 任意支持宽度必须满足 `document.documentElement.scrollWidth === innerWidth`。
-- Sticky 元素必须避开 64px 页头；锚点使用统一 scroll margin。
-- 状态、输入和计算结果在工作区切换与浏览器 Back/Forward 后保持。
+### Whitespace Philosophy
 
-## 5. 交互、动效与可访问性
+Carbon uses precise alignment to a 4-pixel grid as its whitespace system. Sections separate via thin gray rows (`{colors.surface-1}`) rather than via large vertical gaps. Content is dense by design — IBM's customers expect to see a lot on a page, not a lot of air.
 
-- 所有交互必须可通过键盘完成；原生 `button` / `a` / `input` 优先。
-- 全局 focus-visible 为 2px action outline + 2px offset；任何 `outline-none` 必须有同级替代焦点样式。
-- Async 结果使用 `role="status"`；失败使用 `role="alert"`。
-- 中英文混排：页面基准 `lang="en"`；中文片段标 `lang="zh-CN"`。
-- 点击反馈 100ms；颜色和边框过渡 140ms；进入动效 180ms。
-- 禁止 `transition: all`；只过渡发生变化的属性。
-- `prefers-reduced-motion: reduce` 下禁用滚动与装饰性动画。
-- 可滚动面板使用 `overscroll-behavior: contain`；触控控件使用 `touch-action: manipulation`。
-- 主题切换必须同步 `color-scheme`、`theme-color`、表单控件和图表颜色。
+## Elevation & Depth
 
-## 6. 文案与状态
+| Level | Treatment | Use |
+|---|---|---|
+| 0 (flat) | No shadow, no border | Default for body type, hero text, footer body |
+| 1 (hairline) | 1px `{colors.hairline}` border on canvas | Feature cards, inputs, list items |
+| 2 (surface lift) | `{colors.surface-1}` background on canvas | Alternate-row banners, hovered cards |
+| 3 (focus ring) | 2px `{colors.primary}` outline + 1px `{colors.hairline-strong}` underline | Focused input, focused button |
 
-- 标题说明用户当前任务；按钮使用动词，如 Calculate、Export CSV、Load demo。
-- 避免泛化文案，如 Continue、Submit、OK。
-- 参数错误必须说明字段、允许范围和当前值。
-- 危险操作若不可逆，必须说明影响并要求确认；重置当前未保存输入也要可恢复或确认。
-- 空状态提供下一步；不得只显示 “No data”。
+Carbon resists drop shadows on marketing — depth is carried by surface change and 1px hairlines. The exception is product / app surfaces (Carbon documents shadow tokens for elevated panels), but the marketing site barely uses them.
 
-## 7. 禁止项
+### Decorative Depth
 
-- 色相命名业务令牌：`green`、`amber`、`blue`。
-- 为页面标题添加渐变文字、超大营销字体或装饰性 glow。
-- 在每个 section 里套卡片；同层卡片使用不同圆角或阴影。
-- 图标替代文字且没有 accessible name。
-- 桌面布局缩小后直接横向溢出。
-- 依赖远程字体、运行时 CDN 或第三方样式资源。
+- **Soft blue gradient backdrops** appear behind some hero illustrations — a faint blue-to-white wash that warms the canvas without competing with the headline.
+- **No atmospheric depth.** No spotlight cards, no pastel section blocks, no gradient panels.
 
-## 8. 变更检查清单
+## Shapes
 
-1. 使用现有语义令牌，没有新增色相别名或任意颜色值。
-2. Light / dark 都检查文本、边框、图表和原生表单控件。
-3. 320、390、768、1440px 无页面级横向溢出。
-4. 鼠标、键盘和触控都能完成主任务；焦点始终可见。
-5. Loading、empty、error、stale、success 状态都有明确文案。
-6. reduced motion 下没有必要之外的移动。
-7. 运行相关测试、全量测试、ESLint、生产构建和真实浏览器 smoke。
-8. 视觉变化后重新生成 `docs/images/` 截图。
+### Border Radius Scale
 
-## 9. 审查基线
+| Token | Value | Use |
+|---|---|---|
+| `{rounded.none}` | 0px | Default — every button, card, input, container |
+| `{rounded.xs}` | 2px | Small badges (rare exception) |
+| `{rounded.sm}` | 4px | Avatar circles squared, dropdown menus |
+| `{rounded.md}` | 6px | (Used rarely; documented for completeness) |
+| `{rounded.lg}` | 8px | (Used rarely; documented for completeness) |
+| `{rounded.pill}` | 9999px | Status pills, badges in product UI (rare on marketing) |
 
-- [Web Interface Guidelines](https://github.com/vercel-labs/web-interface-guidelines)：交互、表单、焦点、动效、性能与文案。
-- [WCAG 2.2 Quick Reference](https://www.w3.org/WAI/WCAG22/quickref/)：对比度、键盘、焦点与目标尺寸。
-- 项目证据与历史缺陷见 [`docs/ui-audit.md`](ui-audit.md)。
+The brand commits to flat 0px corners. The other tokens exist for product / mobile surfaces but rarely surface on marketing.
+
+### Photography & Illustration Geometry
+
+- IBM uses photography (people, hardware, sports cars) and abstract illustration (geometric mesh, dotted patterns) interchangeably.
+- Image frames are flat — no rounded corners.
+- Customer logo tiles sit on `{rounded.none}` 0px tiles with thin 1px borders.
+
+## Components
+
+### Buttons
+
+**`button-primary`** — Blue solid CTA. The default primary across all pages.
+- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.button}`, padding 12px 16px, rounded `{rounded.none}`.
+- Pressed state lives in `button-primary-pressed` (background shifts to `{colors.blue-80}`).
+
+**`button-secondary`** — Charcoal solid button — Carbon's "secondary" treatment.
+- Background `{colors.ink}`, text `{colors.inverse-ink}`, type `{typography.button}`, padding 12px 16px, rounded `{rounded.none}`.
+
+**`button-tertiary`** — White button with blue 1px border + blue text. Used for tertiary CTAs.
+- Background `{colors.canvas}`, text `{colors.primary}`, type `{typography.button}`, rounded `{rounded.none}`, padding 12px 16px. (Border in implementation: 1px `{colors.primary}`.)
+
+**`button-ghost`** — Plain text + chevron, no background until hover.
+- Background `{colors.canvas}`, text `{colors.primary}`, type `{typography.button}`, rounded `{rounded.none}`, padding 12px 16px.
+
+**`button-danger`** — Carbon's destructive variant.
+- Background `{colors.semantic-error}`, text `{colors.on-primary}`, type `{typography.button}`, rounded `{rounded.none}`, padding 12px 16px.
+
+### Cards & Containers
+
+**`feature-card`** — Default feature highlight tile on the home and product pages.
+- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.none}`, padding 24px. Stroked with 1px `{colors.hairline}`.
+
+**`feature-card-elevated`** — Same shape on `{colors.surface-1}` ground — used for "Recommended" cards in the latest-content carousel.
+- Background `{colors.surface-1}`, otherwise identical structure.
+
+**`product-card`** — Larger product showcase tile.
+- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.none}`, padding 32px.
+
+**`hero-card`** — Hero composition card with light-weight title, body, and CTA.
+- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.display-md}`, rounded `{rounded.none}`, padding 48px.
+
+**`cta-banner`** — Full-width blue CTA panel near the bottom of the page.
+- Background `{colors.primary}`, text `{colors.on-primary}`, type `{typography.headline}`, rounded `{rounded.none}`, padding 48px.
+
+**`resource-tile`** — Smaller article / case-study tile.
+- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-sm}`, rounded `{rounded.none}`, padding 16px.
+
+**`customer-logo-tile`** — Single tile in the customer marquee on the home page (Ferrari, Pfizer, etc.).
+- Background `{colors.canvas}`, text `{colors.ink-muted}`, type `{typography.caption}`, rounded `{rounded.none}`, padding 24px. 1px hairline border.
+
+### Inputs & Forms
+
+**`text-input`** + **`text-input-focused`** + **`text-input-error`** — Carbon's input chrome.
+- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.none}`, padding 11px 16px.
+- Focus state replaces the bottom 1px hairline with a 2px `{colors.primary}` underline (Carbon's signature focus treatment).
+- Error state adds 2px `{colors.semantic-error}` bottom underline.
+
+**`newsletter-input`** — The "Stay connected" newsletter capture on the home page.
+- Background `{colors.surface-1}`, text `{colors.ink}`, type `{typography.body}`, rounded `{rounded.none}`, padding 11px 16px. Adjacent submit is `button-primary`.
+
+### Tabs
+
+**`product-tab`** + **`product-tab-selected`** — The horizontal tab strip on product pages and the home "Recommended" carousel.
+- Default: `{colors.canvas}` background, `{colors.ink-muted}` text, rounded `{rounded.none}`, padding 16px 20px. Bottom 1px hairline.
+- Selected: `{colors.canvas}` background, `{colors.ink}` text, `{typography.body-emphasis}` weight, bottom 2px `{colors.primary}` underline. Same padding / rounding.
+
+### Navigation
+
+**`top-nav`** — Sticky white bar with the IBM logomark left, nav categories center, and search / sign-in icons right.
+- Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-sm}`, height 48px. 1px bottom hairline.
+
+**`utility-bar`** — Slim gray ribbon above the top nav with location switch, contact, search shortcuts.
+- Background `{colors.surface-1}`, text `{colors.ink-muted}`, type `{typography.caption}`, height 32px.
+
+### Footer
+
+**`footer`** — Charcoal footer (`{colors.inverse-canvas}`) with the IBM wordmark left and 5–6 columns of caption-sized links. The only inverted surface above the page break.
+- Background `{colors.inverse-canvas}`, text `{colors.inverse-ink-muted}`, type `{typography.body-sm}`, padding 64px 32px.
+
+## Do's and Don'ts
+
+### Do
+
+- Use `{rounded.none}` 0px on every CTA, card, input, and container. The flat-square aesthetic is the brand.
+- Pair Plex Sans weight 300 for display sizes (42px+) with weight 400 for body. Resist the urge to bold the headline.
+- Reserve `{colors.primary}` IBM Blue for primary CTAs, links, focused-input underlines, and CTA banner. Do not use it as a card background or eyebrow color.
+- Apply `letter-spacing: 0.16px` to body sizes. It's a Carbon precision detail and part of the typographic voice.
+- Use surface change (`canvas` → `surface-1`) and 1px hairlines for card hierarchy. Skip drop shadows.
+- Stick to sentence case for eyebrows and section labels — Carbon resists all-caps tracking.
+- Invert to `{colors.inverse-canvas}` only at the footer; the rest of the page stays light.
+
+### Don't
+
+- Don't round corners on buttons, cards, or inputs. Even 4px rounded corners break the Carbon look.
+- Don't bold display headlines. Plex Sans at weight 300 is the brand voice; weight 700 makes it look generic.
+- Don't add atmospheric depth (gradient backdrops, drop shadows, atmospheric overlays) outside the documented soft-blue hero gradient.
+- Don't introduce a second brand color. IBM Blue is the only chromatic accent; status semantics use the documented green / yellow / red.
+- Don't replace IBM Plex Sans with Inter or Helvetica without preserving the `letter-spacing: 0.16px` and weight-300 display treatment.
+- Don't use pill-shaped buttons. Carbon uses square corners; pills read as a different brand.
+- Don't write all-caps tracked eyebrows. Carbon's eyebrows are sentence case at 14px.
+
+## Responsive Behavior
+
+### Breakpoints
+
+| Name | Width | Key Changes |
+|---|---|---|
+| Max | 1584px | Carbon max grid; gutters expand |
+| Desktop-XL | 1312px | Default desktop layout |
+| Desktop | 1056px | Card grid 4-up maintained |
+| Tablet | 672px | Card grid 4-up → 2-up; nav becomes hamburger |
+| Mobile | 320px | Single-column; display-xl scales 76px → ~32px |
+
+### Touch Targets
+
+- Carbon spec: 48px minimum tap target. Buttons and inputs hold 48px on touch viewports.
+- Top-nav links grow from 36px to 48px tap height on touch.
+- Tab strip rows hold 48px tap height.
+
+### Collapsing Strategy
+
+- **Top nav**: links collapse to a hamburger overlay below 672px. Logomark and search icon stay on the bar.
+- **Utility bar**: hides below 672px to reclaim vertical space.
+- **Card grid**: 4-up → 2-up at 1056px → 1-up below 672px.
+- **Display type**: `{typography.display-xl}` 76px scales toward 42px on mobile while preserving the weight-300 treatment.
+- **Footer**: 6-column link grid → 3-column at tablet → 1-column at mobile.
+
+### Image Behavior
+
+- Customer logos in the marquee maintain aspect ratio and may collapse to 2-row scroll below 672px.
+- Hero illustrations scale proportionally; below 672px they may stack above the headline rather than sit beside it.
+
+## Iteration Guide
+
+1. Focus on ONE component at a time and reference it by its `components:` token name.
+2. Default body to `{typography.body}` at weight 400 with `letter-spacing: 0.16px`. Don't remove the tracking.
+3. When introducing a new section, decide whether it sits on `{colors.canvas}` (default) or on `{colors.surface-1}` (alternate band). The two-surface rhythm is the rhythm.
+4. Run `npx @google/design.md lint DESIGN.md` after edits.
+5. Add new variants as separate component entries (`button-primary-pressed`, `text-input-error`, `text-input-focused`).
+6. Treat IBM Blue as scarce: links, primary CTA, CTA banner, focus underline. Anything beyond that is drift.
+7. Resist rounded corners. If a designer pushes for 4px rounding, the brand is shifting away from Carbon.
+
+## Known Gaps
+
+- IBM's product surfaces (cloud-pak, watson, datacap) have richer Carbon component usage (data tables, graph cells, breadcrumbs, contextual menus) that aren't present on the marketing pages inspected — those components live in Carbon's documentation rather than in the marketing extraction.
+- Form-field error and validation styling is documented in Carbon docs; the inspected pages didn't render error states.
+- Dark mode is documented in Carbon as Gray-100 theme but isn't exposed on these marketing pages — only the footer inverts. The full dark theme is a separate Carbon palette not extracted here.
+- The community.ibm.com sub-domain uses a different chrome (community-platform white-label) that approximates Carbon but isn't strict — the documented system applies to ibm.com proper.

@@ -42,10 +42,10 @@ export default function SingleCalculationDashboard() {
       <header className="mb-6 flex flex-col gap-2 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="eyebrow">Calculation workspace</div>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-[-0.025em] text-ink md:text-display-sm">Time-dependent concrete analysis</h1>
+          <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">Time-dependent concrete analysis</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">Select a prediction model, define calibrated inputs, then explicitly calculate the complete 10,000-day response.</p>
         </div>
-        <div className="font-mono text-3xs uppercase tracking-[0.1em] text-faint">Float64 · 0–10,000 days</div>
+        <div className="font-mono text-3xs text-faint">Float64 · 0–10,000 days</div>
       </header>
 
       <div className="grid items-start gap-5 xl:grid-cols-[216px_minmax(0,1fr)]">
@@ -60,14 +60,14 @@ export default function SingleCalculationDashboard() {
                   ref={selected ? activeModelRef : null}
                   onClick={() => setModel(model.id)}
                   aria-pressed={selected}
-                  className={`relative min-w-[190px] snap-start scroll-ml-2 rounded-md px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full xl:snap-none ${selected ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
+                  className={`relative min-w-[190px] snap-start scroll-ml-2 rounded-none px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full xl:snap-none ${selected ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
                 >
-                  {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-r bg-action" aria-hidden="true" />}
+                  {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-none bg-action" aria-hidden="true" />}
                   <div className="flex items-baseline gap-2">
                     <span className="font-mono text-3xs text-faint">{model.index}</span>
                     <span className="text-body-sm font-semibold">{model.name}</span>
                   </div>
-                  <div className="mt-1.5 pl-[22px] font-mono text-3xs uppercase tracking-[0.07em] text-faint">{model.type}</div>
+                  <div className="mt-1.5 pl-[22px] font-mono text-3xs text-faint">{model.type}</div>
                 </button>
               );
             })}
@@ -79,13 +79,13 @@ export default function SingleCalculationDashboard() {
           </div>
           <div className="border-t border-line px-3.5 py-4">
             <div className="mb-2.5 flex items-center justify-between"><span className="eyebrow">Kernel</span><span className="status-dot" /></div>
-            <div className="grid grid-cols-2 rounded-md border border-line bg-surface-2 p-0.5">
+            <div className="grid grid-cols-2 rounded-none border border-line bg-surface-2 p-0.5">
               {[['rust','Rust WASM'],['js','JS Ref.']].map(([id,label]) => (
                 <button
                   key={id}
                   onClick={() => setEngine(id)}
                   aria-pressed={engine === id}
-                  className={`rounded-chip px-2 py-2 font-mono text-3xs font-semibold uppercase tracking-[0.05em] ${engine === id ? 'bg-surface text-ink shadow-sm' : 'text-faint hover:text-ink'}`}
+                  className={`rounded-none px-2 py-2 font-mono text-3xs font-semibold ${engine === id ? 'bg-surface text-ink' : 'text-faint hover:text-ink'}`}
                 >
                   {label}
                 </button>
