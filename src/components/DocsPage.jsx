@@ -500,7 +500,7 @@ export default function DocsPage() {
 
   return (
     <div className="animate-fade-in">
-      <header className="mb-6 border-b border-line pb-5">
+      <header className="workspace-header">
         <div className="eyebrow">Reference library</div>
         <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">Model standards and equations</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Implementation scope, calibrated ranges, formula mapping, and primary sources for every prediction model.</p>

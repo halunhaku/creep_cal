@@ -425,7 +425,7 @@ export default function BatchCalculator() {
 
   return (
     <div className="animate-fade-in">
-      <header className="mb-6 border-b border-line pb-5">
+      <header className="workspace-header">
         <div className="eyebrow">Batch calculation</div>
         <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">Dataset pipeline</h1>
         <p className="mt-1 max-w-2xl text-sm text-muted">Upload a calibrated input table, validate every row, calculate model outputs, and export a reproducible result matrix.</p>

@@ -127,6 +127,11 @@
     box-shadow: none;
   }
   .surface-inset { background: var(--surface-2); }
+  .workspace-header {
+    margin-bottom: 24px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 20px;
+  }
   .eyebrow {
     font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
     font-size: 14px;
@@ -227,6 +232,16 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 .recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line-strong) !important; border-radius: 0 !important; }
+
+/* The forms plugin adds its own focus ring to text inputs. The command palette
+ * owns focus at the enclosing search row, so the child must not draw a second,
+ * outward shadow across the row boundary. */
+.command-search,
+.command-search:focus {
+  border-color: transparent;
+  outline: none;
+  box-shadow: none;
+}
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
 

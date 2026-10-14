@@ -39,7 +39,7 @@ export default function SingleCalculationDashboard() {
 
   return (
     <div className="animate-fade-in">
-      <header className="mb-6 flex flex-col gap-2 border-b border-line pb-5 md:flex-row md:items-end md:justify-between">
+      <header className="workspace-header flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="eyebrow">Calculation workspace</div>
           <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">Time-dependent concrete analysis</h1>

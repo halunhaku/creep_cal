@@ -50,7 +50,7 @@ export default function KernelStatus({ workspace }) {
 
   return (
     <div
-      className="hidden items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 sm:flex"
+      className="hidden shrink-0 items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 sm:flex"
       title={badge.title}
       role="status"
       aria-live="polite"

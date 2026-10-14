@@ -137,7 +137,7 @@ export default function CommandPalette({ onClose }) {
             name="command-search"
             autoComplete="off"
             placeholder="Go to a workspace, model, kernel, saved set…"
-            className="h-12 min-w-0 flex-1 border-0 bg-transparent text-sm text-ink outline-none placeholder:text-faint focus:ring-0"
+            className="command-search h-12 min-w-0 flex-1 border-0 bg-transparent text-sm text-ink outline-none placeholder:text-faint"
           />
           <kbd className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint">ESC</kbd>
         </div>
