@@ -23,13 +23,19 @@ function selectModel(container, id) {
   fireEvent.change(container.querySelector('#batch-model'), { target: { value: id } });
 }
 
+function renderB4() {
+  const view = render(<BatchCalculator />);
+  selectModel(view.container, 'b4');
+  return view;
+}
+
 function resultSections() {
   return screen.queryAllByText(/^Result matrix$/);
 }
 
 describe('BatchCalculator dataset pipeline', () => {
   test('CSV upload validates, calculates and reports a valid count', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112\n`, 'b4.csv');
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     expect(screen.getByText(/1 rows · 4 output fields/)).toBeInTheDocument();
@@ -40,7 +46,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // was no live region, so a screen reader user got no signal that anything had
   // happened after choosing a file.
   test('the row counts are announced when they appear', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112\n`, 'b4.csv');
 
     await waitFor(() => expect(resultSections()).toHaveLength(1));
@@ -55,8 +61,7 @@ describe('BatchCalculator dataset pipeline', () => {
   test('a file with unfamiliar headers is a question, not a dead end', async () => {
     const { container } = render(<BatchCalculator />);
     // ACI's contract wants H, t0, VS, slump, fineAggregate, airContent, t, curingType.
-    // Select it explicitly: the batch defaults to the B4 contract, whose fields are
-    // different (h rather than H), and the label match below is case-sensitive.
+    // Select it explicitly so this model-specific prerequisite stays visible.
     selectModel(container, 'aci209');
     upload(container, `curingType,age,Humidity,volume_surface,slump,sand,air,t\n1,28,70,100,100,50,8,365\n`, 'own-names.csv');
 
@@ -79,7 +84,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // Regression (audit P2-1): switching model cleared the dataset unconditionally,
   // so trying another model destroyed the file you had just uploaded.
   test('switching model keeps the dataset and recomputes it', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     // The shipped B4 sweep, then switch to B4s, which shares its input contract.
     fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
     await waitFor(() => expect(resultSections()).toHaveLength(1));
@@ -208,7 +213,7 @@ describe('BatchCalculator dataset pipeline', () => {
     expect(matrix.scrollLeft).toBe(0);
   });
 
-  test('the previous model\'s output columns are dropped, not carried over', async () => {    const { container } = render(<BatchCalculator />);
+  test('the previous model\'s output columns are dropped, not carried over', async () => {    const { container } = renderB4();
     fireEvent.click(screen.getByRole('button', { name: /load demo sweep/i }));
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     const before = screen.getByText(/9 rows · 4 output fields/);
@@ -235,7 +240,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // The point of the matrix is comparing magnitudes by eye, which needs the
   // numbers to line up. Which columns are numeric is read from the data.
   test('numeric columns are right-aligned, categorical ones are not', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,note,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0, ,112\n`, 'b4.csv');
     await waitFor(() => expect(resultSections()).toHaveLength(1));
 
@@ -261,7 +266,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // failed validation as NaN — the alignment promised numbers the kernel
   // refused to compute.
   test('a hex column is not right-aligned as numeric', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,code,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,0x10,112\n`, 'b4.csv');
     await waitFor(() => expect(resultSections()).toHaveLength(1));
 
@@ -285,7 +290,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // "TypeError: (headerRow || []).map is not a function" for every .xlsx file,
   // including the four samples shipped in public/模型示例/.
   test('XLSX upload works, including the shipped samples', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     const bytes = readFileSync(resolve(process.cwd(), 'public/模型示例/B4示例.xlsx'));
     fireEvent.change(fileInput(container), { target: { files: [new File([bytes], 'B4示例.xlsx')] } });
     await waitFor(() => expect(resultSections()).toHaveLength(1));
@@ -297,13 +302,13 @@ describe('BatchCalculator dataset pipeline', () => {
     const csv = readFileSync(resolve(process.cwd(), 'public/模型示例/B4示例.csv'), 'utf8');
     const xlsxBytes = readFileSync(resolve(process.cwd(), 'public/模型示例/B4示例.xlsx'));
 
-    const first = render(<BatchCalculator />);
+    const first = renderB4();
     upload(first.container, csv, 'B4示例.csv');
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     const fromCsv = screen.getAllByText(/0\.16954/)[0].textContent;   // result_J_GPa for the RILEM §1.9 case
 
     first.unmount();
-    const second = render(<BatchCalculator />);
+    const second = renderB4();
     fireEvent.change(fileInput(second.container), { target: { files: [new File([xlsxBytes], 'B4示例.xlsx')] } });
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     const fromXlsx = screen.getAllByText(/0\.16954/)[0].textContent;
@@ -315,7 +320,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // previous dataset, so failed uploads left stale results on screen under the
   // new file name.
   test('a failed upload clears the previous results', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     fireEvent.click(screen.getByRole('button', { name: /Load demo sweep/i }));
     await waitFor(() => expect(resultSections()).toHaveLength(1));
     expect(screen.getByText(/9 rows · 4 output fields/)).toBeInTheDocument();
@@ -330,7 +335,7 @@ describe('BatchCalculator dataset pipeline', () => {
   // 0 % RH and a thousands separator turned 1,200 days into 1 — both computed and
   // both counted as Valid, while ACI/MC2010 reported the identical row.
   test('a cell that is not a number is an issue, not a silent extreme', async () => {
-    const { container } = render(<BatchCalculator />);
+    const { container } = renderB4();
     upload(container, [
       B4_REQUIRED.join(','),
       '28,28,20,20,20,,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112',   // h blank -> was 0 % RH

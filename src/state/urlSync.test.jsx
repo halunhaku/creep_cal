@@ -60,7 +60,7 @@ describe('navigation state lives in the URL', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Batch' }));
 
     await screen.findByRole('heading', { name: BATCH_HEADING });
-    expect(screen.getByLabelText(/Prediction model/i)).toHaveValue('b4');
+    expect(screen.getByLabelText(/Prediction model/i)).toHaveValue('aci209');
     await waitFor(() => expect(param('model')).toBeNull());
   });
 
@@ -161,7 +161,7 @@ describe('URL parsing', () => {
 
   test('omits defaults so a plain visit has a clean URL', () => {
     expect(buildSearch({ mode: 'single', model: 'aci209', engine: 'rust' })).toBe('');
-    expect(buildSearch({ mode: 'batch', model: 'aci209', batch: { modelId: 'b4' }, engine: 'js' })).toBe('?mode=batch&kernel=js');
+    expect(buildSearch({ mode: 'batch', model: 'aci209', batch: { modelId: 'aci209' }, engine: 'js' })).toBe('?mode=batch&kernel=js');
     expect(buildSearch({ mode: 'batch', model: 'aci209', batch: { modelId: 'aashto' }, engine: 'js' })).toBe('?mode=batch&model=aashto&kernel=js');
   });
 });

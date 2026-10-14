@@ -474,17 +474,17 @@ export default function BatchCalculator() {
                 options={MODELS.map((item) => ({ value: item.id, label: item.name }))}
               />
             </div>
-            <details className="group mt-4 overflow-hidden rounded-none border border-line bg-surface-2">
-              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--action)] [&::-webkit-details-marker]:hidden">
-                <span className="eyebrow">Schema & templates</span>
-                <span className="flex items-center gap-1.5 font-mono text-3xs text-faint">
-                  {requiredColumns.length} fields
-                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current transition-transform group-open:rotate-180" aria-hidden="true">
+            <details className="group mt-5 border-y border-line">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--action)] [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center gap-2 text-xs font-semibold text-ink">
+                  <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 fill-none stroke-current transition-transform -rotate-90 group-open:rotate-0" aria-hidden="true">
                     <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
+                  Schema & templates
                 </span>
+                <span className="font-mono text-3xs text-faint">{requiredColumns.length} required fields</span>
               </summary>
-              <div className="border-t border-line bg-surface p-3">
+              <div className="border-t border-line py-3 pl-5">
                 <div className="eyebrow">Required schema</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {requiredColumns.map((column) => (

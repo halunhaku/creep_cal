@@ -94,7 +94,7 @@ const initialState = {
   parameterSets: loadSets(),
   /** the batch pipeline's dataset and view settings, per the fields below */
   batch: {
-    modelId: 'b4',
+    modelId: 'aci209',
     rows: [],
     headers: [],
     issues: [],

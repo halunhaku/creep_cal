@@ -18,7 +18,7 @@ const MODES = new Set(['single', 'batch', 'docs']);
 const MODELS = new Set(['aci209', 'mc2010', 'b4', 'b4s', 'gl2000', 'aashto']);
 const KERNELS = new Set(['rust', 'js']);
 const DEFAULTS = { mode: 'single', model: 'aci209', engine: 'rust' };
-const DEFAULT_MODEL_BY_MODE = { single: 'aci209', batch: 'b4', docs: 'aci209' };
+const DEFAULT_MODEL_BY_MODE = { single: 'aci209', batch: 'aci209', docs: 'aci209' };
 
 const KEYS = { mode: 'mode', model: 'model', engine: 'kernel' };
 
