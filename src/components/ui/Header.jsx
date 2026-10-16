@@ -24,9 +24,9 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-line bg-surface">
+    <header className="sticky top-0 z-50 shrink-0 border-b border-line bg-surface">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] button-primary">Skip to content</a>
-      <div className="mx-auto flex h-12 w-full max-w-content items-center gap-2 px-4 min-[380px]:gap-3 lg:gap-5 lg:px-8">
+      <div className="shell-gutter flex h-12 items-center gap-2 min-[380px]:gap-3 lg:gap-5">
         <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-action font-sans text-sm font-semibold text-[var(--on-action)]">CL</div>
           {/* Two gates instead of one shrinking block: below 600px the mark stands
