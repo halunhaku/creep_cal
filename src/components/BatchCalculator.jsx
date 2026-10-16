@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 // read-excel-file v9 changed the default export to return `[{ sheet, data }]`.
 // `readSheet()` is the API that still returns plain rows for a single sheet.
@@ -7,11 +7,13 @@ import {
   ScatterChart, Scatter, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
-import { aashtoSingle, aci209Single, b4Single, b4sSingle, coerceNumber, gl2000Single, mc2010Single } from '../math/creepModels';
+import { coerceNumber } from '../math/creepModels';
+import { computeRow } from './batchCompute';
 import CustomSelect from './ui/CustomSelect';
 import Lang from './ui/Lang';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
+import { isBatchWorkerAvailable, runBatchInWorker } from './batchWorkerClient';
 import { applyMapping, suggestMapping } from './columnMapping';
 import { CHART, axisTitleStyle, formatLogTick, tickGap, tickStyle } from './chartTheme';
 
@@ -44,15 +46,6 @@ const SAMPLE_DATA = {
     fci: 41, H: 70, vs: 89, ti: 7, tc: 7, t
   })),
 };
-
-// A row is only "valid" when every output is a finite number. Silently writing
-// the literal string "NaN" into the result matrix hides broken input rows.
-function formatResult(value, digits, label) {
-  if (!Number.isFinite(value)) {
-    throw new RangeError(`${label} could not be evaluated from these inputs · 输入无法产生有效结果`);
-  }
-  return value.toFixed(digits);
-}
 
 /**
  * Is this cell a number? Must agree with `coerceNumber`, which is what the
@@ -97,62 +90,6 @@ function BatchTooltip({ active, payload, label, xKey, yKey }) {
   );
 }
 
-function computeRow(modelId, row) {
-  if (modelId === 'aci209') {
-    return { result_phi: formatResult(aci209Single(row), 4, 'φ (Creep Coeff.)') };
-  }
-  if (modelId === 'mc2010') {
-    const { phi, phi_bc: phiBc, phi_dc: phiDc, nonlinear_factor: nonlinearFactor } = mc2010Single(row);
-    return {
-      result_phi: formatResult(phi, 4, 'φ (Total)'),
-      result_phi_bc: formatResult(phiBc, 4, 'φbc (Basic)'),
-      result_phi_dc: formatResult(phiDc, 4, 'φdc (Drying)'),
-      result_nonlinear_factor: formatResult(nonlinearFactor, 4, 'Nonlinear Factor'),
-    };
-  }
-  if (modelId === 'b4') {
-    const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4Single(row);
-    return {
-      result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
-      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
-      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
-      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
-    };
-  }
-  if (modelId === 'b4s') {
-    const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = b4sSingle(row);
-    return {
-      result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
-      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
-      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
-      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
-    };
-  }
-  if (modelId === 'gl2000') {
-    // No autogenous term in GL2000: epsilonAU is an explicit 0, exactly as
-    // the kernel returns it, so the matrix keeps the B4 column shape.
-    const { J_GPa: JGPa, epsilonSH, epsilonAU, epsilonTotal } = gl2000Single(row);
-    return {
-      result_J_GPa: formatResult(JGPa, 6, 'J (1/GPa)'),
-      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
-      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
-      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
-    };
-  }
-  if (modelId === 'aashto') {
-    // Coefficient model like ACI 209: ψ plus the shrinkage triplet, with the
-    // same explicit-zero autogenous the GL2000 branch uses for column shape.
-    const { psi, epsilonSH, epsilonAU, epsilonTotal } = aashtoSingle(row);
-    return {
-      result_psi: formatResult(psi, 4, 'ψ (Creep Coeff.)'),
-      result_epsilonSH: formatResult(epsilonSH, 9, 'εsh (Drying)'),
-      result_epsilonAU: formatResult(epsilonAU, 9, 'εau (Autogenous)'),
-      result_epsilonTotal: formatResult(epsilonTotal, 9, 'εsh,total'),
-    };
-  }
-  return {};
-}
-
 export default function BatchCalculator() {
   // The parsed dataset and its results cannot be recreated without the file, so
   // they live in the store and survive leaving the workspace; parsing state and
@@ -172,6 +109,11 @@ export default function BatchCalculator() {
   } = batch;
   const [isProcessing, setIsProcessing] = useState(false);
   const [batchError, setBatchError] = useState('');
+  // Chunked-compute progress for large files ({done,total} or null).
+  const [progress, setProgress] = useState(null);
+  // Guards async compute chunks: a newer processData/model-switch/upload
+  // invalidates in-flight chunks, same role readSeq plays for parsing.
+  const computeSeq = useRef(0);
   // View-only toggles stay local: unlike xKey/yKey/chartType they are not part
   // of the shared dataset, same split as the single-analysis chart.
   const [logX, setLogX] = useState(false);
@@ -248,6 +190,9 @@ export default function BatchCalculator() {
   // lands while the file is still parsing would otherwise clear the name.
   const processData = (data, preferredXKey = 't', parseIssues = [], modelId = activeModel, fileLabel = '') => {
     const target = MODELS.find((item) => item.id === modelId) ?? model;
+    // Any new computation invalidates in-flight async chunks.
+    computeSeq.current += 1;
+    const seq = computeSeq.current;
     const name = fileLabel ? { fileName: fileLabel } : {};
     if (!data?.length) {
       clearDataset(); updateBatch({ issues: parseIssues, ...name });
@@ -278,27 +223,85 @@ export default function BatchCalculator() {
     }
 
     const nextIssues = [...parseIssues];
-    const nextResults = data.map((row, index) => {
-      try { return { ...row, ...computeRow(modelId, row), __status:'valid' }; }
-      catch (error) {
-        nextIssues.push({ row:index + 2, field:'Input', value:'—', message:error.message });
-        return { ...row, __status:'invalid' };
+    // Small files stay synchronous so single-row edits, samples and unit tests
+    // keep exact current timing. Large files yield between chunks so the UI
+    // stays interactive; progress is reported and stale chunks are dropped.
+    const SYNC_ROWS = 1000;
+    const CHUNK_ROWS = 1000;
+    const finishCompute = (results, foundIssues) => {
+      // The mapping panel is answered or irrelevant by the time rows exist: leaving
+      // `pendingRows`/`mapping` behind kept a panel on screen claiming this file was
+      // missing columns, and its Apply button recomputed the *previous* file's rows.
+      updateBatch({
+        rows: results,
+        issues: foundIssues,
+        pendingRows: [],
+        mapping: [],
+        xKey: inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '',
+        yKey: target.resultKeys[0],
+        ...name,
+      });
+      setBatchError('');
+      setProgress(null);
+      setIsProcessing(false);
+    };
+    if (data.length <= SYNC_ROWS) {
+      const nextResults = data.map((row, index) => {
+        try { return { ...row, ...computeRow(modelId, row), __status:'valid' }; }
+        catch (error) {
+          nextIssues.push({ row:index + 2, field:'Input', value:'—', message:error.message });
+          return { ...row, __status:'invalid' };
+        }
+      });
+      finishCompute(nextResults, nextIssues);
+      return;
+    }
+    setProgress({ done: 0, total: data.length });
+    function startChunkLoop() {
+    const nextResults = new Array(data.length);
+    let cursor = 0;
+    const step = () => {
+      if (computeSeq.current !== seq) return;
+      const end = Math.min(cursor + CHUNK_ROWS, data.length);
+      for (let index = cursor; index < end; index += 1) {
+        try { nextResults[index] = { ...data[index], ...computeRow(modelId, data[index]), __status:'valid' }; }
+        catch (error) {
+          nextIssues.push({ row:index + 2, field:'Input', value:'—', message:error.message });
+          nextResults[index] = { ...data[index], __status:'invalid' };
+        }
       }
-    });
-    // The mapping panel is answered or irrelevant by the time rows exist: leaving
-    // `pendingRows`/`mapping` behind kept a panel on screen claiming this file was
-    // missing columns, and its Apply button recomputed the *previous* file's rows.
-    updateBatch({
-      rows: nextResults,
-      issues: nextIssues,
-      pendingRows: [],
-      mapping: [],
-      xKey: inputHeaders.includes(preferredXKey) ? preferredXKey : inputHeaders[0] || '',
-      yKey: target.resultKeys[0],
-      ...name,
-    });
-    setBatchError('');
-    setIsProcessing(false);
+      cursor = end;
+      if (computeSeq.current !== seq) return;
+      if (cursor < data.length) {
+        setProgress({ done: cursor, total: data.length });
+        setTimeout(step, 0);
+        return;
+      }
+      finishCompute(nextResults, nextIssues);
+    };
+    setTimeout(step, 0);
+    }
+    // Worker first (kernel-only bundle), main-thread chunks as fallback.
+    // jsdom and worker-less environments reject with WORKER_UNAVAILABLE.
+    if (isBatchWorkerAvailable()) {
+      runBatchInWorker(modelId, data, {
+        onProgress: (done, total) => {
+          if (computeSeq.current !== seq) return;
+          setProgress({ done, total });
+        },
+        isCancelled: () => computeSeq.current !== seq,
+      }).then(({ results, issues }) => {
+        if (computeSeq.current !== seq) return;
+        finishCompute(results, issues);
+      }).catch((error) => {
+        if (computeSeq.current !== seq) return;
+        if (error?.message === 'WORKER_CANCELLED') return;
+        startChunkLoop();
+      });
+      return;
+    }
+    startChunkLoop();
+    return;
   };
 
   const readFile = async (file) => {
@@ -443,17 +446,22 @@ export default function BatchCalculator() {
   // Points carry their matrix row so the tooltip can point back at it. Invalid
   // rows have no result cells, so they never reach the chart — the caption
   // below counts them instead of silently dropping them.
-  const basePoints = batchResults.map((row, index) => ({ x: Number(row[xKey]), y: Number(row[yKey]), row: index + 1 })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
-  const filteredPoints = (logX || logY) ? basePoints.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : basePoints;
-  const visiblePoints = logX ? filteredPoints.map((point) => ({ ...point, plotX: Math.log10(point.x) })) : filteredPoints;
-  // Scatter renders one SVG circle per point: decimate past 2000 so a 20k-row
-  // file stays interactive. Line mode keeps every point (it is already sorted
-  // and brushed).
-  const scatterStep = Math.max(1, Math.ceil(visiblePoints.length / MAX_SCATTER_POINTS));
-  const scatterPoints = visiblePoints.filter((_, index) => index % scatterStep === 0);
-  // Line mode joins points in file order, so an unsorted X column draws a
-  // meaningless zigzag — sort a copy, never the matrix order.
-  const linePoints = [...visiblePoints].sort((a, b) => a.x - b.x);
+  // Memoized: pure derivation over batchResults/keys/scales; avoids re-walking
+  // up to 20k rows on every unrelated render.
+  const { basePoints, visiblePoints, scatterPoints, linePoints } = useMemo(() => {
+    const base = batchResults.map((row, index) => ({ x: Number(row[xKey]), y: Number(row[yKey]), row: index + 1 })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+    const filtered = (logX || logY) ? base.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : base;
+    const visible = logX ? filtered.map((point) => ({ ...point, plotX: Math.log10(point.x) })) : filtered;
+    // Scatter renders one SVG circle per point: decimate past 2000 so a 20k-row
+    // file stays interactive. Line mode keeps every point (it is already sorted
+    // and brushed).
+    const step = Math.max(1, Math.ceil(visible.length / MAX_SCATTER_POINTS));
+    const scatter = visible.filter((_, index) => index % step === 0);
+    // Line mode joins points in file order, so an unsorted X column draws a
+    // meaningless zigzag — sort a copy, never the matrix order.
+    const line = [...visible].sort((a, b) => a.x - b.x);
+    return { basePoints: base, filteredPoints: filtered, visiblePoints: visible, scatterPoints: scatter, linePoints: line, scatterStep: step };
+  }, [batchResults, xKey, yKey, logX, logY]);
   const yHasNegative = visiblePoints.some((point) => point.y < 0);
   const excludedCount = batchResults.length - basePoints.length;
   const logHiddenCount = basePoints.length - visiblePoints.length;
@@ -528,7 +536,7 @@ export default function BatchCalculator() {
                     <code key={column} className="rounded-none border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
                   ))}
                 </div>
-                <button onClick={downloadTemplate} className="button-secondary mt-4 w-full">Download template</button>
+                <button type="button" onClick={downloadTemplate} className="button-secondary mt-4 w-full">Download template</button>
                 {model.sampleFiles && <div className="mt-4">
                   <div className="eyebrow">Shipped samples · <span lang="zh-CN">官方示例</span></div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -559,7 +567,7 @@ export default function BatchCalculator() {
               <span className="mt-3 text-sm font-semibold text-ink">Drop CSV or XLSX here</span>
               <span className="mt-1 text-xs text-muted" lang="zh-CN">拖入文件，或点击选择本地数据表</span>
               <span className="mt-3 rounded-none border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs text-muted">
-                {isProcessing ? 'Processing…' : 'Choose file'}
+                {isProcessing ? (progress ? `Processing… ${progress.done.toLocaleString('en-US')}/${progress.total.toLocaleString('en-US')}` : 'Processing…') : 'Choose file'}
               </span>
               <input
                 type="file"
@@ -572,6 +580,7 @@ export default function BatchCalculator() {
             <div className="mt-3 flex flex-col items-start justify-between gap-1 text-xs text-muted min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-3">
               <span>{fileName || 'No dataset selected'}</span>
               <button
+                type="button"
                 onClick={loadSampleDataset}
                 disabled={isProcessing}
                 className="inline-flex min-h-8 items-center font-semibold text-action hover:underline"
@@ -608,6 +617,7 @@ export default function BatchCalculator() {
           <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
             <span className="text-xs text-muted">Rows are only calculated once every required column is mapped.</span>
             <button
+              type="button"
               onClick={applyColumnMapping}
               disabled={mapping.some((entry) => !entry.source)}
               className="button-primary !min-h-9 !px-3 !text-1xs"
@@ -676,7 +686,7 @@ export default function BatchCalculator() {
                 {batchResults.length > 100 && <Lang text={` · 表格显示前 100 行，导出包含全部 ${batchResults.length} 行`} />}
               </div>
             </div>
-            <button onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button>
+            <button type="button" onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button>
           </div>
           <div id="batch-matrix-scroll-hint" className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint md:hidden">
             <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 fill-none stroke-current" aria-hidden="true">
@@ -749,6 +759,7 @@ export default function BatchCalculator() {
                 {['scatter', 'line'].map((type) => (
                   <button
                     key={type}
+                    type="button"
                     onClick={() => updateBatch({ chartType: type })}
                     className={`rounded-none px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
                   >
@@ -757,6 +768,7 @@ export default function BatchCalculator() {
                 ))}
               </div>
               <button
+                type="button"
                 onClick={() => setLogX((value) => !value)}
                 aria-pressed={logX}
                 className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
@@ -764,6 +776,7 @@ export default function BatchCalculator() {
                 {logX ? 'Log X' : 'Linear X'}
               </button>
               <button
+                type="button"
                 onClick={() => setLogY((value) => !value)}
                 aria-pressed={logY}
                 className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-action-border !bg-action-soft !text-action' : ''}`}

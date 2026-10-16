@@ -21,7 +21,9 @@ export function setKernelStatus(next) {
   if (next.state === 'failed') kernelFailure = next.detail ?? 'unknown error';
   if (next.state === 'ready' && next.engine === 'rust') kernelFailure = null;
   kernelStatus = { ...kernelStatus, ...next, failure: kernelFailure };
-  kernelStatusListeners.forEach((listener) => listener());
+  kernelStatusListeners.forEach((listener) => {
+    listener();
+  });
 }
 
 export function subscribeKernelStatus(listener) {

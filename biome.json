@@ -1,0 +1,36 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "files": {
+    "includes": ["**", "!!**/dist", "!src/wasm-pkg", "!src/wasm-pkg/**", "!coverage", "!coverage/**"]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "correctness": {
+        "useExhaustiveDependencies": "off"
+      }
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/math/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useExponentiationOperator": "off"
+          }
+        }
+      }
+    }
+  ]
+}

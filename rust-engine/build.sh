@@ -1,4 +1,6 @@
 #!/bin/bash
+# 始终以 rust-engine/ 为工作目录，支持从仓库根目录经 npm run build:wasm 调用。
+cd "$(dirname "$0")"
 
 # Rust WebAssembly 构建脚本
 
@@ -27,6 +29,9 @@ echo "📦 构建 WebAssembly 包..."
 wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
 
 if [ $? -eq 0 ]; then
+    # wasm-pack rewrites the out-dir `.gitignore` to a bare `*`; this package
+    # is committed on purpose, so restore the curated file.
+    git -C .. checkout -- src/wasm-pkg/.gitignore 2>/dev/null || true
     echo "✅ WebAssembly 构建成功！"
     echo "📁 输出目录: ../src/wasm-pkg"
     
