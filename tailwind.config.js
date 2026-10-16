@@ -44,6 +44,11 @@ module.exports = {
         mark: '0px', chip: '0px', full: '9999px'
       },
       maxWidth: { content: '1584px', read: '760px' },
+      // A bare `var()` inside `shadow-[...]` is ambiguous, so Tailwind compiles it as
+      // a shadow COLOUR and emits no box-shadow at all — the three popover consumers
+      // (palette dialog, batch and single chart tooltips) all rendered flat. Naming
+      // the token is what lets Tailwind emit the declaration.
+      boxShadow: { popover: 'var(--shadow-popover)' },
     },
   },
   plugins: [require('@tailwindcss/forms'), require('@tailwindcss/container-queries')],
