@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import App from '../App';
 import { getState, saveParameterSet } from '../state/appStore';
+import { revealSection } from './ui/revealSection';
 
 const CALC_HEADING = /time-dependent concrete analysis/i;
 
@@ -98,4 +99,100 @@ describe('command palette', () => {
     expect(within(dialog).queryAllByRole('option')).toHaveLength(0);
     expect(getState().mode).toBe('single');
   });
+});
+
+/**
+ * Regression: the palette used to be keyboard-trapped only by the input's own
+ * handler. Its focusable node count was one, so a single Tab walked focus out of a
+ * dialog that `aria-modal` keeps on screen — and Escape, bound to that same input,
+ * stopped being delivered. Closing also dropped focus on <body>, restarting the tab
+ * order from the top of the document.
+ */
+describe('command palette keyboard containment', () => {
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+  test('focus returns to whatever opened the palette', async () => {
+    await renderApp();
+    const opener = screen.getByRole('button', { name: /search/i });
+    opener.focus();
+    expect(document.activeElement).toBe(opener);
+
+    await openPalette();
+    fireEvent.keyDown(within(screen.getByRole('dialog')).getByRole('combobox'), { key: 'Escape' });
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(opener);
+  });
+
+  test('Tab is consumed by the dialog instead of leaving it', async () => {
+    await renderApp();
+    const { dialog, input } = await openPalette();
+
+    // fireEvent returns false when a handler called preventDefault.
+    expect(fireEvent.keyDown(input, { key: 'Tab' })).toBe(false);
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
+  test('Escape is handled at the dialog, so it survives focus moving off the input', async () => {
+    await renderApp();
+    const { dialog } = await openPalette();
+    const list = within(dialog).getByRole('listbox');
+
+    // Not the input: the old binding lived on the input alone.
+    fireEvent.keyDown(list, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  test('arrowing the selection scrolls it back into the list', async () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      await renderApp();
+      const { input } = await openPalette();
+      scrollIntoView.mockClear();
+
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+      expect(scrollIntoView).toHaveBeenCalled();
+      expect(scrollIntoView.mock.calls.at(-1)[0]).toMatchObject({ block: 'nearest' });
+    } finally {
+      delete Element.prototype.scrollIntoView;
+    }
+  });
+
+  /**
+   * Regression: the reference library is a lazy chunk, so the section's id does not
+   * exist at click time. The old code assigned the hash one frame after switching
+   * workspaces anyway — the browser never retries, so the address bar claimed a
+   * section the view had not scrolled to.
+   */
+  test('a section jump waits for the section to exist', async () => {
+    window.location.hash = '';
+    revealSection('formulas-lazy');
+    expect(window.location.hash).toBe('');
+
+    const section = document.createElement('div');
+    section.id = 'formulas-lazy';
+    document.body.append(section);
+    try {
+      await nextFrame();
+      await nextFrame();
+      expect(window.location.hash).toBe('#formulas-lazy');
+    } finally {
+      section.remove();
+      window.location.hash = '';
+    }
+  });
+
+  test('a section that never arrives is never claimed in the URL', async () => {
+    window.location.hash = '';
+    revealSection('formulas-never', Date.now() - 1);
+    await nextFrame();
+    await nextFrame();
+    expect(window.location.hash).toBe('');
+  });
+});
+
+afterEach(() => {
+  window.location.hash = '';
 });

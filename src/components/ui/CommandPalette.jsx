@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   loadParameterSet,
   setEngine,
@@ -6,6 +6,7 @@ import {
   setModel,
   useAppSelector,
 } from '../../state/appStore';
+import { revealSection } from './revealSection';
 
 const MODELS = [
   { id: 'aci209', name: 'ACI 209R-92' },
@@ -15,6 +16,8 @@ const MODELS = [
   { id: 'gl2000', name: 'GL2000' },
   { id: 'aashto', name: 'AASHTO LRFD' },
 ];
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * The global entry point the audit asked for.
@@ -35,6 +38,26 @@ export default function CommandPalette({ onClose }) {
   const sets = useAppSelector((state) => state.parameterSets);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
+  const dialogRef = useRef(null);
+  const listRef = useRef(null);
+  // Read during the first render, before the input's autoFocus lands in the commit
+  // phase, so this is still whatever opened the palette.
+  const openerRef = useRef(document.activeElement);
+
+  // Closing unmounts the dialog while its input holds focus, which would drop the
+  // user back on <body> and restart the tab order from the top of the document.
+  useEffect(() => () => {
+    const opener = openerRef.current;
+    if (opener instanceof HTMLElement && document.contains(opener)) opener.focus();
+  }, []);
+
+  // The list is height-capped, so without this the selection walks out of view and
+  // Enter runs a command the user cannot see.
+  useEffect(() => {
+    const option = listRef.current?.querySelector('[role="option"][aria-selected="true"]');
+    // jsdom does not implement scrollIntoView; there is nothing to scroll there anyway.
+    option?.scrollIntoView?.({ block: 'nearest', behavior: 'instant' });
+  }, [active, query]);
 
   const commands = useMemo(() => {
     const list = [
@@ -81,9 +104,8 @@ export default function CommandPalette({ onClose }) {
         hint: `${MODELS.find((item) => item.id === model)?.name ?? model}`,
         run: () => {
           setMode('docs');
-          // After the workspace renders, jump to the section. The sticky header
-          // offset is handled by scroll-margin-top on [id].
-          requestAnimationFrame(() => { window.location.hash = `#${hash}`; });
+          // The sticky header offset is handled by scroll-margin-top on [id].
+          revealSection(hash);
         },
       });
     }
@@ -102,7 +124,21 @@ export default function CommandPalette({ onClose }) {
     command.run();
   };
 
-  const onKeyDown = (event) => {
+  // Bound to the dialog rather than the input. The input is the only focusable node,
+  // so a single Tab used to leave a dialog that `aria-modal` keeps on screen — and
+  // Escape went with it, leaving the palette undismissable by keyboard.
+  const onDialogKeyDown = (event) => {
+    if (event.key === 'Tab') {
+      const focusable = dialogRef.current?.querySelectorAll(FOCUSABLE);
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const current = document.activeElement;
+      const escaped = !dialogRef.current.contains(current);
+      if (event.shiftKey && (current === first || escaped)) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && (current === last || escaped)) { event.preventDefault(); first.focus(); }
+      return;
+    }
     if (event.key === 'Escape') { event.preventDefault(); onClose(); return; }
     if (event.key === 'ArrowDown') { event.preventDefault(); setActive((index) => Math.min(index + 1, matches.length - 1)); return; }
     if (event.key === 'ArrowUp') { event.preventDefault(); setActive((index) => Math.max(index - 1, 0)); return; }
@@ -113,11 +149,13 @@ export default function CommandPalette({ onClose }) {
   return (
     <div className="fixed inset-0 z-[70] flex items-start justify-center bg-black/50 px-4 pt-[12vh]" onMouseDown={onClose}>
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
         className="w-full max-w-[560px] overflow-hidden rounded-none border border-line-strong bg-surface shadow-[var(--shadow-popover)]"
         onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={onDialogKeyDown}
       >
         <div className="flex items-center gap-3 border-b border-line px-4 focus-within:ring-2 focus-within:ring-inset focus-within:ring-action">
           <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 fill-none stroke-current text-faint" aria-hidden="true">
@@ -128,7 +166,6 @@ export default function CommandPalette({ onClose }) {
             autoFocus
             value={query}
             onChange={(event) => { setQuery(event.target.value); setActive(0); }}
-            onKeyDown={onKeyDown}
             role="combobox"
             aria-expanded="true"
             aria-controls="command-list"
@@ -142,7 +179,7 @@ export default function CommandPalette({ onClose }) {
           <kbd className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint">ESC</kbd>
         </div>
 
-        <ul id="command-list" role="listbox" aria-label="Commands" className="max-h-[52vh] overflow-y-auto py-1">
+        <ul ref={listRef} id="command-list" role="listbox" aria-label="Commands" className="max-h-[52vh] overflow-y-auto py-1">
           {matches.length === 0 && (
             <li className="px-4 py-6 text-center text-xs text-muted">Nothing matches “{query}”.</li>
           )}
