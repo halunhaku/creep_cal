@@ -173,9 +173,11 @@ npm run screenshots
 
 `scripts/capture-screenshots.mjs` serves `dist/`, drives headless Chrome over the DevTools Protocol, clicks through the three workspaces (loading the demo dataset and running a kernel comparison where that is the point of the shot) and writes `docs/images/`. It needs Chrome; set `CHROME_PATH` if it is not in the usual place.
 
+Two runs over one unchanged build produce byte-identical files, which is what makes a diff of `docs/images/` worth reading. Nothing else needs doing to keep that true: the calculation workspace renders the kernel's own measured runtime, and the script stamps those values out — along with the clock time on each log line — before capturing, the way `dom-snapshot.mjs` normalises the same values before hashing. So the timing readouts in the images below read `— ms` rather than a number nobody could reproduce. If a change to the app's markup moves those readouts out from under the script, the capture fails loudly instead of quietly going back to churning.
+
 ### Proving a refactor is invisible
 
-Restyling and reformatting must not change what the app renders, and the calculation workspace has no deterministic screenshot (its captures contain live timings). This hashes the rendered DOM of six states — both kernels, a finished comparison, the batch pipeline empty and loaded, the reference library — with millisecond values, ratios and clock times normalised away:
+Restyling and reformatting must not change what the app renders, which the screenshots above now cover at their viewports. For the states that are not reachable from a URL — a kernel comparison in flight, the batch pipeline empty and loaded — this hashes the rendered DOM of six states, with the same millisecond values, ratios and clock times normalised away:
 
 ```bash
 npm run build

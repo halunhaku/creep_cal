@@ -11,11 +11,19 @@
  * It serves dist/ with `vite preview`, drives headless Chrome over the DevTools
  * Protocol (clicking through the three workspaces), and writes one PNG per entry
  * in SHOTS. Requires Chrome; override its location with CHROME_PATH.
+ *
+ * Two runs over one unchanged build produce byte-identical images. The
+ * calculation workspace renders the kernel's own measured runtime, which differs
+ * every run and used to make six of these files churn on nothing; `prepare()`
+ * stamps those values out before capturing, the way dom-snapshot.mjs normalises
+ * them before hashing. If you change what the app renders, expect a real diff;
+ * if you get one without meaning to, a timing has escaped the stamping.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stampVolatile } from './stampVolatile.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(ROOT, 'docs/images');
@@ -178,6 +186,16 @@ async function prepare(cdp, shot) {
   await cdp.evaluate('document.fonts.ready.then(() => true)');
   // Let the fade-in and any chart layout settle too.
   await sleep(700);
+  // Then remove the last thing that still moves: the kernel's own measured
+  // runtime, which is rendered into the page and differs on every run. See
+  // stampVolatile.mjs for why it is stamped rather than left alone.
+  const stamped = await cdp.evaluate(`(${stampVolatile.toString()})(document.body)`);
+  // A capture of the calculation workspace always shows a "Last compute"
+  // readout, so stamping nothing there means the markup moved out from under
+  // this script and the images have quietly gone nondeterministic again.
+  if (shot.workspace === 'single' && stamped === 0) {
+    throw new Error(`stamped no timings in ${shot.file} — the readouts this removes have moved`);
+  }
 }
 
 async function main() {
@@ -202,6 +220,22 @@ async function main() {
     '--no-default-browser-check',
     '--hide-scrollbars',
     '--force-device-scale-factor=1',
+    // Stamping the timings out (see stampVolatile.mjs) left one thing still
+    // moving: a 17px stroked icon in the header antialiased two different ways
+    // between runs, 14 sub-perceptual pixels at a time. It is a raster race —
+    // the capture lands before the compositor has finished — so take the frame
+    // only once every stage has run. The timeout one is the 5s content-rendering
+    // deadline, which otherwise abandons that wait and returns the early frame.
+    //
+    // `--disable-gpu` removes the last of it. Software raster is not what moves
+    // the pixels: with these three flags the output is byte-identical to the
+    // same capture without it on most runs, and it is only the occasional run
+    // that diverges. Measured against the previously committed images, the whole
+    // flag set changes text antialiasing by at most 57/255 (mean ~1), and every
+    // change above that threshold is a stamped timing.
+    '--run-all-compositor-stages-before-draw',
+    '--disable-new-content-rendering-timeout',
+    '--disable-gpu',
     'about:blank',
   ], { stdio: 'ignore' });
 
