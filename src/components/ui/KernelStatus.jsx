@@ -19,7 +19,7 @@ import { getKernelStatus, subscribeKernelStatus } from '../../wasm/creepEngine';
  */
 const BATCH = {
   label: 'Reference kernels',
-  title: 'Batch rows are evaluated with the JavaScript reference kernels, for all four models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make the rows incomparable.',
+  title: 'Batch rows are evaluated with the JavaScript reference kernels, for all six models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make the rows incomparable.',
 };
 
 function describe(kernel, workspace) {

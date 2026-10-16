@@ -21,7 +21,7 @@
 
 ## Overview
 
-CREEP_LAB is a professional concrete creep and shrinkage calculation platform. It integrates ACI 209R-92, fib Model Code 2010, RILEM B4, and RILEM B4s behind a Scientific Workbench interface: precise grouped inputs, explicit calculation state, engineering-blue emphasis, decomposition readouts, model-aware charts, and standards-oriented reference pages.
+CREEP_LAB is a professional concrete creep and shrinkage calculation platform. It integrates ACI 209R-92, fib Model Code 2010, RILEM B4, RILEM B4s, GL2000, and AASHTO LRFD behind a Scientific Workbench interface: precise grouped inputs, explicit calculation state, engineering-blue emphasis, decomposition readouts, model-aware charts, and standards-oriented reference pages.
 
 The app is designed for local engineering exploration: tune model parameters, calculate long-term curves, import batch datasets, compare outputs, and read model documentation without leaving the workspace.
 
@@ -39,7 +39,7 @@ $$
 | Batch pipeline | Upload CSV / XLSX cases, validate the schema and rows, inspect the result matrix, and export calculated outputs. |
 | Result visualizer | Separate compliance and shrinkage curves, inspect decomposed values, switch linear/log time, and export chart data. |
 | Reference library | Read implementation scope, calibrated ranges, equations, source mapping, limitations, and official references. |
-| Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels, with a parity suite and an in-app timing comparison between them. The batch pipeline computes with the reference kernels for all four models — the Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it there would compute different models with different kernels. |
+| Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels, with a parity suite and an in-app timing comparison between them. The batch pipeline computes with the reference kernels for all six models — the Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it there would compute different models with different kernels. |
 | Command palette | `⌘K` / `Ctrl+K`, or the header's Search button, reaches every destination from anywhere: workspaces, models, kernels, saved parameter sets, the reference library's sections, and the theme. |
 | Shareable state | The workspace, model and kernel live in the URL (`?mode=docs&model=b4&kernel=js`), so a view can be linked to, Back and Forward move between workspaces, and a refresh keeps the edited parameters. |
 
@@ -47,7 +47,7 @@ $$
 
 ```
 /?mode=single|batch|docs   which workspace
-/?model=aci209|mc2010|b4|b4s   which model (calculation and reference library)
+/?model=aci209|mc2010|b4|b4s|gl2000|aashto   which model (calculation and reference library)
 /?kernel=rust|js           which engine the calculation workspace uses
 ```
 
@@ -122,6 +122,8 @@ The computation layer is intentionally split: JavaScript kernels provide readabl
 | fib Model Code 2010 | fib European model code | $\phi(t,t_0)=\phi_{bc}+\phi_{dc}$ |
 | B4 | Bažant / Northwestern University | Compliance $J(t,t')$ and shrinkage |
 | B4S | Simplified B4 variant | Compliance $J(t,t')$ and shrinkage |
+| GL2000 | Gardner & Lockman 2001, via ACI 209.2R-08 Appendix A.4 | Compliance $J(t,t')$ and shrinkage |
+| AASHTO LRFD | AASHTO LRFD Bridge Design Specifications, Article 5.4.2.3 | Creep coefficient $\psi(t,t_i)$ and shrinkage |
 
 Each model is exposed through both a JavaScript reference implementation and a Rust WebAssembly engine.
 
@@ -261,6 +263,8 @@ creep_cal/
       Mc2010Calculator.jsx
       B4Calculator.jsx
       B4sCalculator.jsx
+      Gl2000Calculator.jsx
+      AashtoCalculator.jsx
       BatchCalculator.jsx
       DocsPage.jsx
       SingleCalculationDashboard.jsx

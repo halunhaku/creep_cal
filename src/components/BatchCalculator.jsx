@@ -15,7 +15,7 @@ import { MODELS } from './batchModels';
 import { applyMapping, suggestMapping } from './columnMapping';
 import { CHART, axisTitleStyle, formatLogTick, tickGap, tickStyle } from './chartTheme';
 
-const BATCH_KERNEL_NOTE = 'Every row is evaluated with the reference kernels, for all four models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.';
+const BATCH_KERNEL_NOTE = 'Every row is evaluated with the reference kernels, for all six models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.';
 
 const SAMPLE_DATA = {
   aci209: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({

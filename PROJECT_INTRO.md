@@ -1,14 +1,14 @@
 # CREEP_LAB 项目介绍
 
-CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。项目集成 ACI 209R-92、fib Model Code 2010、B4、B4S 四类常用预测模型，提供单点参数分析、批量数据计算和模型公式文档浏览能力。
+CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。项目集成 ACI 209R-92、fib Model Code 2010、RILEM B4、RILEM B4s、GL2000、AASHTO LRFD 六类预测模型，提供单点参数分析、批量数据计算和模型公式文档浏览能力。
 
-平台采用 React + Vite 构建前端界面，使用 Tailwind CSS 和项目内的 [HALUNHAKU 设计规范](docs/design-system.md) 统一视觉风格。计算层同时提供 JavaScript 参考实现与 Rust WebAssembly 高性能实现，用户可以在单点计算场景中切换引擎，便于对比结果、验证模型和观察性能差异。
+平台采用 React + Vite 构建前端界面，使用 Tailwind CSS 和项目内的 [IBM/Carbon 设计规范](docs/design-system.md) 统一视觉风格（IBM Plex Sans、IBM Blue、方角无阴影面板）。计算层同时提供 JavaScript 参考实现与 Rust WebAssembly 高性能实现，用户可以在单点计算场景中切换引擎，便于对比结果、验证模型和观察性能差异。批量管线六个模型统一用 JavaScript 参考内核计算（Rust 仅暴露 ACI 209 和 MC 2010 的 batch 入口，混用会导致行间不可比）。
 
 ## 核心功能
 
-- 单点计算：选择模型和计算引擎，调整模型参数，生成指定时间范围内的徐变或收缩结果。
+- 单点计算：选择模型和计算引擎，调整模型参数，显式计算后生成 10,000 天时程曲线，并在目标龄期查看分解值。
 - 批量计算：导入 CSV 或 XLSX 数据表，每行作为一组工况自动计算，并输出结果矩阵。
-- 结果可视化：批量结果支持散点图和折线图，便于观察参数与计算结果之间的趋势关系。
+- 结果可视化：分离的合规曲线与收缩曲线，支持线性/对数时间轴切换、分解值查看和图表数据导出。
 - 模型文档：内置模型说明、输入参数、输出量、参考文献和核心公式，并可下载各模型的 Markdown 说明文件。
 - WASM 内核：Rust 计算模块已预编译到 `src/wasm-pkg/`，前端通过动态加载方式调用。
 
@@ -17,11 +17,11 @@ CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。�
 | 层级 | 内容 |
 | --- | --- |
 | 前端框架 | React 19、Vite |
-| 样式系统 | Tailwind CSS、CSS 变量、HALUNHAKU Design System |
+| 样式系统 | Tailwind CSS、CSS 变量、IBM/Carbon Design System |
 | 图表 | Recharts |
 | 文档公式 | KaTeX 渲染 + 模型说明 Markdown 下载 |
 | 数据导入 | PapaParse、read-excel-file |
-| 计算内核 | JavaScript shared kernels、Rust WebAssembly |
+| 计算内核 | JavaScript 参考内核（`src/math/creepModels.js`）、Rust WebAssembly（`src/wasm-pkg/`，源码在 `rust-engine/`） |
 | 部署配置 | Cloudflare Pages / Wrangler |
 
 ## 主要界面
