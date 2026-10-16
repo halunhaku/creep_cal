@@ -139,7 +139,7 @@ function ScientificTooltip({ active, payload, label }) {
   const numericLabel = Number(sourceTime);
   const title = Number.isFinite(numericLabel) ? new Intl.NumberFormat('en-US').format(numericLabel) : sourceTime;
   return (
-    <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-[var(--shadow-popover)]">
+    <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-popover">
       <div className="mb-2 font-mono text-3xs font-semibold text-faint">t = {title} days</div>
       <div className="space-y-1.5">
         {payload.map((item) => (

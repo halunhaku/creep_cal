@@ -235,12 +235,25 @@
 
 /* The forms plugin adds its own focus ring to text inputs. The command palette
  * owns focus at the enclosing search row, so the child must not draw a second,
- * outward shadow across the row boundary. */
-.command-search,
-.command-search:focus {
+ * outward shadow across the row boundary.
+ *
+ * The class is doubled deliberately: this block is emitted after the plain
+ * utilities but before every variant utility, so a single class made the rule's
+ * authority positional — `sm:border-action` won while `focus:ring-0` did nothing.
+ * Two classes outrank a variant of one, whichever order they land in. */
+.command-search.command-search,
+.command-search.command-search:focus {
   border-color: transparent;
-  outline: none;
+  /* Transparent rather than absent: the outline is still laid out, so forced-colors
+   * mode repaints it in a system colour. `outline: none` deleted the field's only
+   * focus cue, because the row's ring is a box-shadow and forced colors drops those. */
+  outline: 2px solid transparent;
+  outline-offset: -2px;
   box-shadow: none;
+}
+
+@media (forced-colors: active) {
+  .command-search.command-search:focus { outline-color: Highlight; }
 }
 
 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

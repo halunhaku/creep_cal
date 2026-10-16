@@ -153,7 +153,7 @@ export default function CommandPalette({ onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-full max-w-[560px] overflow-hidden rounded-none border border-line-strong bg-surface shadow-[var(--shadow-popover)]"
+        className="w-full max-w-[560px] overflow-hidden rounded-none border border-line-strong bg-surface shadow-popover"
         onMouseDown={(event) => event.stopPropagation()}
         onKeyDown={onDialogKeyDown}
       >
