@@ -15,6 +15,12 @@
  * times) normalised away.
  *
  * Requires Chrome; set CHROME_PATH if it is not in the usual place.
+ *
+ * The style fingerprint is taken at four viewports (see VIEWPORTS). One width
+ * cannot see a breakpoint regression: the shell's gutter only differs below
+ * 1024px, so measuring 1440 alone was measuring the one width where such a change
+ * is provably invisible. Changing the fingerprint's fields or its viewport list
+ * invalidates an existing --save baseline; regenerate it before trusting --check.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -61,12 +67,20 @@ const leafText = (text) => `[...document.querySelectorAll('*')].some((el) => el.
 
 // Every element's computed typography and geometry, in document order. Insensitive
 // to class *names*, which is what a tokenisation pass legitimately changes.
+//
+// `margin`, `maxWidth` and `boxShadow` are here because their absence made this gate
+// blind to a whole class of change. `.workspace-header` carries its spacing as
+// margin-bottom and the shell's centring is margin-inline + max-width, so a pass that
+// moved either returned green; and `shadow-[var(--shadow-popover)]` compiled to a
+// shadow *colour* that painted nothing, which is invisible to a fingerprint that
+// never reads box-shadow.
 const STYLE_FINGERPRINT = `
   const fingerprint = [...document.querySelectorAll('body *')].map((el) => {
     const s = getComputedStyle(el);
     return [el.tagName, s.fontSize, s.fontFamily, s.fontWeight, s.lineHeight,
             s.letterSpacing, s.textTransform, s.color, s.backgroundColor,
-            s.borderRadius, s.borderWidth, s.padding, s.gap].join('|');
+            s.borderRadius, s.borderWidth, s.padding, s.gap,
+            s.margin, s.maxWidth, s.boxShadow].join('|');
   }).join('\\n')
 `;
 
@@ -82,6 +96,28 @@ const SCENES = [
   // Deep-linked: the reference library now follows the app's model, and B4 is the
   // richest page to fingerprint.
   { key: 'docs-b4', workspace: 'Reference', settled: leafText('Parameter contract'), url: '?mode=docs&model=b4' },
+  // The palette is the only surface that carries the popover shadow token, and the
+  // chart tooltips that share it need a hover. Without this scene the fingerprint's
+  // boxShadow field observes nothing and the token can go dead unnoticed.
+  {
+    key: 'palette-open',
+    workspace: 'Calculate',
+    settled: labelled('Last compute'),
+    click: 'Search',
+    after: `!!document.querySelector('[role="dialog"][aria-label="Command palette"]')`,
+  },
+];
+
+// The style fingerprint is taken at each of these, because a single width cannot
+// see a breakpoint regression — the shell's own gutter only differs below 1024px,
+// so the one viewport this used to measure was the one width where the change was
+// provably invisible. The DOM hash is content, not layout, so it stays on the
+// primary viewport alone rather than costing a third of the runtime for nothing.
+const VIEWPORTS = [
+  { suffix: '', width: 1440, height: 1000, primary: true },
+  { suffix: '@1023', width: 1023, height: 1000 },
+  { suffix: '@900', width: 900, height: 1000 },
+  { suffix: '@390', width: 390, height: 844 },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -167,7 +203,6 @@ async function main() {
 
     await send('Page.enable');
     await send('Runtime.enable');
-    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
 
     // Accept a value only once two consecutive readings agree. Chasing individual
     // races (chart measurement, tick count, an engine switch mid-flight) kept
@@ -193,11 +228,14 @@ async function main() {
     };
 
     const snapshot = {};
-    for (const scene of SCENES) {
-      // A scene with a URL is opened directly, which is what a shared link does.
-      // Note that this means nothing from the calculate workspace has run: the
-      // header reports an idle kernel and recharts has not created its global
-      // measurement span. That state is part of the fingerprint.
+
+    // A scene with a URL is opened directly, which is what a shared link does.
+    // Note that this means nothing from the calculate workspace has run: the
+    // header reports an idle kernel and recharts has not created its global
+    // measurement span. That state is part of the fingerprint.
+    //
+    // Pulled out of the loop so the same scene can be re-measured at each viewport.
+    const settleScene = async (scene) => {
       await send('Page.navigate', { url: scene.url ? `${BASE}${scene.url}` : BASE });
       await sleep(900);
       if (scene.workspace !== 'Calculate' && !scene.url) {
@@ -232,31 +270,45 @@ async function main() {
         chartState = current;
         await sleep(200);
       }
+    };
 
-      const normalised = await evaluate(`(async () => { ${NORMALISE}
-        return normalise(document.body.innerHTML);
-      })()`);
-      if (process.env.DUMP_DIR) {
-        writeFileSync(`${process.env.DUMP_DIR}/${scene.key}.html`, normalised);
+    const styleHash = () => stable(`(async () => { ${STYLE_FINGERPRINT}
+      const bytes = new TextEncoder().encode(fingerprint);
+      const digest = await crypto.subtle.digest('SHA-256', bytes);
+      return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+    })()`, 'the computed-style fingerprint');
+
+    for (const viewport of VIEWPORTS) {
+      await send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width, height: viewport.height, deviceScaleFactor: 1, mobile: false,
+      });
+      for (const scene of SCENES) {
+        await settleScene(scene);
+
+        if (viewport.primary) {
+          const normalised = await evaluate(`(async () => { ${NORMALISE}
+            return normalise(document.body.innerHTML);
+          })()`);
+          if (process.env.DUMP_DIR) {
+            writeFileSync(`${process.env.DUMP_DIR}/${scene.key}.html`, normalised);
+          }
+          snapshot[scene.key] = await stable(`(async () => { ${NORMALISE}
+            const bytes = new TextEncoder().encode(normalise(document.body.innerHTML));
+            const digest = await crypto.subtle.digest('SHA-256', bytes);
+            return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+          })()`, 'the DOM hash');
+        }
+
+        // A hash says "something changed"; for an intentional visual change the
+        // fingerprint text is what you review, so it is dumped alongside the HTML.
+        if (process.env.DUMP_DIR) {
+          const lines = await evaluate(`(async () => { ${STYLE_FINGERPRINT}
+            return fingerprint;
+          })()`);
+          writeFileSync(`${process.env.DUMP_DIR}/${scene.key}${viewport.suffix}.styles.txt`, lines);
+        }
+        snapshot[`${scene.key}::styles${viewport.suffix}`] = await styleHash();
       }
-      snapshot[scene.key] = await stable(`(async () => { ${NORMALISE}
-        const bytes = new TextEncoder().encode(normalise(document.body.innerHTML));
-        const digest = await crypto.subtle.digest('SHA-256', bytes);
-        return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-      })()`, 'the DOM hash');
-      // A hash says "something changed"; for an intentional visual change the
-      // fingerprint text is what you review, so it is dumped alongside the HTML.
-      if (process.env.DUMP_DIR) {
-        const lines = await evaluate(`(async () => { ${STYLE_FINGERPRINT}
-          return fingerprint;
-        })()`);
-        writeFileSync(`${process.env.DUMP_DIR}/${scene.key}.styles.txt`, lines);
-      }
-      snapshot[`${scene.key}::styles`] = await stable(`(async () => { ${STYLE_FINGERPRINT}
-        const bytes = new TextEncoder().encode(fingerprint);
-        const digest = await crypto.subtle.digest('SHA-256', bytes);
-        return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
-      })()`, 'the computed-style fingerprint');
     }
 
     if (mode === 'save') {
@@ -265,11 +317,11 @@ async function main() {
       console.log(JSON.stringify(snapshot, null, 2));
     } else if (mode === 'check' || STYLE_ONLY) {
       const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
-      const keys = Object.keys(snapshot).filter((key) => !STYLE_ONLY || key.endsWith('::styles'));
+      const keys = Object.keys(snapshot).filter((key) => !STYLE_ONLY || key.includes('::styles'));
       const changed = keys.filter((key) => snapshot[key] !== baseline[key]);
       const removed = keys.filter((key) => !(key in baseline));
       const domOnly = Object.keys(snapshot)
-        .filter((key) => !key.endsWith('::styles') && snapshot[key] !== baseline[key]);
+        .filter((key) => !key.includes('::styles') && snapshot[key] !== baseline[key]);
       if (STYLE_ONLY && domOnly.length) {
         console.log(`(html changed in ${domOnly.length} scene(s), which a class rename is expected to do)`);
       }
