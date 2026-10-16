@@ -110,6 +110,11 @@ describe('a spreadsheet cell has to be one number', () => {
   test('MC2010 refuses a notional size that underflows instead of returning Infinity', () => {
     expect(() => mc2010Point({ ...mc2010Base, Ac: 1e-300, u: 1e300 })).toThrow(/notional size/);
   });
+
+  test('MC2010 rejects a negative concrete age like every other kernel', () => {
+    expect(() => mc2010Point({ ...mc2010Base, t: -5 })).toThrow(/non-negative finite concrete age/);
+    expect(() => mc2010Single({ ...mc2010Base, t: '-5' })).toThrow(/non-negative finite concrete age/);
+  });
 });
 
 describe('B4 humidity is a percentage, not a 0–1 fraction', () => {  // Regression: `normalizeB4Humidity` treated any value <= 1 as a fraction, so
@@ -131,6 +136,12 @@ describe('B4 humidity is a percentage, not a 0–1 fraction', () => {  // Regres
     expect(Math.abs(halfPercent.epsilonSH)).toBeGreaterThan(Math.abs(b4Single({ ...b4Base, h: 1 }).epsilonSH));
     expect(halfPercent.epsilonSH).not.toBe(b4Single({ ...b4Base, h: 50 }).epsilonSH);
   });
+
+  test('row adapters trim surrounding whitespace like the other kernels', () => {
+    const spaced = b4Single({ ...b4Base, cementType: ' R ', aggregateType: ' No Information ', specimenShape: ' 1 ' });
+    expect(spaced.J).toBeCloseTo(b4Point(b4Base).J, 12);
+    expect(() => b4Point({ ...b4Base, cementType: ' R ' })).toThrow(/cement type/);
+  });
 });
 
 describe('B4 humidity factor stays physical', () => {
@@ -139,10 +150,10 @@ describe('B4 humidity factor stays physical', () => {
   // and the q5 exponent went through a singularity (J exploded x4700).
   test('the unusable band is rejected instead of returning nonsense', () => {
     for (const h of [98.41, 98.5, 99, 100]) {
-      expect(() => b4Single({ ...b4Base, h })).toThrow(/0 and 100%/);
+      expect(() => b4Single({ ...b4Base, h })).toThrow(/0 and 98\.4%/);
     }
-    expect(() => b4Single({ ...b4Base, h: 105 })).toThrow(/0 and 100%/);
-    expect(() => b4Single({ ...b4Base, h: -1 })).toThrow(/0 and 100%/);
+    expect(() => b4Single({ ...b4Base, h: 105 })).toThrow(/0 and 98\.4%/);
+    expect(() => b4Single({ ...b4Base, h: -1 })).toThrow(/0 and 98\.4%/);
   });
 
   test('every accepted humidity is finite, contractive and monotone', () => {

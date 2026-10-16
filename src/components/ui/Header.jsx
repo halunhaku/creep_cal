@@ -61,7 +61,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
         <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
           <button
             onClick={onOpenPalette}
-            className="touch-target hidden h-12 w-12 shrink-0 items-center justify-center gap-2 border-x border-line bg-surface text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink md:flex lg:w-auto lg:justify-start lg:px-4"
+            className="touch-target flex h-12 w-12 shrink-0 items-center justify-center gap-2 border-x border-line bg-surface text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink lg:w-auto lg:justify-start lg:px-4"
             aria-label="Search commands"
             title="Search commands (⌘K)"
           >

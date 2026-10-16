@@ -153,7 +153,7 @@ pub(crate) fn normalize_humidity(value: f64) -> Result<f64, String> {
     if value.is_finite() && (0.0..=98.4).contains(&value) {
         Ok(value / 100.0)
     } else {
-        Err("B4 requires relative humidity between 0 and 100% (the drying formulation is only usable up to 98.4%).".into())
+        Err("B4 requires relative humidity between 0 and 98.4% (the drying formulation is only usable up to 98.4%).".into())
     }
 }
 

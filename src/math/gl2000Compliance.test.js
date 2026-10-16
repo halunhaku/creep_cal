@@ -57,6 +57,24 @@ describe('GL2000 creep compliance', () => {
     }
   });
 
+  test('high humidity never reads as negative stiffness (J floored at elastic)', () => {
+    // At h ≳ 96% the drying term turns negative and, just after loading,
+    // briefly outweighs the basic term. Creep must not undo elasticity.
+    for (const h of [96, 98, 100]) {
+      let previous = -Infinity;
+      for (let t = 0; t <= 10000; t += 100) {
+        const { J, eCmto } = gl2000CompliancePoint({ ...c44, h, t });
+        expect(J).toBeGreaterThanOrEqual(1 / eCmto);
+        expect(J).toBeGreaterThanOrEqual(previous - 1e-15);
+        previous = J;
+      }
+    }
+    // The floor is active: just after loading at h = 100% the unfloored sum
+    // would dip below elastic.
+    const justLoaded = gl2000CompliancePoint({ ...c44, h: 100, t: 14.001 });
+    expect(justLoaded.J).toBe(1 / justLoaded.eCmto);
+  });
+
   test('the row wrapper coerces spreadsheet strings', () => {
     const fromRow = gl2000Compliance({ fcm28: '32.5', h: '70', vs: '100', tc: '7', t0: '14', t: '365', cementType: 'I' });
     expect(fromRow.J).toBeCloseTo(gl2000CompliancePoint({ ...c44, t: 365 }).J, 12);

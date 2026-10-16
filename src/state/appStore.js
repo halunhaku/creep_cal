@@ -24,6 +24,8 @@ import { useSyncExternalStore } from 'react';
  */
 const PARAMS_KEY = 'creep-lab:paramsByModel';
 const SETS_KEY = 'creep-lab:parameterSets';
+const VERSION_KEY = 'creep-lab:storeVersion';
+const STORE_VERSION = 1;
 
 /**
  * Both entries are user data that can outlive a schema change, so a shape the app
@@ -35,8 +37,17 @@ function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+function storeVersion() {
+  try {
+    return Number(globalThis.localStorage?.getItem(VERSION_KEY) ?? STORE_VERSION);
+  } catch {
+    return STORE_VERSION;
+  }
+}
+
 function loadParams() {
   try {
+    if (storeVersion() !== STORE_VERSION) return {};
     const raw = globalThis.localStorage?.getItem(PARAMS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     if (!isPlainObject(parsed)) return {};
@@ -52,6 +63,7 @@ function loadParams() {
 
 function loadSets() {
   try {
+    if (storeVersion() !== STORE_VERSION) return {};
     const raw = globalThis.localStorage?.getItem(SETS_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     if (!isPlainObject(parsed)) return {};
@@ -69,6 +81,7 @@ function loadSets() {
 
 function persistSets(parameterSets) {
   try {
+    globalThis.localStorage?.setItem(VERSION_KEY, String(STORE_VERSION));
     globalThis.localStorage?.setItem(SETS_KEY, JSON.stringify(parameterSets));
   } catch {
     // storage can be full or blocked; the app still works without persistence
@@ -77,6 +90,7 @@ function persistSets(parameterSets) {
 
 function persistParams(paramsByModel) {
   try {
+    globalThis.localStorage?.setItem(VERSION_KEY, String(STORE_VERSION));
     globalThis.localStorage?.setItem(PARAMS_KEY, JSON.stringify(paramsByModel));
   } catch {
     // storage can be full or blocked; the app still works without persistence
@@ -204,5 +218,5 @@ export function resetStore() {
 }
 
 export function useAppSelector(selector) {
-  return useSyncExternalStore(subscribe, () => selector(state));
+  return useSyncExternalStore(subscribe, () => selector(state), () => selector(initialState));
 }

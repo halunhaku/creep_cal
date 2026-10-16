@@ -48,6 +48,15 @@ describe('ACI 209.2R-08 C.4 GL2000 shrinkage', () => {
     }
   });
 
+  test('above ~95.7% RH the equations write expansion, locked here by design', () => {
+    // betaH = 1 - 1.18 h⁴ turns negative above ~95.7%; the kernel returns what
+    // the equations say (use 96% for sealed concrete per the validation hint).
+    const at100 = gl2000ShrinkagePoint({ ...c43, h: 100, t: 365 });
+    expect(at100.epsilonSH).toBeGreaterThan(0);
+    const at96 = gl2000ShrinkagePoint({ ...c43, h: 96, t: 365 });
+    expect(Math.abs(at96.epsilonSH)).toBeLessThan(5);
+  });
+
   test('the row wrapper coerces spreadsheet strings', () => {
     const fromRow = gl2000Shrinkage({ fcm28: '32.5', h: '70', vs: '100', tc: '7', t: '365', cementType: 'I' });
     expect(fromRow.epsilonSH).toBeCloseTo(gl2000ShrinkagePoint({ ...c43, t: 365 }).epsilonSH, 12);

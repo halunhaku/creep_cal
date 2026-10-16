@@ -19,3 +19,23 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup target add wasm32-unknown-unknown
+      - run: cargo install wasm-pack --locked
+      - run: npm ci
+      - name: Rust unit tests
+        run: cargo test --manifest-path rust-engine/Cargo.toml
+      - name: WASM artifact must match Rust source
+        run: |
+          cd rust-engine
+          wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
+          git diff --exit-code -- ../src/wasm-pkg || (echo "::error::src/wasm-pkg is stale — rebuild in the same commit (see README Rust WebAssembly)" && exit 1)

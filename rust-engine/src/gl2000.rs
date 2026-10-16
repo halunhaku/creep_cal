@@ -109,9 +109,12 @@ pub(crate) fn gl2000_point(params: &Gl2000Params, t: f64) -> Result<Gl2000Point,
     let basic = (2.0 * dt03) / (dt03 + 14.0) * (7.0 / params.t0).sqrt() * (dt / (dt + 7.0)).sqrt();
     let drying = 2.5 * (1.0 - 1.086 * hr * hr) * (dt / (dt + 0.12 * params.vs * params.vs)).sqrt();
     let phi28 = phi_tc * (basic + drying);
+    // Same physical floor as the JS kernel: high-humidity drying can briefly
+    // push J below elastic just after loading; creep must not undo elasticity.
+    let j = (elastic + phi28 / e_cm28).max(elastic);
     Ok(Gl2000Point {
         t,
-        j: elastic + phi28 / e_cm28,
+        j,
         epsilon_sh: signed,
         epsilon_au: 0.0,
         epsilon_total: signed,

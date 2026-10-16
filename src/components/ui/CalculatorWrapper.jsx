@@ -6,11 +6,14 @@ import { CHART, axisTitleStyle, formatLogTick, legendStyle, tickGap, tickStyle }
 import { Brush, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 function downloadFile(filename, content, type = 'text/csv;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
   const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([content], { type }));
+  link.href = url;
   link.download = filename;
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(link.href);
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function csvCell(value) {
@@ -221,11 +224,13 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
   );
   // Previous run, shaped by the same rules so the dashed overlay stays
   // comparable point-for-point with the current series.
-  const prevBase = prevData ? prevData.filter((row, index) => index % 10 === 0 || row.t === Math.round(params.targetAge)) : null;
-  const prevNoZeroX = prevBase && logX
-    ? prevBase.filter((row) => row.t > 0).map((row) => ({ ...row, plotT: Math.log10(row.t) }))
-    : prevBase;
-  const prevChartData = prevNoZeroX && useLogY ? prevNoZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : prevNoZeroX;
+  const prevChartData = useMemo(() => {
+    const base = prevData ? prevData.filter((row, index) => index % 10 === 0 || row.t === Math.round(params.targetAge)) : null;
+    const noZeroX = base && logX
+      ? base.filter((row) => row.t > 0).map((row) => ({ ...row, plotT: Math.log10(row.t) }))
+      : base;
+    return noZeroX && useLogY ? noZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : noZeroX;
+  }, [prevData, logX, params.targetAge, useLogY, visibleLines]);
   // Brush reports indices into the chart's own data (`chartData` above), so the
   // window reads t straight off it. Zoomed lines re-sample the full series to
   // ~800 points — the overview stays cheap, the close-up stays sharp.
@@ -237,7 +242,8 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
       setZoom({ start: chartData[startIndex].t, end: chartData[endIndex].t });
     }
   };
-  const denseLines = !zoom ? null : (() => {
+  const denseLines = useMemo(() => {
+    if (!zoom) return null;
     const inWindow = data.filter((row) => row.t >= zoom.start && row.t <= zoom.end);
     const step = Math.max(1, Math.ceil(inWindow.length / 800));
     const dense = inWindow.filter((row, index) => index % step === 0 || row.t === Math.round(params.targetAge));
@@ -245,7 +251,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
       ? dense.filter((row) => row.t > 0).map((row) => ({ ...row, plotT: Math.log10(row.t) }))
       : dense;
     return useLogY ? noZeroX.filter((row) => visibleLines.every((line) => Number.isFinite(Number(row[line.dataKey])) && Number(row[line.dataKey]) > 0)) : noZeroX;
-  })();
+  }, [zoom, data, params.targetAge, logX, useLogY, visibleLines]);
   const dataRows = useMemo(() => data.filter((row, index) => index % 250 === 0 || row.t === Math.round(params.targetAge)), [data, params.targetAge]);
 
   return (

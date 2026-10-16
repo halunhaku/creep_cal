@@ -15,6 +15,8 @@ function FormulaExpression({ expr }) {
     <div
       className="formula-render flex-1 overflow-x-auto rounded-none border border-line bg-surface px-4 py-4 text-ink"
       tabIndex={0}
+      role="img"
+      aria-label={expr}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

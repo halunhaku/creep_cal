@@ -46,8 +46,8 @@ fn validate(params: &Mc2010Params) -> Result<(), String> {
 
 fn calculate_point(params: &Mc2010Params, concrete_age: f64) -> Result<Mc2010Point, String> {
     validate(params)?;
-    if !concrete_age.is_finite() {
-        return Err("MC2010 requires a finite concrete age t.".into());
+    if !concrete_age.is_finite() || concrete_age < 0.0 {
+        return Err("MC2010 requires a non-negative finite concrete age t.".into());
     }
 
     let alpha = cement_alpha(&params.cement_type)?;
@@ -75,6 +75,9 @@ fn calculate_point(params: &Mc2010Params, concrete_age: f64) -> Result<Mc2010Poi
     }
 
     let notional_size = (2.0 * params.ac) / params.u;
+    if !notional_size.is_finite() || notional_size <= 0.0 {
+        return Err("MC2010 requires a finite notional size 2Ac/u greater than zero.".into());
+    }
     let alpha_fcm = (35.0 / params.fcm).sqrt();
     let beta_h = (1.5 * notional_size + 250.0 * alpha_fcm).min(1500.0 * alpha_fcm);
     let phi_bc = (1.8 / params.fcm.powf(0.7))

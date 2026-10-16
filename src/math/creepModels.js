@@ -170,8 +170,8 @@ function validateMc2010({ fcm, RH, t0, Ac, u, T, Cs, sigma }) {
  */
 export function mc2010Point({ fcm, RH, t0, Ac, u, T, Cs, sigma, t }) {
   validateMc2010({ fcm, RH, t0, Ac, u, T, Cs, sigma });
-  if (!Number.isFinite(t)) {
-    throw new RangeError('MC2010 requires a finite concrete age t.');
+  if (!Number.isFinite(t) || t < 0) {
+    throw new RangeError('MC2010 requires a non-negative finite concrete age t.');
   }
 
   const alpha = MC2010_CEMENT_ALPHA[Cs];
@@ -318,7 +318,7 @@ export function b4TemperatureAcceleration(temperature) {
 function normalizeB4Humidity(value) {
   const percent = coerceNumber(value);
   if (!inRange(percent, 0, 98.4)) {
-    throw new RangeError('B4 requires relative humidity between 0 and 100% (the drying formulation is only usable up to 98.4%).');
+    throw new RangeError('B4 requires relative humidity between 0 and 98.4% (the drying formulation is only usable up to 98.4%).');
   }
   return percent / 100;
 }
@@ -546,8 +546,16 @@ export function b4sPoint(input) {
   });
 }
 
-export function b4Single(row) { return b4Point(row); }
-export function b4sSingle(row) { return b4sPoint(row); }
+function trimB4Strings(row) {
+  const next = { ...row };
+  for (const key of ['cementType', 'aggregateType', 'specimenShape']) {
+    if (typeof next[key] === 'string') next[key] = next[key].trim();
+  }
+  return next;
+}
+
+export function b4Single(row) { return b4Point(trimB4Strings(row)); }
+export function b4sSingle(row) { return b4sPoint(trimB4Strings(row)); }
 
 // ─── GL2000, Gardner & Lockman 2001 ─────────────────────────────────────────
 /**
@@ -664,7 +672,13 @@ export function gl2000CompliancePoint({ fcm28, h, vs, tc, t0, t, cementType }) {
     * Math.sqrt(7 / t0) * Math.sqrt(dt / (dt + 7));
   const drying = 2.5 * (1 - 1.086 * Math.pow(h / 100, 2)) * Math.sqrt(dt / (dt + 0.12 * vs * vs));
   const phi28 = phiTc * (basic + drying);
-  return { J: elastic + phi28 / eCm28, phi28, phiTc, eCmto, eCm28, basic, drying };
+  // Physical floor: just after loading the basic term (∝ dt^0.8) decays faster
+  // than the drying term (∝ dt^0.5), so at h ≳ 96% a negative drying term can
+  // briefly push J below the elastic compliance. Creep cannot undo elasticity,
+  // so clamp there; the shrinkage sign above 95.7% is left as the equations
+  // write it (expansion) and is pinned by tests.
+  const J = Math.max(elastic + phi28 / eCm28, elastic);
+  return { J, phi28, phiTc, eCmto, eCm28, basic, drying };
 }
 
 export function gl2000Compliance(row) {

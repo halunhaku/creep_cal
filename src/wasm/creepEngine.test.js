@@ -9,9 +9,11 @@ import {
   initSync,
 } from '../wasm-pkg/creep_calculator_engine.js';
 import {
+  buildAashtoParams,
   buildAci209Params,
   buildB4Params,
   buildB4sParams,
+  buildGl2000Params,
   buildMc2010Params,
   errorMessage,
 } from './creepEngine';
@@ -70,15 +72,23 @@ describe('wasm parameter builders', () => {
       cement_type: 'R', aggregate_type: 'No Information', specimen_shape: '1',
     });
     expect(Object.keys(buildB4Params(B4_UI))).toHaveLength(20);
+    expect(buildGl2000Params({ fcm28: 32.5, h: 70, vs: 100, tc: 7, t0: 14, cementType: 'I' })).toEqual({
+      fcm28: 32.5, h: 70, vs: 100, tc: 7, t0: 14, cement_type: 'I',
+    });
+    expect(buildAashtoParams({ fci: 41, H: 70, vs: 89, ti: 7, tc: 7 })).toEqual({
+      fci: 41, h: 70, vs: 89, ti: 7, tc: 7,
+    });
     // targetAge is a UI-only selector and must never reach the kernel.
-    for (const build of [buildAci209Params, buildMc2010Params, buildB4Params, buildB4sParams]) {
-      expect(build({ ...B4_UI, ...ACI_UI, ...MC_UI, targetAge: 999 })).not.toHaveProperty('targetAge');
+    for (const build of [buildAci209Params, buildMc2010Params, buildB4Params, buildB4sParams, buildGl2000Params, buildAashtoParams]) {
+      expect(build({ ...B4_UI, ...ACI_UI, ...MC_UI, fcm28: 32.5, h: 50, vs: 100, tc: 7, t0: 28, cementType: 'R', fci: 41, H: 70, ti: 7, targetAge: 999 })).not.toHaveProperty('targetAge');
     }
   });
 
   test('reject a missing key and drop unknown UI keys instead of forwarding them', () => {
     const { fineAggregate, ...withoutFineAggregate } = ACI_UI;
     expect(() => buildAci209Params(withoutFineAggregate)).toThrow(/missing fineAggregate/);
+    expect(() => buildGl2000Params({ fcm28: 32.5, h: 70, vs: 100, tc: 7, t0: 14 })).toThrow(/missing cement_type/);
+    expect(() => buildAashtoParams({ fci: 41, H: 70, vs: 89, ti: 7 })).toThrow(/missing tc/);
 
     // A typo'd UI key must not silently reach the kernel; the builder emits only
     // the documented columns, and the contract check guards the builder itself.

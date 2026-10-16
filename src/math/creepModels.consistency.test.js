@@ -375,7 +375,7 @@ describe('JavaScript and Rust model consistency', () => {
     expect(() => b4Point({ ...valid, wC: 0.18 })).toThrow(/0.22 ≤ w\/c ≤ 0.87/);
     expect(() => b4Point({ ...valid, aC: 0.8 })).toThrow(/1 ≤ a\/c ≤ 13.2/);
     expect(() => b4Point({ ...valid, Tcur: 32 })).toThrow(/20 ≤ Tcur ≤ 30/);
-    expect(() => b4Point({ ...valid, h: 105 })).toThrow(/0 and 100%/);
+    expect(() => b4Point({ ...valid, h: 105 })).toThrow(/0 and 98\.4%/);
     expect(() => b4Point({ ...valid, cementType: 'X' })).toThrow(/Unsupported/);
 
     const validS = {

@@ -17,6 +17,9 @@ import { CHART, axisTitleStyle, formatLogTick, tickGap, tickStyle } from './char
 
 const BATCH_KERNEL_NOTE = 'Every row is evaluated with the reference kernels, for all six models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.';
 
+const MAX_BATCH_ROWS = 20000;
+const MAX_SCATTER_POINTS = 2000;
+
 const SAMPLE_DATA = {
   aci209: [35, 90, 180, 365, 730, 1460, 3650, 7300, 10000].map(t => ({
     curingType: 'moist', t0: 28, H: 70, VS: 100, slump: 100,
@@ -196,7 +199,7 @@ export default function BatchCalculator() {
    * the matrix take ~0.8 s to redraw — for the 100 rows it actually shows.
    */
   const numericColumns = useMemo(() => new Set(batchHeaders.filter((header) => (
-    batchResults.length > 0 && batchResults.every((row) => isNumericCell(row[header]))
+    batchResults.length > 0 && batchResults.slice(0, 200).every((row) => isNumericCell(row[header]))
   ))), [batchHeaders, batchResults]);
 
   const numericColumn = (header) => numericColumns.has(header);
@@ -249,6 +252,11 @@ export default function BatchCalculator() {
     if (!data?.length) {
       clearDataset(); updateBatch({ issues: parseIssues, ...name });
       setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
+      setIsProcessing(false); return;
+    }
+    if (data.length > MAX_BATCH_ROWS) {
+      clearDataset(); updateBatch({ issues: parseIssues, ...name });
+      setBatchError(`File has ${data.length.toLocaleString('en-US')} rows, above the ${MAX_BATCH_ROWS.toLocaleString('en-US')}-row limit. Split the file and upload it in parts. · 文件行数超过上限，请分批上传。`);
       setIsProcessing(false); return;
     }
     const inputHeaders = Object.keys(data[0]);
@@ -317,12 +325,26 @@ export default function BatchCalculator() {
       Papa.parse(file, {
         header:true,
         skipEmptyLines:true,
-        complete:(result) => finish(result.data, (result.errors ?? []).map((error) => ({
-          row: Number.isInteger(error.row) ? error.row + 2 : 'File',
-          field: 'CSV',
-          value: '—',
-          message: `${error.message}${error.code ? ` (${error.code})` : ''}`,
-        }))),
+        transformHeader: (header) => String(header ?? '').trim(),
+        complete:(result) => {
+          const fields = result.meta?.fields ?? Object.keys(result.data[0] ?? {});
+          const seen = new Set();
+          const duplicates = [...new Set(fields.filter((field) => {
+            if (seen.has(field)) return true;
+            seen.add(field);
+            return false;
+          }))];
+          const duplicateIssues = duplicates.map((field) => ({
+            row: 'Header', field, value: '—',
+            message: `Duplicate column "${field}" — only the last one is kept · 重复列只保留最后一列`,
+          }));
+          finish(result.data, [...duplicateIssues, ...(result.errors ?? []).map((error) => ({
+            row: Number.isInteger(error.row) ? error.row + 2 : 'File',
+            field: 'CSV',
+            value: '—',
+            message: `${error.message}${error.code ? ` (${error.code})` : ''}`,
+          }))]);
+        },
         error:(error) => {
           if (readSeq.current !== seq) return;
           clearDataset();
@@ -397,15 +419,25 @@ export default function BatchCalculator() {
     setIsProcessing(true);
     processData(SAMPLE_DATA[activeModel], 't', [], activeModel, label);
   };
+  const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
   const downloadTemplate = () => {
     const columns = model.req.split(', ');
     const csv = Papa.unparse([columns, model.template ?? columns.map(() => '0')]);
-    const link=document.createElement('a'); link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); link.download=`${activeModel}_template.csv`; link.click(); URL.revokeObjectURL(link.href);
+    downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}), `${activeModel}_template.csv`);
   };
   const exportCSV = () => {
     const keys=[...batchHeaders,...model.resultKeys];
     const csv=Papa.unparse(batchResults.map((row)=>Object.fromEntries(keys.map((key)=>[key,row[key]??'']))));
-    const link=document.createElement('a'); link.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})); link.download=`${activeModel}_batch_results.csv`; link.click(); URL.revokeObjectURL(link.href);
+    downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}), `${activeModel}_batch_results.csv`);
   };
 
   // Points carry their matrix row so the tooltip can point back at it. Invalid
@@ -414,6 +446,11 @@ export default function BatchCalculator() {
   const basePoints = batchResults.map((row, index) => ({ x: Number(row[xKey]), y: Number(row[yKey]), row: index + 1 })).filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
   const filteredPoints = (logX || logY) ? basePoints.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : basePoints;
   const visiblePoints = logX ? filteredPoints.map((point) => ({ ...point, plotX: Math.log10(point.x) })) : filteredPoints;
+  // Scatter renders one SVG circle per point: decimate past 2000 so a 20k-row
+  // file stays interactive. Line mode keeps every point (it is already sorted
+  // and brushed).
+  const scatterStep = Math.max(1, Math.ceil(visiblePoints.length / MAX_SCATTER_POINTS));
+  const scatterPoints = visiblePoints.filter((_, index) => index % scatterStep === 0);
   // Line mode joins points in file order, so an unsorted X column draws a
   // meaningless zigzag — sort a copy, never the matrix order.
   const linePoints = [...visiblePoints].sort((a, b) => a.x - b.x);
@@ -620,6 +657,11 @@ export default function BatchCalculator() {
                 ))}
               </tbody>
             </table>
+            {issues.length > 100 && (
+              <div className="border-t border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
+                Showing 100 of {issues.length} issues · export the file and fix the rest in place after mapping · 显示前 100 条，共 {issues.length} 条
+              </div>
+            )}
           </div>
         )}
       </section>}
@@ -732,7 +774,7 @@ export default function BatchCalculator() {
           </div>
           <div className="grid gap-4 border-b border-line p-4 sm:grid-cols-2">
             <div>
-              <label className="eyebrow">X axis · input</label>
+              <label className="eyebrow" htmlFor="param-select-xKey">X axis · input</label>
               <div className="mt-2">
                 <CustomSelect
                   name="xKey"
@@ -743,7 +785,7 @@ export default function BatchCalculator() {
               </div>
             </div>
             <div>
-              <label className="eyebrow">Y axis · output</label>
+              <label className="eyebrow" htmlFor="param-select-yKey">Y axis · output</label>
               <div className="mt-2">
                 <CustomSelect
                   name="yKey"
@@ -755,7 +797,7 @@ export default function BatchCalculator() {
             </div>
           </div>
           <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
-            Plotting {visiblePoints.length} of {batchResults.length} rows{excludedCount > 0 ? ` · ${excludedCount} excluded (invalid or non-numeric — see red rows above)` : ''}{logHiddenCount > 0 ? ` · ${logHiddenCount} hidden by log scale (≤ 0)` : ''}
+            Plotting {chartType === 'scatter' ? scatterPoints.length : visiblePoints.length} of {batchResults.length} rows{chartType === 'scatter' && visiblePoints.length > scatterPoints.length ? ` · decimated from ${visiblePoints.length}` : ''}{excludedCount > 0 ? ` · ${excludedCount} excluded (invalid or non-numeric — see red rows above)` : ''}{logHiddenCount > 0 ? ` · ${logHiddenCount} hidden by log scale (≤ 0)` : ''}
           </div>
           {visiblePoints.length === 0 ? (
             <div className="flex h-[380px] items-center justify-center p-4 text-center text-xs text-muted">
@@ -789,7 +831,7 @@ export default function BatchCalculator() {
                     width={60}
                   />
                   <Tooltip content={<BatchTooltip xKey={xKey} yKey={yKey} />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
-                  <Scatter data={visiblePoints} fill="var(--action)" isAnimationActive={false} />
+                  <Scatter data={scatterPoints} fill="var(--action)" isAnimationActive={false} />
                   {/* No Brush here: ScatterChart ignores Brush children (only the
                       categorical charts wire it up), so one would render nothing
                       while pretending to zoom — Line mode carries the zoom UI. */}
