@@ -34,6 +34,7 @@
   --header-bg: #ffffff;
   --header-h: 48px;
   --sticky-offset: calc(var(--header-h) + 24px);
+  --content-width: 1584px;
   --chart-grid: #e0e0e0;
   --shadow-popover: 0 12px 24px rgba(0, 0, 0, 0.18);
   --on-action: #ffffff;
@@ -127,10 +128,25 @@
     box-shadow: none;
   }
   .surface-inset { background: var(--surface-2); }
+  /* The one horizontal rhythm the shell shares. Header, main and footer used to be
+   * three hand-copied utility strings, so re-aligning them meant editing three sites
+   * and missing one silently re-created the misalignment. One class, one edit.
+   *
+   * rem, not px: the shell's spacing follows the user's root font size, the way the
+   * utilities it replaced did. */
+  .shell-gutter {
+    margin-inline: auto;
+    width: 100%;
+    max-width: var(--content-width);
+    padding-inline: 1rem;
+  }
+  @media (min-width: 1024px) {
+    .shell-gutter { padding-inline: 2rem; }
+  }
   .workspace-header {
-    margin-bottom: 24px;
+    margin-bottom: 1.5rem;
     border-bottom: 1px solid var(--line);
-    padding-bottom: 20px;
+    padding-bottom: 1.25rem;
   }
   .eyebrow {
     font-family: "IBM Plex Sans", "PingFang SC", sans-serif;

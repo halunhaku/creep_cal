@@ -43,7 +43,9 @@ module.exports = {
         card: '0px', 'card-lg': '0px', 'card-xl': '0px', pill: '0px', input: '0px',
         mark: '0px', chip: '0px', full: '9999px'
       },
-      maxWidth: { content: '1584px', read: '760px' },
+      // Pointed at the same custom property `.shell-gutter` uses, so the token and the
+      // shell's gutter cannot drift apart.
+      maxWidth: { content: 'var(--content-width)', read: '760px' },
       // A bare `var()` inside `shadow-[...]` is ambiguous, so Tailwind compiles it as
       // a shadow COLOUR and emits no box-shadow at all — the three popover consumers
       // (palette dialog, batch and single chart tooltips) all rendered flat. Naming
