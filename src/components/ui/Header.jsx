@@ -63,6 +63,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
             onClick={onOpenPalette}
             className="touch-target hidden h-12 w-12 shrink-0 items-center justify-center gap-2 border-x border-line bg-surface text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink md:flex lg:w-auto lg:justify-start lg:px-4"
             aria-label="Search commands"
+            title="Search commands (⌘K)"
           >
             <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-none stroke-current" aria-hidden="true">
               <circle cx="11" cy="11" r="6.5" strokeWidth="1.7" />
