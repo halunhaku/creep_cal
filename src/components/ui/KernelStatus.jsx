@@ -49,14 +49,17 @@ export default function KernelStatus({ workspace }) {
   if (!badge) return null;
 
   return (
+    // The badge is the header row's designated slack-taker. Every control around it
+    // is `shrink-0`, so once the row ran out of room the badge and the nav overlapped
+    // instead of degrading. It has a title, so a long label can ellipsize safely.
     <div
-      className="hidden shrink-0 items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 sm:flex"
+      className="hidden min-w-0 shrink items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 sm:flex"
       title={badge.title}
       role="status"
       aria-live="polite"
     >
       <span className="status-dot" aria-hidden="true" style={badge.warn ? { background: 'var(--warning)' } : undefined} />
-      <span className={`font-mono text-3xs font-semibold ${badge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
+      <span className={`truncate font-mono text-3xs font-semibold ${badge.warn ? 'text-[var(--warning)]' : 'text-muted'}`}>
         {badge.label}
       </span>
     </div>
