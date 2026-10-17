@@ -31,6 +31,20 @@ const PORT = Number(process.env.PREVIEW_PORT ?? 4173);
 const CDP_PORT = Number(process.env.CDP_PORT ?? 9222);
 const BASE = `http://127.0.0.1:${PORT}/`;
 
+/*
+ * The waits below match English interface text, so the language is pinned rather
+ * than inherited from the browser. `detectLocale()` reads `navigator.languages`,
+ * so on a Chinese-locale machine this script rendered 中文 and every English
+ * wait timed out — and because it failed before capturing anything, the working
+ * tree stayed clean, which reads exactly like a pass. `lang=en` is the app's own
+ * supported parameter, so it also climbs the real URL path.
+ */
+const appUrl = (search = '') => {
+  const query = new URLSearchParams(search.replace(/^\?/, ''));
+  query.set('lang', 'en');
+  return `${BASE}?${query}`;
+};
+
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -159,7 +173,7 @@ async function click(cdp, label) {
 
 async function openWorkspace(cdp, shot) {
   const { workspace } = shot;
-  await cdp.send('Page.navigate', { url: shot.url ? `${BASE}${shot.url}` : BASE });
+  await cdp.send('Page.navigate', { url: appUrl(shot.url) });
   await cdp.waitFor(hasText(HEADINGS.single), { label: 'the app shell' });
   if (workspace !== 'single') {
     await click(cdp, workspace === 'batch' ? 'Batch' : 'Reference');

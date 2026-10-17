@@ -41,14 +41,22 @@ export async function loadCreepEngine() {
   if (!enginePromise) {
     enginePromise = (async () => {
       const wasmPromise = import('../wasm-pkg/creep_calculator_engine.js');
+      // The loser of the race keeps its timer alive unless it is cleared: a load
+      // that finished in 200 ms still left a 15 s task behind, which in the
+      // workspace is a no-op, but in a test runner keeps the process up.
+      let timer;
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`WASM load timed out after ${WASM_TIMEOUT_MS}ms`)), WASM_TIMEOUT_MS);
+        timer = setTimeout(() => reject(new Error(`WASM load timed out after ${WASM_TIMEOUT_MS}ms`)), WASM_TIMEOUT_MS);
       });
 
-      const wasm = await Promise.race([wasmPromise, timeoutPromise]);
-      await wasm.default();
-      engineModule = wasm;
-      return engineModule;
+      try {
+        const wasm = await Promise.race([wasmPromise, timeoutPromise]);
+        await wasm.default();
+        engineModule = wasm;
+        return engineModule;
+      } finally {
+        clearTimeout(timer);
+      }
     })().catch((error) => {
       enginePromise = null;
       throw error;

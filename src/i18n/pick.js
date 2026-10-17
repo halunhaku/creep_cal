@@ -25,17 +25,6 @@ export function pick(value, locale) {
   return value[locale] ?? value.en ?? '';
 }
 
-/**
- * Resolve an array of `{ en, zh }` values — a list of bullets or limitations.
- *
- * @param {Array<{ en: string, zh: string } | string>} values
- * @param {string} locale
- * @returns {string[]}
- */
-export function pickAll(values, locale) {
-  return (values ?? []).map((value) => pick(value, locale));
-}
-
 /** The Intl code for a locale, for the few call sites that build their own formatter. */
 export function intlLocale(locale) {
   return INTL_LOCALE[locale] ?? INTL_LOCALE.en;

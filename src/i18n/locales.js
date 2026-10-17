@@ -23,12 +23,6 @@ export const HTML_LANG = { en: 'en', zh: 'zh-CN' };
 
 export const INTL_LOCALE = { en: 'en-US', zh: 'zh-CN' };
 
-/** The label each locale shows for itself, in its own language. */
-export const LOCALE_LABEL = { en: 'English', zh: '中文' };
-
-/** The other locale, named in this one — for the switcher's title/tooltip. */
-export const LOCALE_SWITCH_LABEL = { en: '切换到中文', zh: 'Switch to English' };
-
 export function isLocale(value) {
   return LOCALES.includes(value);
 }

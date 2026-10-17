@@ -29,6 +29,21 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const PORT = Number(process.env.PREVIEW_PORT ?? 4180);
 const CDP_PORT = Number(process.env.CDP_PORT ?? 9228);
 const BASE = `http://127.0.0.1:${PORT}/`;
+
+/*
+ * Every scene below waits on English interface text, so the language is pinned
+ * rather than inherited from the browser. `detectLocale()` reads
+ * `navigator.languages`, so on a Chinese-locale machine the app rendered 中文 and
+ * the first scene timed out on `Last compute` — the gate could not run at all.
+ * `lang=en` is the app's own supported parameter, so it also climbs the real
+ * URL path.
+ */
+const appUrl = (search = '') => {
+  const query = new URLSearchParams(search.replace(/^\?/, ''));
+  query.set('lang', 'en');
+  return `${BASE}?${query}`;
+};
+
 const DEFAULT_BASELINE = '/tmp/creep-dom-baseline.json';
 
 const mode = process.argv.includes('--save') ? 'save'
@@ -62,8 +77,12 @@ const NORMALISE = `
 // page's own prose ("…the JavaScript reference kernel…", "…a reproducible result
 // matrix.") would return before the state is reached.
 const labelled = (label) => `[...document.querySelectorAll('.eyebrow')].some((el) => el.textContent.trim() === ${JSON.stringify(label)})`;
-// Exact text on a leaf element: "Computed" is a status badge, not an eyebrow.
-const leafText = (text) => `[...document.querySelectorAll('*')].some((el) => el.children.length === 0 && el.textContent.trim() === ${JSON.stringify(text)})`;
+// The reference library renders the "On this page" list before the document arrives,
+// so its eyebrow is not a load signal. A rendered heading is: `[data-doc-heading]`
+// is set by MarkdownDocument and only exists once the Markdown has been parsed.
+// (The previous signal, the leaf text "Parameter contract", named a table that
+// stopped existing when the reference library moved to model Markdown.)
+const documentReady = `document.querySelectorAll('[data-doc-heading]').length > 0`;
 
 // Every element's computed typography and geometry, in document order. Insensitive
 // to class *names*, which is what a tokenisation pass legitimately changes.
@@ -95,7 +114,7 @@ const SCENES = [
   { key: 'batch-loaded', workspace: 'Batch', settled: labelled('Prediction model'), click: 'Load demo sweep', after: labelled('Result matrix') },
   // Deep-linked: the reference library now follows the app's model, and B4 is the
   // richest page to fingerprint.
-  { key: 'docs-b4', workspace: 'Reference', settled: leafText('Parameter contract'), url: '?mode=docs&model=b4' },
+  { key: 'docs-b4', workspace: 'Reference', settled: documentReady, url: '?mode=docs&model=b4' },
   // The palette is the only surface that carries the popover shadow token, and the
   // chart tooltips that share it need a hover. Without this scene the fingerprint's
   // boxShadow field observes nothing and the token can go dead unnoticed.
@@ -236,11 +255,16 @@ async function main() {
     //
     // Pulled out of the loop so the same scene can be re-measured at each viewport.
     const settleScene = async (scene) => {
-      await send('Page.navigate', { url: scene.url ? `${BASE}${scene.url}` : BASE });
+      await send('Page.navigate', { url: appUrl(scene.url) });
       await sleep(900);
       if (scene.workspace !== 'Calculate' && !scene.url) {
-        await evaluate(`[...document.querySelectorAll('button')].find((b) => b.textContent.trim() === ${JSON.stringify(scene.workspace)})?.click()`);
-        await waitFor(labelled('Prediction model') + " || " + leafText('Parameter contract'), `the ${scene.workspace} workspace`);
+        // Matched on the accessible name, not on `textContent`. The nav button
+        // renders both labels — `<span class="hidden md:inline">Batch</span>` and
+        // `<span class="md:hidden">Batch</span>` — so its textContent is
+        // "BatchBatch" and an exact text match never found it, which made this
+        // script fail on the first non-Calculate scene.
+        await evaluate(`[...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === ${JSON.stringify(scene.workspace)})?.click()`);
+        await waitFor(labelled('Prediction model'), `the ${scene.workspace} workspace`);
       }
       await waitFor(scene.settled, `the settled ${scene.key} state`);
       if (scene.click) {

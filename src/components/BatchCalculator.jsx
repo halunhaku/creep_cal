@@ -20,6 +20,31 @@ import { isBatchWorkerAvailable, runBatchInWorker } from './batchWorkerClient';
 import { applyMapping, suggestMapping } from './columnMapping';
 import { CHART, axisTitleStyle, tickGap, tickStyle } from './chartTheme';
 
+/**
+ * Collapsed columns, reported the same way for both importers.
+ *
+ * A record is built by `Object.fromEntries`, so a header that appears twice (or
+ * a blank header whose synthetic `column_N` name matches a real one) keeps the
+ * last column and drops the first. The CSV path has always warned about that;
+ * the XLSX path silently lost the column. Which value survives is defensible —
+ * saying so is not optional.
+ *
+ * @param {string[]} fields the header names as the records will be keyed
+ * @returns {object[]} one issue per collapsed name, in first-appearance order
+ */
+function duplicateHeaderIssues(fields) {
+  const seen = new Set();
+  const duplicates = [...new Set(fields.filter((field) => {
+    if (seen.has(field)) return true;
+    seen.add(field);
+    return false;
+  }))];
+  return duplicates.map((field) => ({
+    row: 'Header', field, value: '—',
+    messageKey: 'batch.error.duplicate', vars: { field },
+  }));
+}
+
 const MAX_BATCH_ROWS = 20000;
 const MAX_SCATTER_POINTS = 2000;
 
@@ -368,17 +393,7 @@ export default function BatchCalculator() {
         transformHeader: (header) => String(header ?? '').trim(),
         complete:(result) => {
           const fields = result.meta?.fields ?? Object.keys(result.data[0] ?? {});
-          const seen = new Set();
-          const duplicates = [...new Set(fields.filter((field) => {
-            if (seen.has(field)) return true;
-            seen.add(field);
-            return false;
-          }))];
-          const duplicateIssues = duplicates.map((field) => ({
-            row: 'Header', field, value: '—',
-            messageKey: 'batch.error.duplicate', vars: { field },
-          }));
-          finish(result.data, [...duplicateIssues, ...(result.errors ?? []).map((error) => ({
+          finish(result.data, [...duplicateHeaderIssues(fields), ...(result.errors ?? []).map((error) => ({
             row: Number.isInteger(error.row) ? error.row + 2 : 'File',
             field: 'CSV',
             value: '—',
@@ -399,11 +414,14 @@ export default function BatchCalculator() {
         const rows = await readSheet(file);
         if (!isCurrent()) return;
         const [headerRow, ...dataRows] = rows;
-        const headers = (headerRow || []).map((value) => String(value ?? '').trim());
+        // A blank header is named after its position so the column is still
+        // addressable; that synthetic name can collide with a real header, which
+        // is the same collision as a duplicated name and gets the same warning.
+        const headers = (headerRow || []).map((value, index) => String(value ?? '').trim() || `column_${index + 1}`);
         const records = dataRows
           .filter((row) => Array.isArray(row) && row.some((value) => value !== null && value !== undefined && value !== ''))
-          .map((row) => Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] ?? ''])));
-        finish(records, []);
+          .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ''])));
+        finish(records, duplicateHeaderIssues(headers));
       } catch (error) {
         if (!isCurrent()) return;
         clearDataset();

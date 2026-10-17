@@ -16,7 +16,6 @@ import { INTL_LOCALE } from './locales';
  */
 const numberCache = new Map();
 const preciseCache = new Map();
-const timeCache = new Map();
 
 /** @param {string} locale */
 export function numberFormat(locale) {
@@ -56,16 +55,4 @@ export function formatNumber(value, locale, digits) {
     preciseCache.set(key, formatter);
   }
   return formatter.format(number);
-}
-
-/** A clock time for the calculation log's left column. */
-export function formatTime(date, locale) {
-  const intl = INTL_LOCALE[locale] ?? INTL_LOCALE.en;
-  const key = `${intl}:time`;
-  let formatter = timeCache.get(key);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat(intl, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    timeCache.set(key, formatter);
-  }
-  return formatter.format(date);
 }
