@@ -16,6 +16,9 @@ export default {
     tagline: 'Concrete time-dependent analysis',
   },
   nav: {
+    singleShort: 'Calc',
+    batchShort: 'Batch',
+    docsShort: 'Docs',
     label: 'Workspace',
     single: 'Calculate',
     batch: 'Batch',
@@ -32,6 +35,7 @@ export default {
     toDark: 'Switch to dark theme',
   },
   language: {
+    switchShortLabel: '中',
     /** The control names the language it switches *to*, written in that language. */
     switchLabel: '中文',
     switchTitle: 'Switch to Chinese',

@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import App from '../App';
+import { setLocale } from '../state/appStore';
 
 /**
  * Regression: header, main and footer each carried their own hand-copied copy of the
@@ -56,6 +57,27 @@ describe('the application shell', () => {
 });
 
 describe('header controls under pressure', () => {
+  test.each([
+    ['en', ['Calculate', 'Batch', 'Reference'], ['Calc', 'Batch', 'Docs']],
+    ['zh', ['计算', '批量', '参考'], ['计算', '批量', '参考']],
+  ])('compact %s controls keep full accessible names and the original navigation behavior', async (locale, names, short) => {
+    await renderApp();
+    act(() => setLocale(locale));
+    const nav = within(document.querySelector('header nav'));
+    for (let index = 0; index < names.length; index += 1) {
+      const button = nav.getByRole('button', { name: names[index], exact: true });
+      expect(button).toHaveAttribute('aria-label', names[index]);
+      expect(button.querySelector('.md\\:hidden')).toHaveTextContent(short[index]);
+      expect(button.querySelector('.hidden')).toHaveTextContent(names[index]);
+    }
+    const language = document.querySelector('button[lang]');
+    expect(language).toHaveClass('touch-target');
+    expect(language.querySelector('.md\\:hidden')).toHaveTextContent(locale === 'en' ? '中' : 'EN');
+    expect(language.getAttribute('aria-label')).toBeTruthy();
+    fireEvent.click(nav.getByRole('button', { name: names[2], exact: true }));
+    await screen.findByRole('heading', { name: locale === 'en' ? 'Model standards and equations' : '模型标准与计算公式' });
+  });
+
   test('the kernel badge is the row’s slack-taker, not shrink-0', async () => {
     await renderApp();
     const badge = screen.getByRole('status');

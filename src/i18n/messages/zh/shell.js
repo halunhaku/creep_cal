@@ -16,6 +16,9 @@ export default {
     tagline: '混凝土时变分析',
   },
   nav: {
+    singleShort: '计算',
+    batchShort: '批量',
+    docsShort: '参考',
     label: '工作区',
     single: '计算',
     batch: '批量',
@@ -32,6 +35,7 @@ export default {
     toDark: '切换到深色主题',
   },
   language: {
+    switchShortLabel: 'EN',
     /** 控件显示它将要切换到的语言，并用该语言自身书写。 */
     switchLabel: 'English',
     switchTitle: '切换到英文',

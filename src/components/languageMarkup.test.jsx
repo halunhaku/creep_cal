@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest';
 import App from '../App';
 import { getState, updateBatch } from '../state/appStore';
 import Aci209Calculator from './Aci209Calculator';
-import DocsPage from './DocsPage';
+import Lang from './ui/Lang';
 import Mc2010Calculator from './Mc2010Calculator';
 import ModelCalculator from './ModelCalculator';
 import { langRuns } from './ui/langRuns';
@@ -170,9 +170,15 @@ describe('Chinese fragments are marked with their language', () => {
     expect(unmarkedChinese(container)).toEqual([]);
   });
 
-  test('the reference library', () => {
-    const { container } = render(<DocsPage />);
-    expect(container.textContent).toContain('说明');
+  test.each(['en', 'zh'])('the reference library uses the active document language (%s)', async (locale) => {
+    window.history.replaceState(null, '', `/?mode=docs&lang=${locale}`);
+    const { container } = render(<App />);
+    await screen.findByRole('heading', { name: locale === 'zh' ? 'ACI 209R-92 徐变模型说明' : 'ACI 209R-92 creep model documentation' });
+    const content = container.querySelector('[data-markdown-document]');
+    expect(content.querySelectorAll('.katex').length).toBeGreaterThan(0);
+    expect(content.querySelectorAll('table').length).toBeGreaterThan(0);
+    expect(HAN.test(content.textContent)).toBe(locale === 'zh');
+    expect(document.documentElement.lang).toBe(locale === 'zh' ? 'zh-CN' : 'en');
     expect(unmarkedChinese(container)).toEqual([]);
   });
 
@@ -233,9 +239,12 @@ describe('the splitter that marks them', () => {
   });
 
   test('marks the Chinese in a rendered string, digits and all', () => {
-    const { container } = render(<DocsPage />);
+    const text = 'Markdown 说明 · 20–30 °C 推荐范围';
+    const { container } = render(<Lang text={text} />);
     const marked = [...container.querySelectorAll('[lang="zh-CN"]')];
-    expect(marked.length).toBeGreaterThan(0);
+    expect(marked.length).toBe(2);
+    expect(container.textContent).toBe(text);
     for (const element of marked) expect(HAN.test(element.textContent)).toBe(true);
+    expect(unmarkedChinese(container)).toEqual([]);
   });
 });

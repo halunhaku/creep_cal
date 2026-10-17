@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { setLocale } from '../../state/appStore';
 import { useLocale, useT } from '../../i18n';
 import { HTML_LANG } from '../../i18n/locales';
@@ -37,9 +37,12 @@ function LanguageSwitch() {
       lang={HTML_LANG[target]}
       aria-label={t('language.switchTitle')}
       title={t('language.switchTitle')}
-      className="touch-target flex h-12 shrink-0 items-center justify-center border-l border-line bg-surface px-1.5 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink min-[380px]:px-2.5"
+      className="touch-target flex h-12 shrink-0 items-center justify-center border-l border-line bg-surface px-1.5 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink md:px-2.5"
     >
-      {t('language.switchLabel')}
+      {/* Narrow screens use a short visual label; the full target-language
+          name remains available through the button's accessible name/title. */}
+      <span className="hidden md:inline">{t('language.switchLabel')}</span>
+      <span className="md:hidden">{t('language.switchShortLabel')}</span>
     </button>
   );
 }
@@ -48,9 +51,9 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
   const t = useT();
   const [theme, setTheme] = useState(() => typeof document === 'undefined' ? 'light' : document.body.dataset.theme || 'light');
   const navItems = [
-    { id: 'single', label: t('nav.single') },
-    { id: 'batch', label: t('nav.batch') },
-    { id: 'docs', label: t('nav.docs') },
+    { id: 'single', label: t('nav.single'), short: t('nav.singleShort') },
+    { id: 'batch', label: t('nav.batch'), short: t('nav.batchShort') },
+    { id: 'docs', label: t('nav.docs'), short: t('nav.docsShort') },
   ];
 
   useEffect(() => {
@@ -64,9 +67,9 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
   return (
     <header className="sticky top-0 z-50 shrink-0 border-b border-line bg-surface">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-3 focus:z-[60] button-primary">{t('skipToContent')}</a>
-      <div className="shell-gutter flex h-12 items-center gap-2 min-[380px]:gap-3 lg:gap-5">
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center bg-action font-sans text-sm font-semibold text-[var(--on-action)]">CL</div>
+      <div className="shell-gutter flex h-12 items-center gap-1 min-[380px]:gap-2 min-[600px]:gap-3 lg:gap-5">
+        <div className="flex min-w-0 shrink-0 items-center gap-3 min-[600px]:flex-1">
+          <div className="flex h-12 w-8 shrink-0 items-center justify-center min-[380px]:w-12 bg-action font-sans text-sm font-semibold text-[var(--on-action)]">CL</div>
           {/* Two gates instead of one shrinking block: below 600px the mark stands
               alone, from 600px the wordmark fits (it needs 83px), and the tagline
               only appears once it fits too (~220px, from 900px). Previously the
@@ -80,27 +83,31 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
           </div>
         </div>
 
-        <nav aria-label={t('nav.label')} className="flex h-full shrink-0 items-stretch min-[380px]:gap-1">
+        <nav aria-label={t('nav.label')} className="flex h-full shrink-0 items-stretch md:gap-1">
           {navItems.map((item) => {
             const active = activeMode === item.id;
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => item.id === 'docs' ? onOpenDocs() : onModeChange(item.id)}
                 aria-current={active ? 'page' : undefined}
-                className={`relative px-1.5 text-xs font-semibold transition-colors duration-150 min-[380px]:px-2.5 min-[380px]:text-sm md:px-4 ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}
+                aria-label={item.label}
+                className={`relative px-1 text-xs font-semibold transition-colors duration-150 min-[380px]:min-w-11 md:px-4 md:text-sm ${active ? 'text-ink' : 'text-muted hover:text-ink'}`}
               >
-                {item.label}
+                <span className="hidden md:inline">{item.label}</span>
+                <span className="md:hidden">{item.short}</span>
                 {active && <span className="absolute inset-x-1.5 bottom-0 h-0.5 bg-action min-[380px]:inset-x-2.5 md:inset-x-3" aria-hidden="true" />}
               </button>
             );
           })}
         </nav>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+        <div className="flex min-w-0 flex-1 items-center justify-end gap-0 min-[380px]:gap-1 md:gap-2">
           <button
+            type="button"
             onClick={onOpenPalette}
-            className="touch-target flex h-12 w-12 shrink-0 items-center justify-center gap-2 border-x border-line bg-surface text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink lg:w-auto lg:justify-start lg:px-4"
+            className="touch-target flex h-12 w-11 shrink-0 items-center justify-center gap-2 md:w-12 border-x border-line bg-surface text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink lg:w-auto lg:justify-start lg:px-4"
             aria-label={t('search.label')}
             title={t('search.title')}
           >
@@ -114,10 +121,11 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
           <KernelStatus workspace={activeMode} />
           <LanguageSwitch />
           <button
+            type="button"
             onClick={() => window.toggleTheme?.()}
             aria-label={themeLabel}
             title={themeLabel}
-            className="touch-target flex h-12 w-12 shrink-0 items-center justify-center border-l border-line bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.8]"
+            className="touch-target flex h-12 w-11 shrink-0 items-center justify-center md:w-12 border-l border-line bg-surface text-muted transition-colors hover:bg-surface-2 hover:text-ink [&_svg]:h-[17px] [&_svg]:w-[17px] [&_svg]:fill-none [&_svg]:stroke-current [&_svg]:stroke-[1.8]"
           >
             <ThemeIcon dark={theme === 'dark'} />
           </button>

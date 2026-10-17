@@ -97,8 +97,8 @@ describe('switching the interface language', () => {
   });
 
   test('the shell follows the language in every workspace', async () => {
-    // Batch now follows the catalogue too; the reference library is deferred.
-    // Verify the localized workspace and shell together, without changing Docs.
+    // Every workspace follows the catalogue; Docs additionally loads a real
+    // language-specific Markdown source rather than bilingual JSX.
     renderApp();
     await heading(/time-dependent concrete analysis/i);
     fireEvent.click(switchButton());
@@ -111,7 +111,8 @@ describe('switching the interface language', () => {
     expect(screen.getByRole('button', { name: '计算' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '参考' }));
-    await screen.findByRole('heading', { name: /model standards and equations/i });
+    await heading('模型标准与计算公式');
+    await heading('ACI 209R-92 徐变模型说明');
     expect(document.documentElement.lang).toBe(HTML_LANG.zh);
     expect(screen.getByRole('link', { name: '跳到主要内容' })).toBeInTheDocument();
   });

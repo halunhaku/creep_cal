@@ -1,9 +1,10 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import BatchCalculator from './BatchCalculator';
 import DocsPage from './DocsPage';
+import { setLocale } from '../state/appStore';
 
 /**
  * The shipped `public/模型说明/*.md` and `public/模型示例/*` files used to be dead
@@ -35,7 +36,8 @@ describe('shipped documentation and sample assets are reachable', () => {
     expect(seen.size).toBe(12);   // 6 models x (csv + xlsx)
   });
 
-  test('every model links to a Markdown description that exists on disk', () => {
+  test.each(['en', 'zh'])('every model links to a %s Markdown description that exists on disk', (locale) => {
+    act(() => setLocale(locale));
     render(<DocsPage />);
     const names = { aci209: 'ACI 209R-92', mc2010: 'fib Model Code 2010', b4: 'RILEM Model B4', b4s: 'RILEM Model B4s', gl2000: 'GL2000', aashto: 'AASHTO LRFD' };
     const expected = new Set();
@@ -44,7 +46,8 @@ describe('shipped documentation and sample assets are reachable', () => {
       fireEvent.click(screen.getByRole('button', { name: new RegExp(`${name}(?!s)`) }));
       const href = screen.getByRole('link', { name: /Markdown/i }).getAttribute('href');
       expectAssetExists(href, `${id} documentation`);
-      expect(decodeURI(href)).toBe(`/模型说明/${id}.md`);
+      expect(decodeURI(href)).toBe(`/模型说明/${locale === 'en' ? 'en/' : ''}${id}.md`);
+      expect(screen.getByRole('link', { name: /Markdown/i })).toHaveAttribute('download', `${id}.${locale}.md`);
       expected.add(href);
     }
     expect(expected.size).toBe(6);
