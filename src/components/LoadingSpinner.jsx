@@ -1,10 +1,17 @@
 import React from 'react';
+import { useT } from '../i18n';
 
+/**
+ * `message` stays a prop: the callers that pass one are naming the specific thing
+ * being loaded ("Loading model…", "Loading workspace…") and resolve it from the
+ * catalogue themselves. The default is the generic one.
+ */
 const LoadingSpinner = ({ 
   size = 40, 
-  message = "Loading…", 
+  message,
   showMessage = true,
 }) => {
+  const t = useT();
   return (
     <div className="flex flex-col items-center justify-center p-5 gap-3">
       <div
@@ -19,7 +26,7 @@ const LoadingSpinner = ({
       
       {showMessage && (
         <div className="text-muted text-sm font-medium text-center">
-          {message}
+          {message ?? t('loading.default')}
         </div>
       )}
     </div>

@@ -1,4 +1,7 @@
-import { getState, setEngine, setMode, setModel, subscribe, updateBatch } from './appStore';
+import { applyLocale, getState, setEngine, setMode, setModel, subscribe, updateBatch } from './appStore';
+import { DEFAULT_LOCALE, LOCALES } from '../i18n/locales';
+import { translate } from '../i18n';
+import { MODELS as BATCH_MODELS } from '../components/batchModels';
 
 /**
  * Keeps the navigation state in the URL.
@@ -6,25 +9,26 @@ import { getState, setEngine, setMode, setModel, subscribe, updateBatch } from '
  * The audit's P0-3: the workspace, model and kernel were memory-only, so nothing
  * could be linked to, Back left the app entirely, and a refresh started over.
  *
- * Only navigation lives in the URL — the workspace, the model and the kernel.
- * Parameters and datasets deliberately do not: a dataset cannot be serialised,
- * and a full parameter set in a query string is what step 2's named parameter
- * sets are for. Edited parameters are persisted separately (see appStore), so a
- * refresh does not wipe them either.
+ * Only navigation lives in the URL — the workspace, the model, the kernel, and the
+ * language. Parameters and datasets deliberately do not: a dataset cannot be
+ * serialised, and a full parameter set in a query string is what step 2's named
+ * parameter sets are for. Edited parameters are persisted separately (see
+ * appStore), so a refresh does not wipe them either.
  *
  * Defaults are omitted, so a plain visit leaves the URL clean.
  */
 const MODES = new Set(['single', 'batch', 'docs']);
 const MODELS = new Set(['aci209', 'mc2010', 'b4', 'b4s', 'gl2000', 'aashto']);
 const KERNELS = new Set(['rust', 'js']);
-const DEFAULTS = { mode: 'single', model: 'aci209', engine: 'rust' };
+const LOCALE_IDS = new Set(LOCALES);
+const DEFAULTS = { mode: 'single', model: 'aci209', engine: 'rust', locale: DEFAULT_LOCALE };
 const DEFAULT_MODEL_BY_MODE = { single: 'aci209', batch: 'aci209', docs: 'aci209' };
 
-const KEYS = { mode: 'mode', model: 'model', engine: 'kernel' };
+const KEYS = { mode: 'mode', model: 'model', engine: 'kernel', locale: 'lang' };
 
 export function readUrl(search) {
   const query = new URLSearchParams(search ?? (typeof window === 'undefined' ? '' : window.location.search));
-  const valid = { mode: MODES, model: MODELS, engine: KERNELS };
+  const valid = { mode: MODES, model: MODELS, engine: KERNELS, locale: LOCALE_IDS };
   const parsed = {};
   for (const [field, key] of Object.entries(KEYS)) {
     const value = query.get(key);
@@ -42,6 +46,10 @@ export function buildSearch(state) {
     const defaultValue = field === 'model'
       ? DEFAULT_MODEL_BY_MODE[state.mode]
       : DEFAULTS[field];
+    // A field the caller did not supply is "no opinion", not "the default is
+    // missing": writing it would put `?lang=undefined` in the address bar, which is
+    // what adding `locale` to KEYS did to every partial state object in the tests.
+    if (value === undefined || value === null) continue;
     if (value !== defaultValue) query.set(key, value);
   }
   const value = query.toString();
@@ -74,15 +82,29 @@ export function initUrlSync() {
     const nextMode = parsed.mode ?? (complete ? DEFAULTS.mode : getState().mode);
     const nextModel = parsed.model ?? (complete ? DEFAULT_MODEL_BY_MODE[nextMode] : undefined);
     const nextEngine = parsed.engine ?? (complete ? DEFAULTS.engine : undefined);
+    // Unlike the three above, an absent `lang` is not read as "the default" — not
+    // even on a Back/Forward. The language is the reader's preference first and a
+    // shareable link second: a Chinese reader who presses Back to a URL that never
+    // named a language should not watch the interface turn English under them.
+    const nextLocale = parsed.locale;
+    const batch = getState().batch;
+    const changesBatchModel = nextMode === 'batch' && nextModel !== undefined && batch.modelId !== nextModel;
+    const hasDataset = batch.rows.length || batch.pendingRows.length || batch.fileName;
+    // URL navigation cannot reuse the mounted workspace's recomputation handler.
+    // Never discard an upload/mapping (including a file still parsing) silently.
+    const allowBatchReset = !changesBatchModel || !hasDataset || window.confirm(translate(nextLocale ?? getState().locale, 'batch.confirmUrlModel', {
+      model: BATCH_MODELS.find((model) => model.id === nextModel)?.name ?? nextModel,
+    }));
 
     applyingFromUrl = true;
     if (parsed.mode !== undefined || complete) setMode(nextMode);
     if (nextModel !== undefined) {
       if (nextMode === 'batch') {
-        if (getState().batch.modelId !== nextModel) {
-          // A URL cannot carry the uploaded dataset. Clear it rather than leave
-          // results computed by one model under another model's heading.
+        if (changesBatchModel && allowBatchReset) {
+          // Invalidate callbacks even if navigation later returns to the same
+          // model: checking only modelId would let an old Worker resurrect data.
           updateBatch({
+            generation: batch.generation + 1,
             modelId: nextModel, rows: [], headers: [], issues: [], fileName: '',
             xKey: '', yKey: '', pendingRows: [], mapping: [],
           });
@@ -92,7 +114,15 @@ export function initUrlSync() {
       }
     }
     if (nextEngine !== undefined) setEngine(nextEngine);
+    // Back/Forward and a fresh load both come through here. Neither one is the
+    // reader expressing a preference, so neither persists: a `?lang=zh` link shows
+    // Chinese without permanently changing what an English reader next opens.
+    if (nextLocale) applyLocale(nextLocale);
     applyingFromUrl = false;
+    if (!allowBatchReset) {
+      // Cancelling keeps both the current data and an honest, shareable URL.
+      window.history.replaceState(null, '', `${window.location.pathname}${buildSearch(getState())}${window.location.hash}`);
+    }
     // The URL now describes this mode, so the next in-workspace change replaces
     // rather than pushing a second entry for the same workspace.
     previousMode = getState().mode;

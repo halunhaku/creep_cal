@@ -21,12 +21,22 @@ function rustChartPoint(point) {
   };
 }
 
-const config = {
+// Exported so parameterUnits.test.js can compare the documented unit column against
+// the real config object instead of regex-parsing this file's text; models.locale.test.jsx
+// reads it the same way, which is also why this is not a component-only module.
+// eslint-disable-next-line react-refresh/only-export-components -- read directly by the tests
+export const config = {
   id: 'aashto',
   name: 'AASHTO LRFD',
   descriptions: {
-    js: 'AASHTO LRFD (NCHRP 18-07) creep coefficient and shrinkage: strength-based with humidity, size and time factors.',
-    rust: 'AASHTO LRFD evaluated by the Rust WASM kernel with absolute concrete-age series.',
+    js: {
+      en: 'AASHTO LRFD (NCHRP 18-07) creep coefficient and shrinkage: strength-based with humidity, size and time factors.',
+      zh: 'AASHTO LRFD（NCHRP 18-07）徐变系数与收缩：基于强度，含湿度、尺寸与时间修正。',
+    },
+    rust: {
+      en: 'AASHTO LRFD evaluated by the Rust WASM kernel with absolute concrete-age series.',
+      zh: 'AASHTO LRFD 由 Rust WASM 内核计算，输出以混凝土绝对龄期为横轴。',
+    },
   },
   initialParams: {
     fci: 41,
@@ -37,18 +47,17 @@ const config = {
     targetAge: 365,
   },
   paramsConfig: [
-    { name: 'fci', label: 'Strength at Loading', min: 16.5, max: 103.5, step: 0.1, unit: 'MPa' },
-    { name: 'H', label: 'Relative Humidity', min: 0, max: 100, step: 0.1, unit: '%' },
-    { name: 'vs', label: 'Volume-Surface Ratio', min: 1, max: 1000, step: 0.01, unit: 'mm' },
-    { name: 'ti', label: 'Age at Loading', min: 1, max: 365, step: 0.1, unit: 'Days' },
-    { name: 'tc', label: 'Curing-End Age', min: 0, max: 365, step: 0.1, unit: 'Days' },
-    { name: 'targetAge', label: 'Target Age', min: 1, max: 10000, step: 1, unit: 'Days' },
+    { name: 'fci', label: { en: 'Strength at Loading', zh: '加载时强度' }, min: 16.5, max: 103.5, step: 0.1, unit: 'MPa' },
+    { name: 'H', label: { en: 'Relative Humidity', zh: '相对湿度' }, min: 0, max: 100, step: 0.1, unit: '%' },
+    { name: 'vs', label: { en: 'Volume-Surface Ratio', zh: '体积表面积比' }, min: 1, max: 1000, step: 0.01, unit: 'mm' },
+    { name: 'ti', label: { en: 'Age at Loading', zh: '加载龄期' }, min: 1, max: 365, step: 0.1, unit: 'Days' },
+    { name: 'tc', label: { en: 'Curing-End Age', zh: '养护结束龄期' }, min: 0, max: 365, step: 0.1, unit: 'Days' },
+    { name: 'targetAge', label: { en: 'Target Age', zh: '目标龄期' }, min: 1, max: 10000, step: 1, unit: 'Days' },
   ],
-  loadingMessage: 'Loading AASHTO LRFD kernel…',
-  readyMessage: 'AASHTO LRFD kernel ready.',
-  startMessage: (params) => (
-    `Initiating AASHTO with fci=${params.fci}MPa, H=${params.H}%, ti=${params.ti}d`
-  ),
+  readyMessage: {
+    en: 'AASHTO LRFD kernel ready.',
+    zh: 'AASHTO LRFD 内核已就绪。',
+  },
   calculateJs(params, maxDays) {
     const results = new Array(maxDays + 1);
     for (let t = 0; t <= maxDays; t += 1) {
@@ -64,16 +73,16 @@ const config = {
     return {
       primary: current ? current.psi : NaN,
       extraResults: current ? [
-        { label: 'Drying shrinkage εsh', value: current.epsilon_sh, unit: 'με', group: 'shrinkage' },
-        { label: 'Total shrinkage εtotal', value: current.epsilon_total, unit: 'με', group: 'shrinkage', total: true },
+        { label: { en: 'Drying shrinkage εsh', zh: '干燥收缩 εsh' }, value: current.epsilon_sh, unit: 'με', group: 'shrinkage' },
+        { label: { en: 'Total shrinkage εtotal', zh: '总收缩 εtotal' }, value: current.epsilon_total, unit: 'με', group: 'shrinkage', total: true },
       ] : [],
     };
   },
   chartLines: [
-    { dataKey: 'psi', stroke: 'var(--series-1)', name: 'Creep Coefficient ψ', kind: 'compliance' },
-    { dataKey: 'epsilon_sh', stroke: 'var(--series-2)', name: 'Drying Shrinkage εsh (με)', kind: 'shrinkage' },
+    { dataKey: 'psi', stroke: 'var(--series-1)', name: { en: 'Creep Coefficient ψ', zh: '徐变系数 ψ' }, kind: 'compliance' },
+    { dataKey: 'epsilon_sh', stroke: 'var(--series-2)', name: { en: 'Drying Shrinkage εsh (με)', zh: '干燥收缩 εsh（με）' }, kind: 'shrinkage' },
   ],
-  resultLabel: 'Creep Coefficient ψ(t,ti)',
+  resultLabel: { en: 'Creep Coefficient ψ(t,ti)', zh: '徐变系数 ψ(t,ti)' },
 };
 
 export default function AashtoCalculator({ engine, onEngineFallback }) {

@@ -131,13 +131,13 @@ describe('ModelCalculator workspace state', () => {
     const VS = await screen.findByLabelText(/Volume-Surface Ratio/i);
     fireEvent.change(VS, { target: { value: '' } });
     fireEvent.blur(VS);
-    await waitFor(() => expect(screen.getByText(/inputs require attention/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/input requires attention/i)).toBeInTheDocument());
 
     // This used to assert the button was disabled, which was the audit's P2-3: a
     // disabled button cannot be focused, so a keyboard user could not reach it to
     // find out why nothing happened, and nothing moved them to the field at fault.
     // It now stays reachable, says what is wrong, and puts the cursor there.
-    const button = screen.getByRole('button', { name: /inputs require attention/i });
+    const button = screen.getByRole('button', { name: /input requires attention/i });
     expect(button).toBeEnabled();
     fireEvent.click(button);
     expect(VS).toHaveFocus();
@@ -172,8 +172,9 @@ describe('ModelCalculator workspace state', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Data$/ }));
 
     // 10,001 computed points are sampled down to a few dozen rows; the table used
-    // to be silently truncated with no indication.
-    const notice = screen.getByText(/Showing \d+ of 10001 computed points/);
+    // to be silently truncated with no indication. The count is grouped for the
+    // locale (10,001 in both en and zh).
+    const notice = screen.getByText(/Showing \d+ of 10,001 computed points/);
     const shown = Number(notice.textContent.match(/Showing (\d+) of/)[1]);
     expect(shown).toBeGreaterThan(0);
     expect(shown).toBeLessThan(100);

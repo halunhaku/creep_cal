@@ -1,18 +1,20 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import { NO_UNIT, PARAMETER_UNITS, unitFor } from './parameterUnits';
+import { config as aci209 } from '../components/Aci209Calculator';
+import { config as mc2010 } from '../components/Mc2010Calculator';
+import { config as b4 } from '../components/B4Calculator';
+import { config as b4s } from '../components/B4sCalculator';
+import { config as gl2000 } from '../components/Gl2000Calculator';
+import { config as aashto } from '../components/AashtoCalculator';
 
-const CALCULATORS = ['Aci209Calculator', 'Mc2010Calculator', 'B4Calculator', 'B4sCalculator', 'Gl2000Calculator', 'AashtoCalculator'];
+const CONFIGS = [aci209, mc2010, b4, b4s, gl2000, aashto];
 
-/** Every `{ name: 'x', … unit: 'y' }` the calculators declare, read from source. */
+/** Every parameter unit the calculators declare, read from their real configs. */
 function declaredUnits() {
   const declared = new Map();
-  for (const name of CALCULATORS) {
-    const source = readFileSync(resolve(process.cwd(), `src/components/${name}.jsx`), 'utf8');
-    for (const match of source.matchAll(/\{ name: '(\w+)'([^{}]*)\}/g)) {
-      const unit = match[2].match(/unit: '([^']*)'/);
-      if (unit) declared.set(match[1], unit[1]);
+  for (const config of CONFIGS) {
+    for (const item of config.paramsConfig) {
+      if (item.unit !== undefined) declared.set(item.name, item.unit);
     }
   }
   return declared;
@@ -21,8 +23,12 @@ function declaredUnits() {
 /**
  * The reference library's unit column is documentation; the calculators' configs
  * are the contract. If they disagree, the page is teaching the wrong unit — so
- * this reads the calculator sources and compares, rather than trusting that
- * somebody remembered to update both.
+ * this compares the shipped configs against the shipped notes, rather than
+ * trusting that somebody remembered to update both.
+ *
+ * The configs are imported rather than regex-parsed out of the source text: once a
+ * parameter's label became a `{ en, zh }` pair, a brace-counting regex silently
+ * matched nothing and the test would have passed against an empty map.
  */
 describe('parameter units', () => {
   test('every unit the documentation shows matches the calculator contract', () => {

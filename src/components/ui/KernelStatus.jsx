@@ -1,4 +1,5 @@
 import React, { useSyncExternalStore } from 'react';
+import { useT } from '../../i18n';
 import { getKernelStatus, subscribeKernelStatus } from '../../wasm/creepEngine';
 
 /**
@@ -16,42 +17,44 @@ import { getKernelStatus, subscribeKernelStatus } from '../../wasm/creepEngine';
  *              entry points for ACI 209 and MC 2010 only, so a wasm batch would
  *              compute different models with different kernels
  *   Reference  nothing is computed here, so the indicator says nothing
+ *
+ * @param {{ t: (key: string, vars?: object) => string, kernel: object, workspace: string }} args
  */
-const BATCH = {
-  label: 'Reference kernels',
-  title: 'Batch rows are evaluated with the JavaScript reference kernels, for all six models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make the rows incomparable.',
-};
-
-function describe(kernel, workspace) {
-  if (workspace === 'batch') return BATCH;
+function describe({ t, kernel, workspace }) {
+  if (workspace === 'batch') {
+    return { label: t('kernel.batchLabel'), title: t('kernel.batchTitle') };
+  }
   if (workspace === 'docs') return null;
 
   if (kernel.failure) {
     return {
-      label: 'WASM unavailable',
+      label: t('kernel.unavailable'),
       warn: true,
-      title: `Rust kernel failed: ${kernel.failure} — the JavaScript reference kernel is in use.`,
+      title: t('kernel.failedTitle', { reason: kernel.failure }),
     };
   }
   return {
-    idle: { label: 'Kernel idle', title: 'No calculation has run in this session yet.' },
-    loading: { label: 'Loading WASM…', title: 'Loading the Rust WebAssembly kernel.' },
+    idle: { label: t('kernel.idle'), title: t('kernel.idleTitle') },
+    loading: { label: t('kernel.loading'), title: t('kernel.loadingTitle') },
     ready: kernel.engine === 'rust'
-      ? { label: 'WASM ready', title: 'The Rust WebAssembly kernel is loaded and active for the calculation workspace.' }
-      : { label: 'JS kernel ready', title: 'The JavaScript reference kernel is active.' },
-    failed: { label: 'WASM unavailable', warn: true, title: 'The Rust kernel failed to load.' },
-  }[kernel.state] ?? { label: 'Kernel idle', title: '' };
+      ? { label: t('kernel.wasmReady'), title: t('kernel.wasmReadyTitle') }
+      : { label: t('kernel.jsReady'), title: t('kernel.jsReadyTitle') },
+    failed: { label: t('kernel.unavailable'), warn: true, title: t('kernel.unavailableTitle') },
+  }[kernel.state] ?? { label: t('kernel.idle'), title: '' };
 }
 
 export default function KernelStatus({ workspace }) {
+  const t = useT();
   const kernel = useSyncExternalStore(subscribeKernelStatus, getKernelStatus);
-  const badge = describe(kernel, workspace);
+  const badge = describe({ t, kernel, workspace });
   if (!badge) return null;
 
   return (
     // The badge is the header row's designated slack-taker. Every control around it
     // is `shrink-0`, so once the row ran out of room the badge and the nav overlapped
     // instead of degrading. It has a title, so a long label can ellipsize safely.
+    // The English and Chinese labels are both short (≤ "Reference kernels" / "JavaScript 参考内核"),
+    // so the slack-taking still has room at the widths the header gates allow.
     <div
       className="hidden min-w-0 shrink items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 min-[380px]:flex"
       title={badge.title}

@@ -10,14 +10,15 @@ import {
 import { coerceNumber } from '../math/creepModels';
 import { computeRow } from './batchCompute';
 import CustomSelect from './ui/CustomSelect';
-import Lang from './ui/Lang';
+import { useLocale, useT } from '../i18n';
+import { pick, intlLocale } from '../i18n/pick';
+import { formatInteger, formatNumber } from '../i18n/format';
+import { localizeValidation } from './batchValidation';
 import { getState, updateBatch, useAppSelector } from '../state/appStore';
 import { MODELS } from './batchModels';
 import { isBatchWorkerAvailable, runBatchInWorker } from './batchWorkerClient';
 import { applyMapping, suggestMapping } from './columnMapping';
-import { CHART, axisTitleStyle, formatLogTick, tickGap, tickStyle } from './chartTheme';
-
-const BATCH_KERNEL_NOTE = 'Every row is evaluated with the reference kernels, for all six models. The Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it here would compute different models with different kernels and make rows incomparable.';
+import { CHART, axisTitleStyle, tickGap, tickStyle } from './chartTheme';
 
 const MAX_BATCH_ROWS = 20000;
 const MAX_SCATTER_POINTS = 2000;
@@ -57,14 +58,17 @@ const SAMPLE_DATA = {
 function isNumericCell(value) {
   return Number.isFinite(coerceNumber(value));
 }
-function formatBatchValue(value) {
-  if (!Number.isFinite(Number(value))) return '—';
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 5 }).format(Number(value)).replace('-', '−');
+function formatBatchValue(value, formatter) {
+  const number = coerceNumber(value);
+  return Number.isFinite(number) ? formatter.format(number).replace('-', '−') : '—';
 }
 
 // Same visual language as the single-analysis tooltip: title row plus x/y rows.
 // Scatter passes the point in payload[0].payload, Line passes x as `label`.
 function BatchTooltip({ active, payload, label, xKey, yKey }) {
+  const t = useT();
+  const locale = useLocale();
+  const formatter = useMemo(() => new Intl.NumberFormat(intlLocale(locale), { maximumFractionDigits: 5 }), [locale]);
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload ?? {};
   // `value` is the x coordinate on a Scatter and the y coordinate on a Line,
@@ -74,16 +78,16 @@ function BatchTooltip({ active, payload, label, xKey, yKey }) {
   return (
     <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-popover">
       <div className="mb-2 font-mono text-3xs font-semibold text-faint">
-        {Number.isFinite(Number(point.row)) ? `Row #${point.row}` : 'Relation check'}
+        {Number.isFinite(point.row) ? t('batch.tooltipRow', { row: formatInteger(point.row, locale) }) : t('batch.relation')}
       </div>
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-5 text-1xs">
           <span className="text-muted">{xKey}</span>
-          <span className="font-mono text-ink">{formatBatchValue(x)}</span>
+          <span className="font-mono text-ink">{formatBatchValue(x, formatter)}</span>
         </div>
         <div className="flex items-center justify-between gap-5 text-1xs">
           <span className="text-muted">{yKey}</span>
-          <span className="font-mono text-ink">{formatBatchValue(y)}</span>
+          <span className="font-mono text-ink">{formatBatchValue(y, formatter)}</span>
         </div>
       </div>
     </div>
@@ -91,6 +95,17 @@ function BatchTooltip({ active, payload, label, xKey, yKey }) {
 }
 
 export default function BatchCalculator() {
+  const t = useT();
+  const locale = useLocale();
+  // Display formatting never feeds back into editable values, kernels or CSV.
+  const inputFormatter = useMemo(() => new Intl.NumberFormat(intlLocale(locale), { maximumSignificantDigits: 21 }), [locale]);
+  const tickFormatter = useMemo(() => new Intl.NumberFormat(intlLocale(locale), { maximumSignificantDigits: 3 }), [locale]);
+  const formatTick = (value) => formatBatchValue(value, tickFormatter);
+  const formatLogTick = (exponent) => formatTick(10 ** Number(exponent));
+  const count = (value) => formatInteger(value, locale);
+  const message = ({ key, vars }) => t(key, Object.fromEntries(Object.entries(vars ?? {}).map(([name, value]) => (
+    [name, typeof value === 'number' ? count(value) : value]
+  ))));
   // The parsed dataset and its results cannot be recreated without the file, so
   // they live in the store and survive leaving the workspace; parsing state and
   // errors are transient and stay here.
@@ -107,8 +122,12 @@ export default function BatchCalculator() {
     pendingRows,
     mapping,
   } = batch;
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [batchError, setBatchError] = useState('');
+  const [processingGeneration, setProcessingGeneration] = useState(null);
+  const isProcessing = processingGeneration === batch.generation;
+  const setIsProcessing = (processing) => setProcessingGeneration(processing ? getState().batch.generation : null);
+  const [errorState, setErrorState] = useState(null);
+  const batchError = errorState?.generation === batch.generation ? errorState.message : null;
+  const setBatchError = (error) => setErrorState(error ? { generation: getState().batch.generation, message: error } : null);
   // Chunked-compute progress for large files ({done,total} or null).
   const [progress, setProgress] = useState(null);
   // Guards async compute chunks: a newer processData/model-switch/upload
@@ -127,7 +146,15 @@ export default function BatchCalculator() {
 
   // Every failure path must clear the previous dataset, otherwise stale results
   // stay on screen under the new file name.
-  const clearDataset = () => updateBatch({ rows: [], headers: [], pendingRows: [], mapping: [] });
+  const clearDataset = () => {
+    computeSeq.current += 1;
+    setProgress(null);
+    updateBatch({ rows: [], headers: [], pendingRows: [], mapping: [] });
+  };
+
+  const confirmReplacement = (source) => (
+    !(batchResults.length || pendingRows.length || isProcessing) || window.confirm(t('batch.confirmReplace', { source }))
+  );
 
   /**
    * Columns that hold numbers are right-aligned so magnitudes line up down the
@@ -157,7 +184,7 @@ export default function BatchCalculator() {
     const rowNumber = rowIndex + 2;
     const base = Object.fromEntries(
       Object.entries({ ...batchResults[rowIndex], [header]: valueText })
-        .filter(([key]) => key !== '__status' && !key.startsWith('result_')),
+        .filter(([key]) => key !== '__status' && !model.resultKeys.includes(key)),
     );
     const keptIssues = issues.filter((issue) => issue.row !== rowNumber);
     const nextRows = batchResults.slice();
@@ -176,12 +203,12 @@ export default function BatchCalculator() {
   const applyColumnMapping = () => {
     const { rows: remapped, conflicts } = applyMapping(pendingRows, mapping);
     if (conflicts.length) {
-      setBatchError(`Two fields cannot use the same column: ${conflicts.join('; ')}`);
+      setBatchError({ key: 'batch.error.mappingConflict', vars: { fields: conflicts.join('; ') } });
       return;
     }
     updateBatch({ pendingRows: [], mapping: [] });
     setBatchError('');
-    processData(remapped, 't');
+    processData(remapped, 't', issues.filter((issue) => issue.field === 'CSV' || issue.messageKey === 'batch.error.duplicate'));
   };
 
   // The target model is a parameter, not the one this render closed over: a model
@@ -193,15 +220,19 @@ export default function BatchCalculator() {
     // Any new computation invalidates in-flight async chunks.
     computeSeq.current += 1;
     const seq = computeSeq.current;
+    const generation = getState().batch.generation;
+    const isCurrent = () => computeSeq.current === seq && getState().batch.generation === generation;
+    setBatchError('');
+    setProgress(null);
     const name = fileLabel ? { fileName: fileLabel } : {};
     if (!data?.length) {
       clearDataset(); updateBatch({ issues: parseIssues, ...name });
-      setBatchError('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
+      setBatchError({ key: 'batch.error.empty' });
       setIsProcessing(false); return;
     }
     if (data.length > MAX_BATCH_ROWS) {
       clearDataset(); updateBatch({ issues: parseIssues, ...name });
-      setBatchError(`File has ${data.length.toLocaleString('en-US')} rows, above the ${MAX_BATCH_ROWS.toLocaleString('en-US')}-row limit. Split the file and upload it in parts. · 文件行数超过上限，请分批上传。`);
+      setBatchError({ key: 'batch.error.rowLimit', vars: { rows: data.length, limit: MAX_BATCH_ROWS } });
       setIsProcessing(false); return;
     }
     const inputHeaders = Object.keys(data[0]);
@@ -215,9 +246,9 @@ export default function BatchCalculator() {
         rows: [],
         pendingRows: data,
         mapping: suggestMapping(missing, inputHeaders),
-        issues: [...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', message:'Required column is missing · 缺少必填列' }))],
+        issues: [...parseIssues, ...missing.map((field) => ({ row:'Header', field, value:'—', messageKey:'batch.error.missingColumn' }))],
       });
-      setBatchError(`Missing required columns: ${missing.join(', ')}`);
+      setBatchError({ key: 'batch.error.missing', vars: { fields: missing.join(', ') } });
       setIsProcessing(false);
       return;
     }
@@ -256,12 +287,16 @@ export default function BatchCalculator() {
       finishCompute(nextResults, nextIssues);
       return;
     }
+    // Keep source inputs while a worker/chunk is in flight so model switches
+    // can restart computation instead of clearing an apparently empty matrix.
+    updateBatch({ rows: [], pendingRows: data, mapping: [] });
+    setIsProcessing(true);
     setProgress({ done: 0, total: data.length });
     function startChunkLoop() {
     const nextResults = new Array(data.length);
     let cursor = 0;
     const step = () => {
-      if (computeSeq.current !== seq) return;
+      if (!isCurrent()) return;
       const end = Math.min(cursor + CHUNK_ROWS, data.length);
       for (let index = cursor; index < end; index += 1) {
         try { nextResults[index] = { ...data[index], ...computeRow(modelId, data[index]), __status:'valid' }; }
@@ -271,7 +306,7 @@ export default function BatchCalculator() {
         }
       }
       cursor = end;
-      if (computeSeq.current !== seq) return;
+      if (!isCurrent()) return;
       if (cursor < data.length) {
         setProgress({ done: cursor, total: data.length });
         setTimeout(step, 0);
@@ -286,15 +321,15 @@ export default function BatchCalculator() {
     if (isBatchWorkerAvailable()) {
       runBatchInWorker(modelId, data, {
         onProgress: (done, total) => {
-          if (computeSeq.current !== seq) return;
+          if (!isCurrent()) return;
           setProgress({ done, total });
         },
-        isCancelled: () => computeSeq.current !== seq,
+        isCancelled: () => !isCurrent(),
       }).then(({ results, issues }) => {
-        if (computeSeq.current !== seq) return;
-        finishCompute(results, issues);
+        if (!isCurrent()) return;
+        finishCompute(results, [...parseIssues, ...issues]);
       }).catch((error) => {
-        if (computeSeq.current !== seq) return;
+        if (!isCurrent()) return;
         if (error?.message === 'WORKER_CANCELLED') return;
         startChunkLoop();
       });
@@ -305,9 +340,11 @@ export default function BatchCalculator() {
   };
 
   const readFile = async (file) => {
-    if (!file) return;
+    if (!file || !confirmReplacement(file.name)) return;
     const seq = readSeq.current + 1;
     readSeq.current = seq;
+    const generation = getState().batch.generation;
+    const isCurrent = () => readSeq.current === seq && getState().batch.generation === generation;
     // Every failure path has to clear the previous dataset *and* any mapping panel
     // still standing from an earlier file.
     clearDataset();
@@ -320,7 +357,7 @@ export default function BatchCalculator() {
      * every cell read "—" while the row still counted as Valid.
      */
     const finish = (data, issues) => {
-      if (readSeq.current !== seq) return;   // a newer read has taken over
+      if (!isCurrent()) return;   // a newer read has taken over
       processData(data, 't', issues, getState().batch.modelId, file.name);
     };
     const name = file.name.toLowerCase();
@@ -339,7 +376,7 @@ export default function BatchCalculator() {
           }))];
           const duplicateIssues = duplicates.map((field) => ({
             row: 'Header', field, value: '—',
-            message: `Duplicate column "${field}" — only the last one is kept · 重复列只保留最后一列`,
+            messageKey: 'batch.error.duplicate', vars: { field },
           }));
           finish(result.data, [...duplicateIssues, ...(result.errors ?? []).map((error) => ({
             row: Number.isInteger(error.row) ? error.row + 2 : 'File',
@@ -349,9 +386,9 @@ export default function BatchCalculator() {
           }))]);
         },
         error:(error) => {
-          if (readSeq.current !== seq) return;
+          if (!isCurrent()) return;
           clearDataset();
-          setBatchError(`Could not parse CSV: ${error.message}`);
+          setBatchError({ key: 'batch.error.parseCsv', vars: { detail: error.message } });
           setIsProcessing(false);
         },
       });
@@ -360,7 +397,7 @@ export default function BatchCalculator() {
     if (name.endsWith('.xlsx')) {
       try {
         const rows = await readSheet(file);
-        if (readSeq.current !== seq) return;
+        if (!isCurrent()) return;
         const [headerRow, ...dataRows] = rows;
         const headers = (headerRow || []).map((value) => String(value ?? '').trim());
         const records = dataRows
@@ -368,14 +405,14 @@ export default function BatchCalculator() {
           .map((row) => Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] ?? ''])));
         finish(records, []);
       } catch (error) {
-        if (readSeq.current !== seq) return;
+        if (!isCurrent()) return;
         clearDataset();
-        setBatchError(`Could not parse XLSX: ${error.message}`);
+        setBatchError({ key: 'batch.error.parseXlsx', vars: { detail: error.message } });
         setIsProcessing(false);
       }
       return;
     }
-    setBatchError('Unsupported format. Use CSV or XLSX.'); setIsProcessing(false);
+    setBatchError({ key: 'batch.error.unsupported' }); setIsProcessing(false);
   };
 
   /**
@@ -391,14 +428,17 @@ export default function BatchCalculator() {
   const inputsOf = (rows) => rows.map((row) => {
     const inputs = {};
     for (const [key, value] of Object.entries(row)) {
-      if (!key.startsWith('result_') && key !== '__status') inputs[key] = value;
+      if (!model.resultKeys.includes(key) && key !== '__status') inputs[key] = value;
     }
     return inputs;
   });
 
   const resetForModel = (id) => {
     const nextModel = MODELS.find((item) => item.id === id);
+    if (!nextModel || id === activeModel) return;
     const carried = pendingRows.length ? pendingRows : batchResults.length ? inputsOf(batchResults) : null;
+    // Rebuild validation issues, but keep diagnostics from the source file.
+    const parseIssues = issues.filter((issue) => issue.field === 'CSV' || issue.messageKey === 'batch.error.duplicate');
 
     updateBatch({
       modelId: id,
@@ -406,14 +446,15 @@ export default function BatchCalculator() {
       xKey: '',
       yKey: nextModel?.resultKeys[0] || '',
       // Only a dataset that is actually carried over keeps its name.
-      ...(carried ? {} : { rows: [], headers: [], fileName: '', pendingRows: [], mapping: [] }),
+      ...(carried || isProcessing ? {} : { rows: [], headers: [], fileName: '', pendingRows: [], mapping: [] }),
     });
     setBatchError('');
 
-    if (carried) processData(carried, 't', [], id);
+    if (carried) processData(carried, xKey || 't', parseIssues, id);
   };
 
   const loadSampleDataset = () => {
+    if (!confirmReplacement(t('batch.demoSource'))) return;
     // A parse still in flight must not land on top of the sample the user just
     // asked for: the newest action wins.
     readSeq.current += 1;
@@ -471,37 +512,32 @@ export default function BatchCalculator() {
   return (
     <div className="animate-fade-in">
       <header className="workspace-header">
-        <div className="eyebrow">Batch calculation</div>
-        <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">Dataset pipeline</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">Upload a calibrated input table, validate every row, calculate model outputs, and export a reproducible result matrix.</p>
+        <div className="eyebrow">{t('batch.workspace')}</div>
+        <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">{t('batch.title')}</h1>
+        <p className="mt-1 max-w-2xl text-sm text-muted">{t('batch.description')}</p>
         {/* The audit found the batch silently computing with a different kernel than
             the header badge implied. State it, and state why. */}
         <details className="group mt-3 text-xs text-muted">
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
-            <span className="rounded-none border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold text-muted">JavaScript reference kernel</span>
-            <span className="font-semibold text-action">Kernel details</span>
+            <span className="rounded-none border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold text-muted">{t('batch.kernel')}</span>
+            <span className="font-semibold text-action">{t('batch.kernelDetails')}</span>
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current text-faint transition-transform group-open:rotate-180" aria-hidden="true">
               <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </summary>
-          <p className="mt-2 max-w-4xl">{BATCH_KERNEL_NOTE}</p>
+          <p className="mt-2 max-w-4xl">{t('batch.kernelNote')}</p>
         </details>
       </header>
 
       <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-none border border-line bg-surface">
-        {[
-          ['01', 'Upload', '上传数据'],
-          ['02', 'Validate', '校验字段'],
-          ['03', 'Results', '计算结果'],
-        ].map(([number, label, zh], index) => (
+        {['upload', 'validate', 'results'].map((step, index) => (
           <div
-            key={label}
+            key={step}
             aria-current={stage === index + 1 ? 'step' : undefined}
             className={`border-r border-line px-4 py-3 last:border-r-0 ${stage === index + 1 ? 'bg-action-soft' : ''}`}
           >
-            <div className={`font-mono text-3xs font-semibold ${stage >= index + 1 ? 'text-action' : 'text-faint'}`}>{number}</div>
-            <div className="mt-1 text-xs font-semibold text-ink">{label}</div>
-            <div className="text-2xs text-muted"><Lang text={zh} /></div>
+            <div className={`font-mono text-3xs font-semibold ${stage >= index + 1 ? 'text-action' : 'text-faint'}`}>{String(index + 1).padStart(2, '0')}</div>
+            <div className="mt-1 text-xs font-semibold text-ink">{t(`batch.steps.${step}`)}</div>
           </div>
         ))}
       </div>
@@ -509,7 +545,7 @@ export default function BatchCalculator() {
       <section className="workbench-panel overflow-hidden">
         <div className="grid lg:grid-cols-[300px_1fr]">
           <div className="border-b border-line p-5 lg:border-b-0 lg:border-r">
-            <label className="eyebrow" htmlFor="batch-model">Prediction model</label>
+            <label className="eyebrow" htmlFor="batch-model">{t('batch.model')}</label>
             <div className="mt-2">
               <CustomSelect
                 id="batch-model"
@@ -525,20 +561,20 @@ export default function BatchCalculator() {
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 fill-none stroke-current transition-transform -rotate-90 group-open:rotate-0" aria-hidden="true">
                     <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Schema & templates
+                  {t('batch.schemaTemplates')}
                 </span>
-                <span className="font-mono text-3xs text-faint">{requiredColumns.length} required fields</span>
+                <span className="font-mono text-3xs text-faint">{t('batch.requiredFields', { count: requiredColumns.length, total: count(requiredColumns.length) })}</span>
               </summary>
               <div className="border-t border-line py-3 pl-5">
-                <div className="eyebrow">Required schema</div>
+                <div className="eyebrow">{t('batch.requiredSchema')}</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {requiredColumns.map((column) => (
                     <code key={column} className="rounded-none border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
                   ))}
                 </div>
-                <button type="button" onClick={downloadTemplate} className="button-secondary mt-4 w-full">Download template</button>
+                <button type="button" onClick={downloadTemplate} className="button-secondary mt-4 w-full">{t('batch.downloadTemplate')}</button>
                 {model.sampleFiles && <div className="mt-4">
-                  <div className="eyebrow">Shipped samples · <span lang="zh-CN">官方示例</span></div>
+                  <div className="eyebrow">{t('batch.shippedSamples')}</div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {model.sampleFiles.map((file) => (
                       <a
@@ -564,28 +600,32 @@ export default function BatchCalculator() {
               <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current text-action" aria-hidden="true">
                 <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="mt-3 text-sm font-semibold text-ink">Drop CSV or XLSX here</span>
-              <span className="mt-1 text-xs text-muted" lang="zh-CN">拖入文件，或点击选择本地数据表</span>
+              <span className="mt-3 text-sm font-semibold text-ink">{t('batch.dropFile')}</span>
+              <span className="mt-1 text-xs text-muted">{t('batch.dropHint')}</span>
               <span className="mt-3 rounded-none border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs text-muted">
-                {isProcessing ? (progress ? `Processing… ${progress.done.toLocaleString('en-US')}/${progress.total.toLocaleString('en-US')}` : 'Processing…') : 'Choose file'}
+                {isProcessing ? (progress ? t('batch.progress', { done: count(progress.done), total: count(progress.total) }) : t('batch.processing')) : t('batch.chooseFile')}
               </span>
               <input
                 type="file"
                 className="sr-only"
                 accept=".csv,.xlsx"
                 disabled={isProcessing}
-                onChange={(event) => readFile(event.target.files[0])}
+                onChange={(event) => {
+                  readFile(event.target.files[0]);
+                  // A cancelled replacement must allow choosing the same file again.
+                  event.target.value = '';
+                }}
               />
             </label>
             <div className="mt-3 flex flex-col items-start justify-between gap-1 text-xs text-muted min-[380px]:flex-row min-[380px]:items-center min-[380px]:gap-3">
-              <span>{fileName || 'No dataset selected'}</span>
+              <span>{fileName || t('batch.noDataset')}</span>
               <button
                 type="button"
                 onClick={loadSampleDataset}
                 disabled={isProcessing}
                 className="inline-flex min-h-8 items-center font-semibold text-action hover:underline"
               >
-                Load demo sweep
+                {t('batch.loadDemo')}
               </button>
             </div>
           </div>
@@ -595,34 +635,34 @@ export default function BatchCalculator() {
       {mapping.length > 0 && (
         <section className="mt-5 workbench-panel overflow-hidden">
           <div className="border-b border-line px-4 py-3.5">
-            <div className="eyebrow">Column mapping</div>
+            <div className="eyebrow">{t('batch.mapping')}</div>
             <p className="mt-1 text-xs text-muted">
-              This file does not name {mapping.length === 1 ? 'one required column' : `${mapping.length} required columns`} the way {model.name} does. Choose which column holds each one, then calculate.
+              {t('batch.mappingHint', { count: mapping.length, total: count(mapping.length), model: model.name })}
             </p>
           </div>
           <div className="grid gap-3 px-4 py-4 md:grid-cols-2">
             {mapping.map((entry, index) => (
-              <label key={entry.field} className="flex items-center gap-3 text-xs">
+              <label key={entry.field} htmlFor={`param-select-map-${entry.field}`} className="flex items-center gap-3 text-xs">
                 <span className="w-32 shrink-0 font-mono text-3xs font-semibold text-action">{entry.field}</span>
                 <CustomSelect
                   name={`map-${entry.field}`}
-                  ariaLabel={`Source column for ${entry.field}`}
+                  ariaLabel={t('batch.mappingSource', { field: entry.field })}
                   value={entry.source}
                   onChange={(event) => updateMapping(index, event.target.value)}
-                  options={[{ value: '', label: '— not in this file —' }, ...batchHeaders.map((header) => ({ value: header, label: header }))]}
+                  options={[{ value: '', label: t('batch.chooseColumn') }, ...batchHeaders.map((header) => ({ value: header, label: header }))]}
                 />
               </label>
             ))}
           </div>
           <div className="flex items-center justify-between gap-3 border-t border-line px-4 py-3">
-            <span className="text-xs text-muted">Rows are only calculated once every required column is mapped.</span>
+            <span className="text-xs text-muted">{t('batch.mappingRequired')}</span>
             <button
               type="button"
               onClick={applyColumnMapping}
               disabled={mapping.some((entry) => !entry.source)}
               className="button-primary !min-h-9 !px-3 !text-1xs"
             >
-              Apply mapping and calculate
+              {t('batch.applyMapping')}
             </button>
           </div>
         </section>
@@ -631,45 +671,45 @@ export default function BatchCalculator() {
       {(batchError || issues.length>0 || batchResults.length>0) && <section className="mt-5 workbench-panel overflow-hidden">
         <div className="grid grid-cols-3 border-b border-line bg-surface-2" role="status">
           <div className="p-4">
-            <div className="eyebrow">Rows detected</div>
-            <div className="mt-1 font-mono text-xl text-ink">{batchResults.length}</div>
+            <div className="eyebrow">{t('batch.rowsDetected')}</div>
+            <div className="mt-1 font-mono text-xl text-ink">{count(batchResults.length)}</div>
           </div>
           <div className="border-x border-line p-4">
-            <div className="eyebrow">Valid</div>
-            <div className="mt-1 font-mono text-xl text-[var(--success)]">{validCount}</div>
+            <div className="eyebrow">{t('batch.valid')}</div>
+            <div className="mt-1 font-mono text-xl text-[var(--success)]">{count(validCount)}</div>
           </div>
           <div className="p-4">
-            <div className="eyebrow">Issues</div>
-            <div className="mt-1 font-mono text-xl text-error">{issues.length}</div>
+            <div className="eyebrow">{t('batch.issues')}</div>
+            <div className="mt-1 font-mono text-xl text-error">{count(issues.length)}</div>
           </div>
         </div>
         {batchError && (
-          <div role="alert" className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error"><Lang text={batchError} /></div>
+          <div role="alert" className="border-b border-line bg-[var(--error-soft)] px-4 py-3 text-xs text-error">{message(batchError)}</div>
         )}
         {issues.length > 0 && (
           <div className="max-h-56 overflow-auto">
             <table className="w-full text-left text-xs">
               <thead className="sticky top-0 bg-surface">
                 <tr>
-                  {['Row', 'Field', 'Value', 'Issue'].map((head) => (
-                    <th key={head} className="border-b border-line px-4 py-2 font-mono text-3xs text-faint">{head}</th>
+                  {['row', 'field', 'value', 'message'].map((head) => (
+                    <th key={head} className="border-b border-line px-4 py-2 font-mono text-3xs text-faint">{t(`batch.issue.${head}`)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {issues.slice(0, 100).map((issue, index) => (
                   <tr key={index}>
-                    <td className="px-4 py-2 font-mono">{issue.row}</td>
-                    <td className="px-4 py-2 font-mono">{issue.field}</td>
+                    <td className="px-4 py-2 font-mono">{typeof issue.row === 'number' ? count(issue.row) : t(`batch.issue.${issue.row === 'Header' ? 'header' : 'file'}`)}</td>
+                    <td className="px-4 py-2 font-mono">{issue.field === 'Input' ? t('batch.issue.input') : issue.field}</td>
                     <td className="px-4 py-2 font-mono">{issue.value}</td>
-                    <td className="px-4 py-2 text-error"><Lang text={issue.message} /></td>
+                    <td className="px-4 py-2 text-error">{issue.messageKey ? message({ key: issue.messageKey, vars: issue.vars }) : localizeValidation(issue.message, locale)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
             {issues.length > 100 && (
               <div className="border-t border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
-                Showing 100 of {issues.length} issues · export the file and fix the rest in place after mapping · 显示前 100 条，共 {issues.length} 条
+                {t('batch.issueLimit', { shown: count(100), total: count(issues.length) })}
               </div>
             )}
           </div>
@@ -680,19 +720,19 @@ export default function BatchCalculator() {
         <section className="mt-5 workbench-panel overflow-hidden">
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div>
-              <div className="eyebrow">Result matrix</div>
+              <div className="eyebrow">{t('batch.matrix')}</div>
               <div className="mt-1 text-xs text-muted">
-                {batchResults.length} rows · {model.resultKeys.length} output fields
-                {batchResults.length > 100 && <Lang text={` · 表格显示前 100 行，导出包含全部 ${batchResults.length} 行`} />}
+                {t('batch.matrixSize', { rows: count(batchResults.length), fields: count(model.resultKeys.length) })}
+                {batchResults.length > 100 && t('batch.matrixLimit', { shown: count(100), total: count(batchResults.length) })}
               </div>
             </div>
-            <button type="button" onClick={exportCSV} className="button-primary !min-h-9">Export CSV</button>
+            <button type="button" onClick={exportCSV} className="button-primary !min-h-9">{t('batch.exportCsv')}</button>
           </div>
           <div id="batch-matrix-scroll-hint" className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint md:hidden">
             <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 fill-none stroke-current" aria-hidden="true">
               <path d="M3 10h14M6 7l-3 3 3 3m8-6 3 3-3 3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            Use ←/→ or swipe to inspect all columns
+            {t('batch.scrollHint')}
           </div>
           <div
             className="max-h-[470px] overflow-auto focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--action)]"
@@ -703,7 +743,7 @@ export default function BatchCalculator() {
               event.currentTarget.scrollLeft += event.key === 'ArrowRight' ? distance : -distance;
             }}
             role="region"
-            aria-label="Batch result matrix, horizontally scrollable"
+            aria-label={t('batch.matrixRegion')}
             aria-describedby="batch-matrix-scroll-hint"
             tabIndex={0}
           >
@@ -715,31 +755,31 @@ export default function BatchCalculator() {
                     <th key={header} className={`border-b border-line px-3 py-2.5 font-mono text-3xs text-faint ${numericColumn(header) ? 'text-right' : ''}`}>{header}</th>
                   ))}
                   {model.resultKeys.map((key, index) => (
-                    <th key={key} className="border-b border-line bg-action-soft px-3 py-2.5 text-right font-mono text-3xs text-action">{model.labels[index]}</th>
+                    <th key={key} className="border-b border-line bg-action-soft px-3 py-2.5 text-right font-mono text-3xs text-action">{pick(model.labels[index], locale)}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {batchResults.slice(0, 100).map((row, index) => (
                   <tr key={index} className={row.__status === 'invalid' ? 'bg-[var(--error-soft)]' : ''}>
-                    <td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-2xs text-faint">{index + 1}</td>
+                    <td className="sticky left-0 border-r border-line bg-surface px-3 py-2 font-mono text-2xs text-faint">{count(index + 1)}</td>
                     {batchHeaders.map((header) => (
                       <td key={header} className={`px-3 py-2 font-mono text-1xs text-muted ${numericColumn(header) ? 'text-right' : ''}`}>
                         {row.__status === 'invalid' ? (
                           <input
                             defaultValue={row[header] ?? ''}
-                            aria-label={`Row ${index + 1} ${header}`}
+                            aria-label={t('batch.cellLabel', { row: count(index + 1), field: header })}
                             name={`batch-${index}-${header}`}
                             autoComplete="off"
                             onBlur={(event) => commitCell(index, header, event.target.value)}
                             onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
                             className="w-full min-w-16 rounded-none bg-transparent font-mono text-1xs text-ink outline-none focus:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-action"
                           />
-                        ) : (row[header])}
+                        ) : (isNumericCell(row[header]) ? formatBatchValue(row[header], inputFormatter) : row[header])}
                       </td>
                     ))}
                     {model.resultKeys.map((key) => (
-                      <td key={key} className="bg-action-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-ink">{row[key] ?? '—'}</td>
+                      <td key={key} className="bg-action-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-ink">{row[key] == null ? '—' : formatNumber(row[key], locale, String(row[key]).split('.')[1]?.length ?? 0)}</td>
                     ))}
                   </tr>
                 ))}
@@ -751,8 +791,8 @@ export default function BatchCalculator() {
         <section className="mt-5 workbench-panel overflow-hidden">
           <div className="flex flex-col gap-3 border-b border-line p-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <div className="eyebrow">Result visualizer</div>
-              <div className="mt-1 text-xs text-muted" lang="zh-CN">选择输入列与结果列进行快速关系检查</div>
+              <div className="eyebrow">{t('batch.visualizer')}</div>
+              <div className="mt-1 text-xs text-muted">{t('batch.visualizerHint')}</div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex gap-1 rounded-none border border-line bg-surface-2 p-0.5">
@@ -763,7 +803,7 @@ export default function BatchCalculator() {
                     onClick={() => updateBatch({ chartType: type })}
                     className={`rounded-none px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
                   >
-                    {type}
+                    {t(`batch.${type}`)}
                   </button>
                 ))}
               </div>
@@ -773,7 +813,7 @@ export default function BatchCalculator() {
                 aria-pressed={logX}
                 className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
               >
-                {logX ? 'Log X' : 'Linear X'}
+                {t(logX ? 'batch.logX' : 'batch.linearX')}
               </button>
               <button
                 type="button"
@@ -781,13 +821,13 @@ export default function BatchCalculator() {
                 aria-pressed={logY}
                 className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-action-border !bg-action-soft !text-action' : ''}`}
               >
-                {logY ? 'Log Y' : 'Linear Y'}
+                {t(logY ? 'batch.logY' : 'batch.linearY')}
               </button>
             </div>
           </div>
           <div className="grid gap-4 border-b border-line p-4 sm:grid-cols-2">
             <div>
-              <label className="eyebrow" htmlFor="param-select-xKey">X axis · input</label>
+              <label className="eyebrow" htmlFor="param-select-xKey">{t('batch.xAxis')}</label>
               <div className="mt-2">
                 <CustomSelect
                   name="xKey"
@@ -798,23 +838,26 @@ export default function BatchCalculator() {
               </div>
             </div>
             <div>
-              <label className="eyebrow" htmlFor="param-select-yKey">Y axis · output</label>
+              <label className="eyebrow" htmlFor="param-select-yKey">{t('batch.yAxis')}</label>
               <div className="mt-2">
                 <CustomSelect
                   name="yKey"
                   value={yKey}
                   onChange={(event) => updateBatch({ yKey: event.target.value })}
-                  options={model.resultKeys.map((key, index) => ({ value: key, label: model.labels[index] }))}
+                  options={model.resultKeys.map((key, index) => ({ value: key, label: pick(model.labels[index], locale) }))}
                 />
               </div>
             </div>
           </div>
           <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
-            Plotting {chartType === 'scatter' ? scatterPoints.length : visiblePoints.length} of {batchResults.length} rows{chartType === 'scatter' && visiblePoints.length > scatterPoints.length ? ` · decimated from ${visiblePoints.length}` : ''}{excludedCount > 0 ? ` · ${excludedCount} excluded (invalid or non-numeric — see red rows above)` : ''}{logHiddenCount > 0 ? ` · ${logHiddenCount} hidden by log scale (≤ 0)` : ''}
+            {t('batch.plotting', { shown: count(chartType === 'scatter' ? scatterPoints.length : visiblePoints.length), total: count(batchResults.length) })}
+            {chartType === 'scatter' && visiblePoints.length > scatterPoints.length && t('batch.decimated', { total: count(visiblePoints.length) })}
+            {excludedCount > 0 && t('batch.excluded', { total: count(excludedCount) })}
+            {logHiddenCount > 0 && t('batch.logHidden', { total: count(logHiddenCount) })}
           </div>
           {visiblePoints.length === 0 ? (
             <div className="flex h-[380px] items-center justify-center p-4 text-center text-xs text-muted">
-              No plottable points for {xKey} × {yKey} — rows are invalid, non-numeric, or hidden by the log scale.
+              {t('batch.noPoints', { x: xKey, y: yKey })}
             </div>
           ) : (
           <div className="h-[380px] p-4">
@@ -828,7 +871,7 @@ export default function BatchCalculator() {
                     scale="linear"
                     domain={logX ? ['dataMin', 'dataMax'] : undefined}
                     tickCount={logX ? 5 : undefined}
-                    tickFormatter={logX ? formatLogTick : undefined}
+                    tickFormatter={logX ? formatLogTick : formatTick}
                     allowDataOverflow
                     tick={tickStyle}
                     minTickGap={tickGap}
@@ -836,6 +879,7 @@ export default function BatchCalculator() {
                     label={{ value: xKey, position: 'insideBottom', offset: 12, ...axisTitleStyle }}
                   />
                   <YAxis
+                    tickFormatter={formatTick}
                     dataKey="y"
                     scale={logY ? 'log' : 'linear'}
                     domain={logY || yHasNegative ? ['auto', 'auto'] : [0, 'auto']}
@@ -858,7 +902,7 @@ export default function BatchCalculator() {
                     scale="linear"
                     domain={logX ? ['dataMin', 'dataMax'] : undefined}
                     tickCount={logX ? 5 : undefined}
-                    tickFormatter={logX ? formatLogTick : undefined}
+                    tickFormatter={logX ? formatLogTick : formatTick}
                     allowDataOverflow
                     tick={tickStyle}
                     minTickGap={tickGap}
@@ -866,6 +910,7 @@ export default function BatchCalculator() {
                     label={{ value: xKey, position: 'insideBottom', offset: 12, ...axisTitleStyle }}
                   />
                   <YAxis
+                    tickFormatter={formatTick}
                     scale={logY ? 'log' : 'linear'}
                     domain={logY || yHasNegative ? ['auto', 'auto'] : [0, 'auto']}
                     allowDataOverflow
@@ -882,7 +927,7 @@ export default function BatchCalculator() {
                       travellerWidth={5}
                       fill={CHART.brushTrack}
                       stroke={CHART.brushSelection}
-                      tickFormatter={(value) => String(value)}
+                      tickFormatter={formatTick}
                     />
                   )}
                 </LineChart>

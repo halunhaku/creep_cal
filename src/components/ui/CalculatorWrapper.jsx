@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import DynamicParameters from './DynamicParameters';
-import Lang from './Lang';
+import { useLocale, usePick, useT } from '../../i18n';
+import { formatInteger } from '../../i18n/format';
 import { MAX_SERIES_DAYS } from '../../math/creepModels';
 import { CHART, axisTitleStyle, formatLogTick, legendStyle, tickGap, tickStyle } from '../chartTheme';
 import { Brush, CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -53,13 +54,18 @@ function formatValue(value, digits = 6) {
   if (!Number.isFinite(Number(value))) return '—';
   const number = Number(value);
   if (number !== 0 && Math.abs(number) < 0.0001) return number.toExponential(4).replace('-', '−');
-  // Fixed to en-US on purpose, not by accident: engineering values are read with a
-  // decimal point and thousands grouping regardless of the UI language, and a
+  // Fixed to en-US on purpose, not by accident, and it stays that way now that the
+  // interface has a language of its own: engineering values are read with a decimal
+  // point and thousands grouping regardless of the surrounding prose, and a
   // locale-dependent format would render 1.234,56 for some readers of SI values.
+  // Both shipped locales happen to format identically, so pinning it costs nothing
+  // and removes the failure mode. Counts and ages, which are prose, go through
+  // `formatInteger` instead.
   return new Intl.NumberFormat('en-US', { maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(number).replace('-', '−');
 }
 
 function CopyValue({ text, label }) {
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     try {
@@ -80,20 +86,22 @@ function CopyValue({ text, label }) {
       // button idle rather than failing the workspace around it.
     }
   };
+  const name = label ?? t('calculator.copy.value');
   return (
     <button
       type="button"
       onClick={onCopy}
-      title={label ?? 'Copy value'}
-      aria-label={label ?? 'Copy value'}
+      title={name}
+      aria-label={name}
       className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action"
     >
-      {copied ? 'Copied' : 'Copy'}
+      {copied ? t('calculator.copy.done') : t('calculator.copy.text')}
     </button>
   );
 }
 
 function Metric({ eyebrow, value, unit, accent = false }) {
+  const t = useT();
   const copyText = `${formatValue(value)}${unit ? ` ${unit}` : ''}`;
   return (
     <div className="min-w-0">
@@ -101,17 +109,19 @@ function Metric({ eyebrow, value, unit, accent = false }) {
       <div className={`mt-2 flex flex-wrap items-baseline gap-2 font-mono text-metric-sm font-semibold md:text-metric ${accent ? 'text-action' : 'text-ink'}`}>
         <span>{formatValue(value)}</span>
         {unit && <span className="text-1xs font-medium tracking-normal text-muted">{unit}</span>}
-        <CopyValue text={copyText} label={`Copy ${eyebrow}`} />
+        <CopyValue text={copyText} label={t('calculator.copy.label', { label: eyebrow })} />
       </div>
     </div>
   );
 }
 
 function Decomposition({ items }) {
+  const t = useT();
+  const pick = usePick();
   if (!items?.length) return null;
   const groups = [
-    { id:'compliance', label:'Compliance decomposition', fallback:'Result components' },
-    { id:'shrinkage', label:'Shrinkage decomposition' },
+    { id:'compliance', label:t('calculator.decomposition.compliance'), fallback:t('calculator.decomposition.fallback') },
+    { id:'shrinkage', label:t('calculator.decomposition.shrinkage') },
   ].map((group) => ({ ...group, items: items.filter((item) => (item.group || 'compliance') === group.id) })).filter((group) => group.items.length);
 
   return (
@@ -120,15 +130,18 @@ function Decomposition({ items }) {
         <div key={group.id} className="rounded-none border border-line bg-surface-2 p-4">
           <div className="eyebrow">{group.label}</div>
           <div className="mt-3 divide-y divide-line">
-            {group.items.map((item) => (
-              <div key={item.label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-ink' : 'text-muted'}`}>
-                <span>{item.label}</span>
+            {group.items.map((item) => {
+              const label = pick(item.label) || item.name;
+              return (
+              <div key={label} className={`grid grid-cols-[1fr_auto] items-baseline gap-3 py-2 text-xs ${item.total ? 'font-semibold text-ink' : 'text-muted'}`}>
+                <span>{label}</span>
                 <span className="flex items-center gap-2 font-mono tabular-nums text-ink">
                   <span>{formatValue(item.value, 3)} <small className="text-3xs font-normal text-faint">{item.unit}</small></span>
-                  <CopyValue text={`${formatValue(item.value, 3)}${item.unit ? ` ${item.unit}` : ''}`} label={`Copy ${item.label}`} />
+                  <CopyValue text={`${formatValue(item.value, 3)}${item.unit ? ` ${item.unit}` : ''}`} label={t('calculator.copy.label', { label })} />
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ))}
@@ -137,13 +150,14 @@ function Decomposition({ items }) {
 }
 
 function ScientificTooltip({ active, payload, label }) {
+  const t = useT();
   if (!active || !payload?.length) return null;
   const sourceTime = payload[0]?.payload?.t ?? label;
   const numericLabel = Number(sourceTime);
   const title = Number.isFinite(numericLabel) ? new Intl.NumberFormat('en-US').format(numericLabel) : sourceTime;
   return (
     <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-popover">
-      <div className="mb-2 font-mono text-3xs font-semibold text-faint">t = {title} days</div>
+      <div className="mb-2 font-mono text-3xs font-semibold text-faint">{t('calculator.chart.tooltipTime', { days: title })}</div>
       <div className="space-y-1.5">
         {payload.map((item) => (
           <div key={item.dataKey} className="flex items-center justify-between gap-5 text-1xs">
@@ -162,6 +176,8 @@ function ScientificTooltip({ active, payload, label }) {
 // What moved since the numbers on screen were computed: `before` is the run
 // the results belong to (`resultParams`), `after` is what the panel holds now.
 function ParamChanges({ before, after, config }) {
+  const t = useT();
+  const pick = usePick();
   if (!before || !after) return null;
   const changed = config.filter((item) => {
     const left = before[item.name];
@@ -171,11 +187,11 @@ function ParamChanges({ before, after, config }) {
   if (!changed.length) return null;
   return (
     <div className="mt-4 rounded-none border border-line bg-surface-2 px-4 py-3">
-      <div className="eyebrow">Changed since last run</div>
+      <div className="eyebrow">{t('calculator.changedSinceRun')}</div>
       <ul className="mt-2 space-y-1 text-xs">
         {changed.map((item) => (
           <li key={item.name} className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className="text-muted">{item.label ?? item.name}</span>
+            <span className="text-muted">{pick(item.label) || item.name}</span>
             <span className="font-mono tabular-nums text-ink">{String(before[item.name])} → {String(after[item.name])}{item.unit ? ` ${item.unit}` : ''}</span>
           </li>
         ))}
@@ -185,6 +201,8 @@ function ParamChanges({ before, after, config }) {
 }
 
 function AnalysisChart({ data, lines, params, resultParams, modelName, prevData }) {
+  const t = useT();
+  const locale = useLocale();
   const hasShrinkage = lines.some((line) => line.kind === 'shrinkage');
   const hasCompliance = lines.some((line) => line.kind !== 'shrinkage');
   // Single-kind models (GL2000 shrinkage today) open on the kind they have
@@ -258,7 +276,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
     <section className="workbench-panel overflow-hidden">
       <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-1">
-          {[...(hasCompliance ? [['compliance', hasShrinkage ? 'Compliance' : 'Response']] : []), ...(hasShrinkage ? [['shrinkage','Shrinkage']] : []), ['data','Data']].map(([id,label]) => (
+          {[...(hasCompliance ? [['compliance', hasShrinkage ? t('calculator.chart.compliance') : t('calculator.chart.response')]] : []), ...(hasShrinkage ? [['shrinkage', t('calculator.chart.shrinkage')]] : []), ['data', t('calculator.chart.data')]].map(([id,label]) => (
             <button
               key={id}
               onClick={() => setView(id)}
@@ -276,7 +294,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               aria-pressed={logX}
               className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
             >
-              {logX ? 'Log X' : 'Linear X'}
+              {logX ? t('calculator.chart.logX') : t('calculator.chart.linearX')}
             </button>
           )}
           {view !== 'data' && (
@@ -284,17 +302,17 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               onClick={() => setLogY((value) => !value)}
               aria-pressed={useLogY}
               disabled={logYBlocked}
-              title={logYBlocked ? 'Log Y unavailable for signed shrinkage values' : undefined}
+              title={logYBlocked ? t('calculator.chart.logYBlocked') : undefined}
               className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${useLogY ? '!border-action-border !bg-action-soft !text-action' : ''} ${logYBlocked ? '!cursor-not-allowed !opacity-40' : ''}`}
             >
-              {useLogY ? 'Log Y' : 'Linear Y'}
+              {useLogY ? t('calculator.chart.logY') : t('calculator.chart.linearY')}
             </button>
           )}
           <button
             onClick={() => exportSeries(modelName, resultParams ?? params, data, lines)}
             className="button-secondary !min-h-8 !px-2.5 !text-3xs"
           >
-            Export CSV
+            {t('calculator.chart.export')}
           </button>
         </div>
       </div>
@@ -302,13 +320,13 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
       {view === 'data' ? (
         <div>
           <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
-            Showing {dataRows.length} of {data.length} computed points · every 250 days, plus the target age. Export CSV contains the full series.
+            {t('calculator.chart.showing', { shown: formatInteger(dataRows.length, locale), total: formatInteger(data.length, locale), stride: formatInteger(250, locale) })}
           </div>
           <div className="max-h-[430px] overflow-auto">
           <table className="w-full border-collapse text-left text-xs">
             <thead className="sticky top-0 bg-surface-2">
               <tr>
-                <th className="px-4 py-2.5 font-mono text-3xs text-faint">Time · days</th>
+                <th className="px-4 py-2.5 font-mono text-3xs text-faint">{t('calculator.chart.timeColumn')}</th>
                 {lines.map((line) => (
                   <th key={line.dataKey} className="px-4 py-2.5 font-mono text-3xs text-faint">{line.name}</th>
                 ))}
@@ -345,7 +363,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
                 tickLine={false}
                 axisLine={{ stroke: 'var(--line-strong)' }}
                 height={48}
-                label={{ value: 'Concrete age · days', position: 'insideBottom', offset: 12, ...axisTitleStyle }}
+                label={{ value: t('calculator.chart.axisTime'), position: 'insideBottom', offset: 12, ...axisTitleStyle }}
               />
               <YAxis tick={tickStyle} tickLine={false} axisLine={false} width={58} scale={useLogY ? 'log' : 'linear'} domain={useLogY || logYBlocked ? ['auto', 'auto'] : [0, 'auto']} allowDataOverflow />
               <Tooltip content={<ScientificTooltip />} cursor={{ stroke: 'var(--line-strong)', strokeDasharray: '3 3' }} />
@@ -355,7 +373,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
                   x={logX ? Math.log10(Number(params.t0)) : Number(params.t0)}
                   stroke={CHART.reference}
                   strokeDasharray="4 4"
-                  label={{ value: `t₀ ${params.t0}d`, fill: CHART.referenceText, fontSize: CHART.labelFont, position: 'insideTopLeft' }}
+                  label={{ value: t('calculator.chart.referenceLoad', { days: params.t0 }), fill: CHART.referenceText, fontSize: CHART.labelFont, position: 'insideTopLeft' }}
                 />
               )}
               {Number.isFinite(Number(params.tPrime)) && params.tPrime !== params.t0 && (
@@ -363,7 +381,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
                   x={logX ? Math.log10(Number(params.tPrime)) : Number(params.tPrime)}
                   stroke={CHART.target}
                   strokeDasharray="2 3"
-                  label={{ value: `t′ ${params.tPrime}d`, fill: CHART.target, fontSize: CHART.labelFont, position: 'insideTopRight' }}
+                  label={{ value: t('calculator.chart.referenceLoading', { days: params.tPrime }), fill: CHART.target, fontSize: CHART.labelFont, position: 'insideTopRight' }}
                 />
               )}
               {Number.isFinite(Number(params.targetAge)) && (
@@ -375,7 +393,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
                   type="monotone"
                   data={prevChartData}
                   dataKey={line.dataKey}
-                  name={`${line.name} · prev`}
+                  name={t('calculator.chart.previous', { name: line.name })}
                   stroke="var(--text-faint)"
                   strokeWidth={1.5}
                   strokeDasharray="6 4"
@@ -420,34 +438,36 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
 }
 
 function KernelComparison({ comparison, comparing, onCompare, compareReady, compareNote }) {
+  const t = useT();
+  const locale = useLocale();
   const speedup = comparison && comparison.rust > 0 ? comparison.js / comparison.rust : null;
 
   return (
     <section className="workbench-panel p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="eyebrow">Kernel comparison · <span lang="zh-CN">内核对比</span></div>
+          <div className="eyebrow">{t('calculator.comparison.title')}</div>
           <p className="mt-1 text-1xs text-muted">
-            {compareNote ?? (<><span lang="zh-CN">同一组参数下，两条内核各计算一次</span> {MAX_SERIES_DAYS.toLocaleString('en-US')} <span lang="zh-CN">天序列并计时（含预热）。</span></>)}
+            {compareNote ?? t('calculator.comparison.note', { days: formatInteger(MAX_SERIES_DAYS, locale) })}
           </p>
         </div>
         <button onClick={onCompare} disabled={comparing || !compareReady} title={compareNote ?? undefined} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
-          {comparing ? 'Measuring…' : 'Compare kernels'}
+          {comparing ? t('calculator.comparison.measure') : t('calculator.comparison.run')}
         </button>
       </div>
 
       {comparison && (
         <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4" role="status">
           <div>
-            <div className="eyebrow">JS reference</div>
+            <div className="eyebrow">{t('calculator.comparison.js')}</div>
             <div className="mt-1 font-mono text-body text-ink">{formatValue(comparison.js, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
           </div>
           <div>
-            <div className="eyebrow">Rust WASM</div>
+            <div className="eyebrow">{t('calculator.comparison.rust')}</div>
             <div className="mt-1 font-mono text-body text-ink">{formatValue(comparison.rust, 2)} <small className="text-3xs font-normal text-faint">ms</small></div>
           </div>
           <div>
-            <div className="eyebrow">Rust speed-up</div>
+            <div className="eyebrow">{t('calculator.comparison.speedup')}</div>
             <div className="mt-1 font-mono text-body text-action">{speedup && Number.isFinite(speedup) ? `${formatValue(speedup, 2)}×` : '—'}</div>
           </div>
         </div>
@@ -457,16 +477,17 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady, comp
 }
 
 function NoticeBanner({ notices, onDismiss }) {
+  const t = useT();
   if (!notices?.length) return null;
   return (
     <div className="mb-5 space-y-3">
       {notices.map((notice) => (
         <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-none border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="font-mono text-2xs font-semibold text-[var(--warning)]"><Lang text={notice.title} /></div>
-            <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]"><Lang text={notice.message} /></p>
+            <div className="font-mono text-2xs font-semibold text-[var(--warning)]">{notice.title}</div>
+            <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]">{notice.message}</p>
           </div>
-          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-3xs">Dismiss</button>}
+          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-3xs">{t('calculator.notice.dismiss')}</button>}
         </div>
       ))}
     </div>
@@ -502,11 +523,23 @@ export default function CalculatorWrapper({
   compareReady,
   compareNote,
 }) {
+  const t = useT();
+  const pick = usePick();
+  const locale = useLocale();
   const hasResults = chartData?.length > 0;
-  const [resultName, explicitUnit] = (resultLabel || 'Creep coefficient φ').split('·').map((part) => part.trim());
-  const primaryUnit = explicitUnit || 'dimensionless';
+  // `resultLabel` is a `{ en, zh }` pair whose value separates the name from the
+  // unit with `·` — the convention the model configs have used for it. A translated
+  // label must therefore not contain a `·` of its own, which
+  // models.locale.test.jsx pins for every model in both locales.
+  const [resultName, explicitUnit] = pick(resultLabel ?? t('calculator.defaultResult')).split('·').map((part) => part.trim());
+  const primaryUnit = explicitUnit || t('calculator.units.dimensionless');
   const totalShrinkage = extraResults?.find((item) => item.total);
-
+  // Series names travel with the model, so they arrive as `{ en, zh }` pairs; the
+  // chart, its legend and the data table all read them from here.
+  const lines = useMemo(
+    () => (chartLines ?? []).map((line) => ({ ...line, name: pick(line.name) })),
+    [chartLines, pick],
+  );
   useEffect(() => {
     const handler = (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (calculateReady) onCalculate(); }
@@ -521,14 +554,14 @@ export default function CalculatorWrapper({
         <div className="min-w-0 max-w-3xl">
           <div className="flex items-center gap-2">
             <span className="status-dot" />
-            <span className="eyebrow">{engine === 'rust' ? 'Rust WebAssembly' : 'JavaScript reference'}</span>
+            <span className="eyebrow">{engine === 'rust' ? t('calculator.engineRust') : t('calculator.engineJs')}</span>
           </div>
           <h2 className="mt-2 text-xl font-semibold text-ink">{modelName}</h2>
           <p className="mt-1.5 max-w-[72ch] text-body-sm leading-relaxed text-muted">{modelDescription}</p>
         </div>
         {duration != null && (
           <div className="rounded-none border border-line bg-surface px-3 py-2 text-right">
-            <div className="eyebrow">Last compute</div>
+            <div className="eyebrow">{t('calculator.lastCompute')}</div>
             <div className="mt-1 font-mono text-1xs text-ink">{duration.toFixed(2)} ms</div>
           </div>
         )}
@@ -554,26 +587,26 @@ export default function CalculatorWrapper({
           <section className="workbench-panel p-5 md:p-6">
             <div className="mb-5 flex items-center justify-between gap-4 border-b border-line pb-4">
               <div>
-                <div className="eyebrow">Calculated at</div>
-                <div className="mt-1 font-mono text-sm font-semibold text-ink">{formatValue(params.targetAge, 0)} days</div>
+                <div className="eyebrow">{t('calculator.calculatedAt')}</div>
+                <div className="mt-1 font-mono text-sm font-semibold text-ink">{t('calculator.days', { value: formatInteger(params.targetAge, locale) })}</div>
               </div>
               <div className="flex items-center gap-2">
               {prevData && prevData.length > 0 && !dirty && (
                 <span className="rounded-none border border-dashed border-line-strong px-2.5 py-1 font-mono text-3xs font-semibold text-faint">
-                  vs previous run
+                  {t('calculator.vsPrevious')}
                 </span>
               )}
               <div
                 className={`rounded-none px-2.5 py-1 font-mono text-3xs font-semibold ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
               >
-                {dirty ? 'Results out of date' : 'Computed'}
+                {dirty ? t('calculator.stale') : t('calculator.computed')}
               </div>
               </div>
             </div>
             <div className={`grid gap-6 ${totalShrinkage ? 'sm:grid-cols-2' : ''}`}>
               <Metric eyebrow={resultName} value={phiResult} unit={primaryUnit} accent />
               {totalShrinkage && (
-                <Metric eyebrow="Total shrinkage" value={totalShrinkage.value} unit={totalShrinkage.unit} />
+                <Metric eyebrow={t('calculator.totalShrinkage')} value={totalShrinkage.value} unit={totalShrinkage.unit} />
               )}
             </div>
             {dirty && <ParamChanges before={resultParams} after={params} config={paramsConfig} />}
@@ -588,13 +621,13 @@ export default function CalculatorWrapper({
             compareNote={compareNote}
           />
           {hasResults && (
-            <AnalysisChart data={chartData} lines={chartLines} params={params} resultParams={resultParams} modelName={modelName} prevData={prevData} />
+            <AnalysisChart data={chartData} lines={lines} params={params} resultParams={resultParams} modelName={modelName} prevData={prevData} />
           )}
 
           <details className="workbench-panel overflow-hidden">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3">
-              <span className="eyebrow">Calculation log · <span lang="zh-CN">计算日志</span></span>
-              <span className="font-mono text-3xs text-faint">{feedLogs.length} events</span>
+              <span className="eyebrow">{t('calculator.log.title')}</span>
+              <span className="font-mono text-3xs text-faint">{t('calculator.log.events', { count: feedLogs.length })}</span>
             </summary>
             <div className="border-t border-line px-4 py-3">
               {feedLogs.map((log, index) => (

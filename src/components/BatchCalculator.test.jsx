@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import Papa from 'papaparse';
 import BatchCalculator from './BatchCalculator';
 import { MODELS } from './batchModels';
@@ -34,6 +34,11 @@ function resultSections() {
 }
 
 describe('BatchCalculator dataset pipeline', () => {
+  // Replacement tests exercise the confirmed path; cancellation is asserted
+  // separately in BatchCalculator.locale.test.jsx.
+  beforeEach(() => { vi.spyOn(window, 'confirm').mockReturnValue(true); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
   test('CSV upload validates, calculates and reports a valid count', async () => {
     const { container } = renderB4();
     upload(container, `t0,tPrime,Tcur,Tsh,Tc,h,fc,vS,c,wC,aC,cementType,aggregateType,specimenShape,retarder,flyAsh,superplasticizer,silicaFume,airEntrainingAgent,waterReducer,t\n28,28,20,20,20,50,27.6,19.05,219.3,0.6,7,R,No Information,1,0,0,0,0,0,0,112\n`, 'b4.csv');

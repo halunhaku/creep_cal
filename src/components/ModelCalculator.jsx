@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { appendFeedLog, errorMessage, loadCreepEngine, setKernelStatus } from '../wasm/creepEngine';
 import { MAX_SERIES_DAYS } from '../math/creepModels';
+import { useLocale, usePick, useT } from '../i18n';
+import { formatInteger } from '../i18n/format';
 import { saveModelParams, useAppSelector } from '../state/appStore';
 import CalculatorWrapper from './ui/CalculatorWrapper';
 
-function initialFeed(engine) {
+function initialFeed(engine, t) {
   return [{
     time: new Date().toLocaleTimeString(),
-    message: engine === 'rust' ? 'Rust WebAssembly kernel ready for initialization.' : 'JavaScript reference kernel ready.',
+    message: engine === 'rust' ? t('calculator.log.kernelReadyRust') : t('calculator.log.kernelReadyJs'),
     type: 'info',
   }];
 }
@@ -38,6 +40,9 @@ function sameRunInputs(a, b) {
 }
 
 export default function ModelCalculator({ engine, config, onEngineFallback }) {
+  const t = useT();
+  const pick = usePick();
+  const locale = useLocale();
   const isRust = engine === 'rust';
   // Parameters are persisted per model, so leaving the workspace and coming back
   // no longer discards them. Results are not carried: they recompute in a few
@@ -50,7 +55,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const [results, setResults] = useState([]);
   const [wasmModule, setWasmModule] = useState(null);
   const [wasmReady, setWasmReady] = useState(!isRust);
-  const [feedLogs, setFeedLogs] = useState(() => initialFeed(engine));
+  const [feedLogs, setFeedLogs] = useState(() => initialFeed(engine, t));
   // The parameters the results on screen were computed from. Staleness is derived
   // from this rather than set by the input handlers: loading a saved set or
   // pressing Reset changes the inputs without going through a field, and the old
@@ -71,6 +76,13 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const fallbackRef = useRef(onEngineFallback);
   useEffect(() => { fallbackRef.current = onEngineFallback; }, [onEngineFallback]);
 
+  // Held in a ref so the kernel-loading effect below can log in the reader's
+  // current language without listing `t` as a dependency: `t` changes identity on
+  // an interface-language switch, and the effect resets results, timings and the
+  // log when it re-runs — switching language must not throw away a calculation.
+  const translateRef = useRef(t);
+  useEffect(() => { translateRef.current = t; }, [t]);
+
   const addLog = useCallback((message, type = 'info') => {
     appendFeedLog(setFeedLogs, message, type);
   }, []);
@@ -89,7 +101,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     // preserved across an engine switch, everything derived from a run is not.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on kernel change
     setResults([]);
-    setFeedLogs(initialFeed(engine));
+    setFeedLogs(initialFeed(engine, translateRef.current));
     setRunParams(null);
     setPrevRun(null);
     setDuration(null);
@@ -111,19 +123,19 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
         setWasmModule(module);
         setWasmReady(true);
         setKernelStatus({ engine: 'rust', state: 'ready' });
-        addLog(config.readyMessage, 'success');
+        addLog(pick(config.readyMessage), 'success');
       })
       .catch((error) => {
         if (cancelled) return;
         const detail = errorMessage(error);
         const canFallBack = Boolean(fallbackRef.current);
         setKernelStatus({ engine: 'js', state: 'failed', detail });
-        addLog(`WASM initialization failed: ${detail}`, 'error');
+        addLog(translateRef.current('calculator.log.wasmFailed', { detail }), 'error');
         raiseNotice({
           id: KERNEL_NOTICE,
-          title: 'Rust WebAssembly kernel unavailable · Rust 内核不可用',
+          title: translateRef.current('calculator.notice.kernelTitle'),
           message: canFallBack
-            ? `${detail} — 已自动切换为 JavaScript 参考实现，结果仍然有效；也可以点击左侧 “Rust WASM” 重试。`
+            ? translateRef.current('calculator.notice.kernelFallback', { detail })
             : detail,
         });
         // Do not leave the workspace stuck on a disabled button: hand control back
@@ -132,6 +144,11 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       });
 
     return () => { cancelled = true; };
+    // `pick` is deliberately absent: it is a new function on every locale change, so
+    // depending on it would tear down and re-run the kernel init whenever the reader
+    // switches language, throwing away the results they were looking at. The
+    // translateRef indirection is what lets the log lines follow the locale instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- locale-bound t() is read via translateRef
   }, [addLog, config, engine, isRust, raiseNotice]);
 
   const stringParams = useMemo(
@@ -153,7 +170,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
 
   const calculate = useCallback(() => {
     if (isRust && (!wasmReady || !wasmModule)) {
-      addLog('Rust WebAssembly kernel is not ready.', 'error');
+      addLog(t('calculator.log.kernelNotReady'), 'error');
       return;
     }
 
@@ -173,13 +190,13 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       setResults(nextResults);
       setRunParams(params);
       dismissNotice(CALC_NOTICE);
-      addLog(`Calculation completed in ${elapsed.toFixed(2)} ms.`, 'success');
+      addLog(t('calculator.log.calcDone', { ms: elapsed.toFixed(2) }), 'success');
     } catch (error) {
       const detail = errorMessage(error);
-      addLog(`Calculation failed: ${detail}`, 'error');
-      raiseNotice({ id: CALC_NOTICE, title: 'Calculation failed · 计算失败', message: detail });
+      addLog(t('calculator.log.calcFailed', { detail }), 'error');
+      raiseNotice({ id: CALC_NOTICE, title: t('calculator.notice.calcTitle'), message: detail });
     }
-  }, [addLog, config, dismissNotice, isRust, params, raiseNotice, results, runParams, wasmModule, wasmReady]);
+  }, [addLog, config, dismissNotice, isRust, params, raiseNotice, results, runParams, t, wasmModule, wasmReady]);
 
   // Times both kernels on the identical parameter set and series length, so the
   // dual-engine design can be judged on measurements instead of claims. Each
@@ -198,16 +215,16 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       const jsMs = measure(() => config.calculateJs(params, MAX_SERIES_DAYS));
       const rustMs = measure(() => config.calculateRust(module, params, MAX_SERIES_DAYS));
       setComparison({ js: jsMs, rust: rustMs, days: MAX_SERIES_DAYS });
-      addLog(`Kernel comparison over ${MAX_SERIES_DAYS} days: JS ${jsMs.toFixed(2)} ms vs Rust ${rustMs.toFixed(2)} ms.`, 'success');
+      addLog(t('calculator.log.compareDone', { days: formatInteger(MAX_SERIES_DAYS, locale), js: jsMs.toFixed(2), rust: rustMs.toFixed(2) }), 'success');
     } catch (error) {
       const detail = errorMessage(error);
       setComparison(null);
-      addLog(`Kernel comparison failed: ${detail}`, 'error');
-      raiseNotice({ id: COMPARE_NOTICE, title: 'Kernel comparison failed · 内核对比失败', message: detail });
+      addLog(t('calculator.log.compareFailed', { detail }), 'error');
+      raiseNotice({ id: COMPARE_NOTICE, title: t('calculator.notice.compareTitle'), message: detail });
     } finally {
       setComparing(false);
     }
-  }, [addLog, config, params, raiseNotice, wasmModule]);
+  }, [addLog, config, locale, params, raiseNotice, t, wasmModule]);
 
   /*
    * Two levels of validity. The per-field ranges come from the parameter config;
@@ -237,7 +254,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     <CalculatorWrapper
       modelId={config.id}
       modelName={config.name}
-      modelDescription={config.descriptions[engine]}
+      modelDescription={pick(config.descriptions[engine])}
       engine={engine}
       paramsConfig={config.paramsConfig}
       params={params}
@@ -248,7 +265,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       dirty={dirty}
       inputIssue={inputIssue}
       duration={duration}
-      buttonText={ready ? 'Calculate' : kernelFailed ? 'Kernel unavailable' : 'Loading kernel…'}
+      buttonText={ready ? t('calculator.button.calculate') : kernelFailed ? t('calculator.button.kernelUnavailable') : t('calculator.button.loadingKernel')}
       phiResult={summary.primary}
       feedLogs={feedLogs}
       chartData={results}
@@ -262,7 +279,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       comparing={comparing}
       onCompare={compareKernels}
       compareReady={inputsValid && typeof config.calculateRust === 'function'}
-      compareNote={typeof config.calculateRust === 'function' ? null : 'JS-only model — no Rust kernel to compare against.'}
+      compareNote={typeof config.calculateRust === 'function' ? null : t('calculator.comparison.jsOnly')}
     />
   );
 }

@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<!-- translate="no": the interface is a bilingual technical tool, and machine
-     translation reliably mangles identifiers such as ACI 209R-92, J(t,t′) and
-     the parameter names. -->
+<!-- translate="no": the interface is a bilingual technical tool with its own
+     language switch, and machine translation reliably mangles identifiers such as
+     ACI 209R-92, J(t,t′) and the parameter names. lang="en" is the static default
+     for a visitor whose browser asks for neither shipped language, and for the
+     moment before the script at the end of the body picks the reader's own. -->
 <html lang="en" translate="no">
   <head>
     <meta charset="utf-8" />
@@ -35,6 +37,29 @@
           applyTheme(document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
         };
         applyTheme(localStorage.getItem('theme-mode') === 'dark' ? 'dark' : 'light');
+      })();
+
+      // `lang` on <html> is what a screen reader takes its phonemes from, so it has
+      // to be right before the first paint, not one React render later. The stored
+      // choice wins; otherwise a Chinese browser preference gets Chinese. Only the
+      // attribute is set here — the title and the description are the English head
+      // below until React mounts, because duplicating translated copy into this file
+      // would be a second place to keep in step for no accessibility gain.
+      (function () {
+        var stored, languages, index;
+        try {
+          stored = localStorage.getItem('creep-lab:locale');
+          if (stored !== 'zh' && stored !== 'en') {
+            stored = null;
+            languages = navigator.languages || [navigator.language || ''];
+            for (index = 0; index < languages.length; index += 1) {
+              if (String(languages[index]).toLowerCase().indexOf('zh') === 0) { stored = 'zh'; break; }
+            }
+          }
+          if (stored) document.documentElement.lang = stored === 'zh' ? 'zh-CN' : 'en';
+        } catch (error) {
+          // storage blocked — the lang="en" in the markup stands
+        }
       })();
     </script>
     <script type="module" src="/src/index.jsx"></script>

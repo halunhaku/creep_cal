@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useT } from '../../i18n';
 import Header from './Header';
 import CommandPalette from './CommandPalette';
 
 export default function Layout({ activeMode, onModeChange, onOpenDocs, children }) {
+  const t = useT();
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Registered here rather than inside the palette, so the shortcut works before
@@ -35,8 +37,8 @@ export default function Layout({ activeMode, onModeChange, onOpenDocs, children 
       </main>
       <footer className="shrink-0 border-t border-[#393939] bg-[#161616] text-white">
         <div className="shell-gutter flex flex-col gap-2 py-8 text-sm text-[#c6c6c6] sm:flex-row sm:items-center sm:justify-between">
-          <span>Concrete creep calculation workspace</span>
-          <span className="font-sans text-xs text-[#c6c6c6]">Float64 · Rust WASM · JS reference</span>
+          <span>{t('footer.summary')}</span>
+          <span className="font-sans text-xs text-[#c6c6c6]">{t('footer.stack')}</span>
         </div>
       </footer>
       {/* Mounted only while open, so each opening starts from a clean query. */}

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { detectLocale, isLocale } from '../i18n/locales';
 
 /**
  * State that must outlive a workspace switch.
@@ -24,6 +25,9 @@ import { useSyncExternalStore } from 'react';
  */
 const PARAMS_KEY = 'creep-lab:paramsByModel';
 const SETS_KEY = 'creep-lab:parameterSets';
+// Exported for the locale tests, which assert the round trip by the real key and
+// the real loader rather than by a copy of either.
+export const LOCALE_KEY = 'creep-lab:locale';
 const VERSION_KEY = 'creep-lab:storeVersion';
 const STORE_VERSION = 1;
 
@@ -97,8 +101,34 @@ function persistParams(paramsByModel) {
   }
 }
 
+function persistLocale(locale) {
+  try {
+    globalThis.localStorage?.setItem(LOCALE_KEY, locale);
+  } catch {
+    // storage can be full or blocked; the app still works without persistence
+  }
+}
+
+/**
+ * The visitor's language: an explicit choice if they made one, otherwise what the
+ * browser asks for. The two are kept distinct on purpose — a detected default is
+ * not written back, so someone whose browser is Chinese but who switched to English
+ * does not get flipped back on their next visit by the detection re-running.
+ */
+export function loadLocale() {
+  try {
+    const stored = globalThis.localStorage?.getItem(LOCALE_KEY);
+    if (isLocale(stored)) return stored;
+  } catch {
+    // fall through to detection
+  }
+  return detectLocale();
+}
+
 const initialState = {
   mode: 'single',
+  /** the interface language; see i18n/locales.js for why the id is not the html lang */
+  locale: loadLocale(),
   engine: 'rust',
   /** the model the app is working with: drives the calculation and the docs */
   model: 'aci209',
@@ -109,6 +139,8 @@ const initialState = {
   /** the batch pipeline's dataset and view settings, per the fields below */
   batch: {
     modelId: 'aci209',
+    /** Invalidates async reads/computations after a confirmed URL dataset reset. */
+    generation: 0,
     rows: [],
     headers: [],
     issues: [],
@@ -150,6 +182,23 @@ export function setMode(mode) {
 
 export function setEngine(engine) {
   if (state.engine !== engine) set({ engine });
+}
+
+/**
+ * Set the live language without remembering it. Used by the URL sync, so that
+ * opening someone's `?lang=zh` link shows Chinese now without quietly rewriting the
+ * reader's own preference — which is what `setLocale` is for, and why the two are
+ * separate functions rather than one with a flag.
+ */
+export function applyLocale(locale) {
+  if (isLocale(locale) && state.locale !== locale) set({ locale });
+}
+
+/** Switch the interface language and remember the choice. */
+export function setLocale(locale) {
+  if (!isLocale(locale) || state.locale === locale) return;
+  persistLocale(locale);
+  set({ locale });
 }
 
 export function setModel(model) {
@@ -207,10 +256,18 @@ export function resetStore() {
   try {
     globalThis.localStorage?.removeItem(PARAMS_KEY);
     globalThis.localStorage?.removeItem(SETS_KEY);
+    globalThis.localStorage?.removeItem(LOCALE_KEY);
   } catch {
     // nothing to clear
   }
-  state = { ...initialState, paramsByModel: {}, parameterSets: {} };
+  state = {
+    ...initialState,
+    paramsByModel: {},
+    parameterSets: {},
+    // Re-detect rather than assume: the initial state was built when the module was
+    // first imported, so its locale is the one from the previous test's storage.
+    locale: detectLocale(),
+  };
   // Listeners get the new state, exactly as `set` above promises: the URL sync's
   // subscriber reads `state.mode`, so calling them with nothing threw a TypeError
   // whenever the app was mounted.

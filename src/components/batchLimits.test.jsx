@@ -24,8 +24,8 @@ describe('BatchCalculator limits', () => {
     const rows = Array.from({ length: 2500 }, (_, i) => aciRow(35 + i)).join('\n');
     upload(container, `${ACI_HEADER}\n${rows}\n`, 'big-aci.csv');
 
-    await waitFor(() => expect(screen.getByText(/2500 rows · 1 output field/)).toBeInTheDocument());
-    expect(screen.getByText(/decimated from 2500/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/2,500 rows · 1 output field/)).toBeInTheDocument());
+    expect(screen.getByText(/decimated from 2,500/)).toBeInTheDocument();
   });
 
   test('files past 20000 rows are rejected before compute', async () => {

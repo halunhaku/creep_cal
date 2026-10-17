@@ -1,22 +1,25 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import App from '../App';
-import { updateBatch } from '../state/appStore';
+import { getState, updateBatch } from '../state/appStore';
 import Aci209Calculator from './Aci209Calculator';
-import BatchCalculator from './BatchCalculator';
 import DocsPage from './DocsPage';
 import Mc2010Calculator from './Mc2010Calculator';
 import ModelCalculator from './ModelCalculator';
 import { langRuns } from './ui/langRuns';
 
 /**
- * The interface is bilingual and the document is `lang="en"`, so every Chinese
- * run has to say so itself or a screen reader reads 中文 with English phonemes.
+ * Whatever language the document is in, no Chinese may be rendered without
+ * saying so: a screen reader reads 中文 with English phonemes unless an element
+ * in scope carries `lang="zh…"`.
  *
- * These tests measure the rendered DOM rather than trusting the call sites: a
- * text node with Han characters must sit inside an element carrying `lang`
- * (itself or an ancestor), and so must an accessible name or tooltip written in
- * Chinese. A new Chinese string that forgets its markup fails here.
+ * The calculation workspace is now driven by the message catalogues, so in the
+ * English locale it contains no Han characters at all and the invariant holds
+ * trivially; in the Chinese locale the document itself is `lang="zh-CN"`, which
+ * covers every string the catalogue supplies. Either way the check is the same
+ * walk of the rendered DOM, and a hard-coded Chinese string that forgets its
+ * markup — as the reference library still carries — fails
+ * here.
  */
 const HAN = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
 const ATTRIBUTES = ['aria-label', 'title', 'placeholder', 'alt'];
@@ -50,20 +53,24 @@ function unmarkedChinese(root) {
 }
 
 describe('Chinese fragments are marked with their language', () => {
-  test('the calculation workspace, including a notice and an out-of-range field', async () => {
+  test('the calculation workspace, whose messages now come from the catalogue', async () => {
     const { container } = render(<Aci209Calculator engine="js" />);
     await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
 
-    // A field outside its range prints a bilingual message, and moving an input
-    // prints the bilingual "results are stale" warning.
+    // A field outside its range names the range, and moving an input says the
+    // results on screen are stale. Both used to print an English half and a
+    // Chinese half side by side; they are one language now.
     const humidity = screen.getByLabelText(/Relative Humidity/i);
     fireEvent.change(humidity, { target: { value: '500' } });
     fireEvent.blur(humidity);
-    await screen.findByText(/超出推荐范围/);
+    await screen.findByText(/Outside calibrated range 0–100/);
     fireEvent.change(humidity, { target: { value: '35' } });
     fireEvent.blur(humidity);
-    await screen.findByText(/当前结果待更新/);
+    await screen.findByText(/results are out of date/);
 
+    // Nothing Chinese survives in the English locale: if it did, the guard below
+    // would need an element to mark it, and there is none.
+    expect(HAN.test(container.textContent)).toBe(false);
     expect(unmarkedChinese(container)).toEqual([]);
   });
 
@@ -78,7 +85,6 @@ describe('Chinese fragments are marked with their language', () => {
         { name: 'x', label: 'X', min: 0, max: 10 },
         { name: 'targetAge', label: 'Target Age', min: 1, max: 100 },
       ],
-      loadingMessage: 'loading',
       readyMessage: 'ready',
       calculateJs() {
         if (refuses.value) throw new RangeError('Stub kernel refused this input.');
@@ -91,64 +97,75 @@ describe('Chinese fragments are marked with their language', () => {
 
     const { container } = render(<ModelCalculator engine="js" config={config} />);
     const alert = await screen.findByRole('alert');
-    // The split must not disturb the sentence, spaces included.
-    expect(alert).toHaveTextContent('Calculation failed · 计算失败');
+    // The model's own error text arrives untouched; the frame around it is the
+    // catalogue's sentence.
+    expect(alert).toHaveTextContent('Calculation failed');
     expect(alert).toHaveTextContent('Stub kernel refused this input.');
     expect(unmarkedChinese(container)).toEqual([]);
   });
 
-  test('the batch workspace, including issues and the column mapping panel', async () => {
-    const { container } = render(<BatchCalculator />);
-    const input = container.querySelector('input[type="file"]');
-    fireEvent.change(input, {
+  test.each(['en', 'zh'])('the batch workspace includes localized issues and mapping (%s)', async (locale) => {
+    window.history.replaceState(null, '', `/?mode=batch&lang=${locale}`);
+    const { container } = render(<App />);
+    await screen.findByRole('heading', { name: locale === 'zh' ? '数据集计算流程' : 'Dataset pipeline' });
+    fireEvent.change(container.querySelector('input[type="file"]'), {
       target: { files: [new File(['t0,tPrime,t\n28,28,112\n'], 'wrong-columns.csv')] },
     });
-    await screen.findByText(/Missing required columns/i);
-    // One issue row per missing column, each with its Chinese half marked.
-    const marked = await screen.findAllByText(/缺少必填列/);
-    expect(marked.length).toBeGreaterThan(0);
-    for (const element of marked) expect(element.getAttribute('lang')).toBe('zh-CN');
-
+    await screen.findByRole('alert');
+    expect(screen.getByRole('alert')).toHaveTextContent(locale === 'zh' ? '缺少必填列' : 'Missing required columns');
+    // One localized issue row per missing field, not a removed assertion about
+    // the old bilingual text. The document now supplies their language.
+    const issueRows = screen.getAllByText(locale === 'zh' ? '缺少必填列' : 'Required column is missing', { exact: true });
+    expect(issueRows).toHaveLength(getState().batch.mapping.length);
+    expect(issueRows.length).toBeGreaterThan(0);
+    expect(document.documentElement.lang).toBe(locale === 'zh' ? 'zh-CN' : 'en');
+    if (locale === 'en') expect(HAN.test(container.querySelector('.workspace-header').parentElement.textContent)).toBe(false);
     expect(unmarkedChinese(container)).toEqual([]);
   });
 
-  test('the batch error line and a matrix long enough to be truncated', async () => {
-    const empty = render(<BatchCalculator />);
+  test.each(['en', 'zh'])('the localized batch error and truncated matrix retain language coverage (%s)', async (locale) => {
+    window.history.replaceState(null, '', `/?mode=batch&lang=${locale}`);
+    const empty = render(<App />);
+    await screen.findByRole('heading', { name: locale === 'zh' ? '数据集计算流程' : 'Dataset pipeline' });
     fireEvent.change(empty.container.querySelector('input[type="file"]'), {
       target: { files: [new File(['t0,tPrime,t\n'], 'empty.csv')] },
     });
-    const error = await screen.findByText(/File is empty/i);
-    expect(error).toHaveTextContent('File is empty. 请上传包含表头和数据的 CSV 或 XLSX 文件。');
+    const error = await screen.findByRole('alert');
+    expect(error).toHaveTextContent(locale === 'zh'
+      ? '文件为空。请上传包含表头和数据的 CSV 或 XLSX 文件。'
+      : 'File is empty. Upload a CSV or XLSX file with headers and data.');
     expect(unmarkedChinese(empty.container)).toEqual([]);
     empty.unmount();
 
-    // 150 rows: the matrix says so, in a sentence that mixes digits with Chinese,
-    // and the visualizer's own Chinese note is rendered beside it.
     const rows = Array.from({ length: 150 }, (_, index) => ({ t0: 28, t: index, result_J_GPa: 0.16, __status: 'valid' }));
     updateBatch({
       modelId: 'b4', rows, headers: ['t0', 't'], issues: [],
       fileName: 'big.csv', xKey: 't', yKey: 'result_J_GPa', pendingRows: [], mapping: [],
     });
-    const big = render(<BatchCalculator />);
-    // Digits interrupt the Chinese here, so the sentence is read as text content
-    // rather than from one element; the whole line must still be intact.
-    await waitFor(() => expect(big.container.textContent).toContain('表格显示前 100 行，导出包含全部 150 行'));
-    expect(screen.getByText(/选择输入列与结果列进行快速关系检查/)).toBeInTheDocument();
+    const big = render(<App />);
+    await waitFor(() => expect(big.container.textContent).toContain(locale === 'zh'
+      ? '表格显示前 100 行，导出包含全部 150 行'
+      : 'showing the first 100 rows; export includes all 150 rows'));
+    expect(big.container.querySelectorAll('tbody tr')).toHaveLength(100);
+    expect(screen.getByText(locale === 'zh'
+      ? '选择输入列与结果列进行快速关系检查'
+      : 'Choose an input and an output column to check their relationship')).toBeInTheDocument();
+    if (locale === 'en') expect(HAN.test(big.container.querySelector('.workspace-header').parentElement.textContent)).toBe(false);
     expect(unmarkedChinese(big.container)).toEqual([]);
   });
 
-  test('the MC2010 cross-field rule, which is the only Chinese in a parameter message', async () => {
+  test('the MC2010 cross-field rule, which reports the computed limit', async () => {
     const { container } = render(<Mc2010Calculator engine="js" />);
     await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
 
     const sigma = screen.getByLabelText(/Initial Concrete Stress/i);
     fireEvent.change(sigma, { target: { value: '78' } });
     fireEvent.blur(sigma);
-    // "MC2010" splits the Chinese into two runs, so the query takes one of them
-    // and the sentence as a whole is checked as text content.
-    const message = await screen.findByText('应力适用范围');
-    expect(message.getAttribute('lang')).toBe('zh-CN');
-    expect(container.textContent).toContain('|σ| must be ≤ 0.6·fcm = 24 MPa · 超出 MC2010 应力适用范围');
+    // The rule spans two fields, so the sentence carries the limit it computed
+    // from fcm rather than a number the catalogue could have held.
+    const message = await screen.findByText(/outside the MC2010 stress range/);
+    expect(container.textContent).toContain('|σ| must be ≤ 0.6·fcm = 24 MPa');
+    expect(HAN.test(message.textContent)).toBe(false);
 
     expect(unmarkedChinese(container)).toEqual([]);
   });
