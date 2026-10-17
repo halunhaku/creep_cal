@@ -533,13 +533,23 @@ export default function BatchCalculator() {
     const filtered = (logX || logY) ? base.filter((point) => (!logX || point.x > 0) && (!logY || point.y > 0)) : base;
     const visible = logX ? filtered.map((point) => ({ ...point, plotX: Math.log10(point.x) })) : filtered;
     // Scatter renders one SVG circle per point: decimate past 2000 so a 20k-row
-    // file stays interactive. Line mode keeps every point (it is already sorted
-    // and brushed).
+    // file stays interactive. Line mode used to keep every point, and Recharts
+    // spent 1.26 s drawing the 20,000-point path and its Brush on this machine
+    // (500 rows: 26 ms, 2,000 rows: 52 ms, 20,000 rows: 1,256 ms —
+    // `batch-chart-toggle` in scripts/benchmark.mjs). It now uses the same cap,
+    // with the last point kept so the line still reaches the end of the range.
+    // 2,000 samples already exceed one point per pixel at any window width the
+    // layout allows, so the drawn shape does not change at display resolution.
     const step = Math.max(1, Math.ceil(visible.length / MAX_SCATTER_POINTS));
     const scatter = visible.filter((_, index) => index % step === 0);
     // Line mode joins points in file order, so an unsorted X column draws a
     // meaningless zigzag — sort a copy, never the matrix order.
-    const line = [...visible].sort((a, b) => a.x - b.x);
+    const sorted = [...visible].sort((a, b) => a.x - b.x);
+    const line = step === 1 ? sorted : (() => {
+      const sampled = sorted.filter((_, index) => index % step === 0);
+      if (sampled[sampled.length - 1] !== sorted[sorted.length - 1]) sampled.push(sorted[sorted.length - 1]);
+      return sampled;
+    })();
     return { basePoints: base, filteredPoints: filtered, visiblePoints: visible, scatterPoints: scatter, linePoints: line, scatterStep: step };
   }, [batchResults, xKey, yKey, logX, logY]);
   const yHasNegative = visiblePoints.some((point) => point.y < 0);
@@ -766,7 +776,7 @@ export default function BatchCalculator() {
                 {batchResults.length > 100 && t('batch.matrixLimit', { shown: count(100), total: count(batchResults.length) })}
               </div>
             </div>
-            <button type="button" onClick={exportCSV} className="button-primary !min-h-9">{t('batch.exportCsv')}</button>
+            <button type="button" onClick={exportCSV} data-action="export-csv" className="button-primary !min-h-9">{t('batch.exportCsv')}</button>
           </div>
           <div id="batch-matrix-scroll-hint" className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint md:hidden">
             <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 fill-none stroke-current" aria-hidden="true">
@@ -890,8 +900,8 @@ export default function BatchCalculator() {
             </div>
           </div>
           <div className="border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint">
-            {t('batch.plotting', { shown: count(chartType === 'scatter' ? scatterPoints.length : visiblePoints.length), total: count(batchResults.length) })}
-            {chartType === 'scatter' && visiblePoints.length > scatterPoints.length && t('batch.decimated', { total: count(visiblePoints.length) })}
+            {t('batch.plotting', { shown: count(chartType === 'scatter' ? scatterPoints.length : linePoints.length), total: count(batchResults.length) })}
+            {(chartType === 'scatter' ? scatterPoints.length : linePoints.length) < visiblePoints.length && t('batch.decimated', { total: count(visiblePoints.length) })}
             {excludedCount > 0 && t('batch.excluded', { total: count(excludedCount) })}
             {logHiddenCount > 0 && t('batch.logHidden', { total: count(logHiddenCount) })}
           </div>
@@ -965,6 +975,7 @@ export default function BatchCalculator() {
                       dataKey="x"
                       height={18}
                       travellerWidth={5}
+                      ariaLabel={t('calculator.chart.brushRange')}
                       fill={CHART.brushTrack}
                       stroke={CHART.brushSelection}
                       tickFormatter={formatTick}

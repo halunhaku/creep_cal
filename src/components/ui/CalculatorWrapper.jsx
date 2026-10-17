@@ -93,7 +93,7 @@ function CopyValue({ text, label }) {
       onClick={onCopy}
       title={name}
       aria-label={name}
-      className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action"
+      className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action min-h-6 items-center justify-center inline-flex"
     >
       {copied ? t('calculator.copy.done') : t('calculator.copy.text')}
     </button>
@@ -423,6 +423,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
                   dataKey="t"
                   height={18}
                   travellerWidth={5}
+                  ariaLabel={t('calculator.chart.brushRange')}
                   fill={CHART.brushTrack}
                   stroke={CHART.brushSelection}
                   tickFormatter={(value) => String(value)}
@@ -561,6 +562,7 @@ export default function CalculatorWrapper({
       <header
         data-run-status={duration != null ? 'computed' : 'idle'}
         data-kernel={engine}
+        data-compute-ms={duration != null ? duration.toFixed(2) : undefined}
         className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
       >
         <div className="min-w-0 max-w-3xl">

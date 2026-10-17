@@ -7,17 +7,30 @@ import { useT } from './i18n';
 import { useDocumentLanguage } from './i18n/useDocumentLanguage';
 import { setMode, useAppSelector } from './state/appStore';
 import { initUrlSync } from './state/urlSync';
+import { WORKSPACES } from './workspaces';
 
-const SingleCalculationDashboard = lazy(() => import('./components/SingleCalculationDashboard'));
-const BatchCalculator = lazy(() => import('./components/BatchCalculator'));
-const DocsPage = lazy(() => import('./components/DocsPage'));
+// One lazy component per workspace, built from the shared loader map so the entry
+// point — which resolves the first workspace before mounting — cannot drift from
+// the modules App switches between at runtime.
+const WORKSPACE_COMPONENTS = {
+  single: lazy(WORKSPACES.single),
+  batch: lazy(WORKSPACES.batch),
+  docs: lazy(WORKSPACES.docs),
+};
 
-function App() {
+/**
+ * @param {{ initialWorkspace?: { mode: string, Component: React.ComponentType } }} props
+ *   `initialWorkspace` is the workspace the entry point already resolved. It is
+ *   rendered directly *only* while it is the active workspace: every later switch
+ *   goes through the lazy components above, which is where a spinner belongs.
+ */
+function App({ initialWorkspace }) {
   // Held in the store rather than local state: each workspace unmounts when you
   // leave it, so anything the user typed or loaded has to live above them. The
   // store is also what step 2 will sync with the URL.
   const activeMode = useAppSelector((state) => state.mode);
   const t = useT();
+  const Workspace = initialWorkspace?.mode === activeMode ? initialWorkspace.Component : WORKSPACE_COMPONENTS[activeMode];
 
   // The language the store holds is also the language of <html>, <title> and the
   // description; see the hook for why those three are one decision.
@@ -37,9 +50,7 @@ function App() {
           switching tabs remounts the boundary and clears the error state. */}
       <ErrorBoundary key={activeMode}>
         <Suspense fallback={<LoadingSpinner message={t('loading.workspace')} />}>
-          {activeMode === 'single' && <SingleCalculationDashboard />}
-          {activeMode === 'batch' && <BatchCalculator />}
-          {activeMode === 'docs' && <DocsPage />}
+          <Workspace />
         </Suspense>
       </ErrorBoundary>
     </Layout>

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { detectLocale, isLocale } from '../i18n/locales';
+import { workspaceFromUrl } from '../workspaces';
 
 /**
  * State that must outlive a workspace switch.
@@ -126,7 +127,13 @@ export function loadLocale() {
 }
 
 const initialState = {
-  mode: 'single',
+  // The workspace the URL names, not always the default: the entry point resolves
+  // that workspace before mounting, so the first render has to want it. Reading it
+  // here rather than in `initUrlSync`'s effect is what stops the app from mounting
+  // the default workspace and swapping to the requested one after a render (see
+  // index.jsx for what that swap cost). An absent or unknown `?mode=` is the
+  // default, exactly as in urlSync.readUrl.
+  mode: workspaceFromUrl(),
   /** the interface language; see i18n/locales.js for why the id is not the html lang */
   locale: loadLocale(),
   engine: 'rust',

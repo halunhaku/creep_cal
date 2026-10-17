@@ -69,6 +69,11 @@ export default {
       tooltipTime: 't = {days} days',
       referenceLoad: 't₀ {days}d',
       referenceLoading: 't′ {days}d',
+      // Recharts' Brush labels its two drag handles from the series data and
+      // renders "Min value: undefined, Max value: undefined" when the data has no
+      // `name` field — which announced as that literal string to a screen reader.
+      // This replaces it; the handles remain sliders with aria-valuenow.
+      brushRange: 'Series range',
     },
     comparison: {
       title: 'Kernel comparison',

@@ -2,15 +2,11 @@ import React, { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 import { setEngine, setModel, useAppSelector } from '../state/appStore';
 import { usePick, useT } from '../i18n';
+import { MODEL_CALCULATORS, preloadedModels } from '../workspaces';
 
-const CALCULATORS = {
-  aci209: lazy(() => import('./Aci209Calculator')),
-  mc2010: lazy(() => import('./Mc2010Calculator')),
-  b4: lazy(() => import('./B4Calculator')),
-  b4s: lazy(() => import('./B4sCalculator')),
-  gl2000: lazy(() => import('./Gl2000Calculator')),
-  aashto: lazy(() => import('./AashtoCalculator')),
-};
+const CALCULATORS = Object.fromEntries(
+  Object.entries(MODEL_CALCULATORS).map(([id, load]) => [id, lazy(load)]),
+);
 
 // Model names are standard designations and stay as they are; the three prose
 // fields describe the model's standing, method and calibrated range, so they
@@ -30,7 +26,10 @@ export default function SingleCalculationDashboard() {
   // From the store so the selected model and kernel survive leaving the tab.
   const engine = useAppSelector((state) => state.engine);
   const algorithm = useAppSelector((state) => state.model);
-  const ActiveComponent = CALCULATORS[algorithm];
+  // The entry point resolves the model view the first render needs; rendering it
+  // directly is what keeps that first render from suspending (see workspaces.js).
+  // Every later switch has no preloaded component and goes through React.lazy.
+  const ActiveComponent = preloadedModels[algorithm] ?? CALCULATORS[algorithm];
   const active = MODELS.find((model) => model.id === algorithm);
   const activeModelRef = useRef(null);
   // Stable identity: ModelCalculator keeps this in a ref and must not re-run its
@@ -65,6 +64,7 @@ export default function SingleCalculationDashboard() {
                   key={model.id}
                   ref={selected ? activeModelRef : null}
                   onClick={() => setModel(model.id)}
+                  data-model={model.id}
                   aria-pressed={selected}
                   className={`relative min-w-[190px] snap-start scroll-ml-2 rounded-none px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full xl:snap-none ${selected ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
                 >

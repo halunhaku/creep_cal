@@ -91,9 +91,13 @@ const CHROME_CANDIDATES = [
 ].filter(Boolean);
 
 // Volatile by nature: "1.40 ms", the comparison panel (value and unit live in
-// sibling elements), the "0.83×" ratio, and log timestamps.
+// sibling elements), the "0.83×" ratio, log timestamps, and the kernel's own
+// measured runtime as an attribute (`data-compute-ms`) rather than as text —
+// the text form below cannot see an attribute, so a readout nothing else
+// depends on made four scenes hash differently on every run.
 const NORMALISE = `
   const normalise = (html) => html
+    .replace(/data-compute-ms="[^"]*"/g, 'data-compute-ms="<MS>"')
     .replace(/\\d+(?:\\.\\d+)?\\s*(?:<[^>]+>)?\\s*ms/g, '<MS>')
     .replace(/\\d+(?:\\.\\d+)?×/g, '<RATIO>×')
     .replace(/\\d{1,2}:\\d{2}:\\d{2}/g, '<TIME>');

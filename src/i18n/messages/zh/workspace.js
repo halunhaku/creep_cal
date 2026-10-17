@@ -66,6 +66,9 @@ export default {
       tooltipTime: 't = {days} 天',
       referenceLoad: 't₀ {days} 天',
       referenceLoading: 't′ {days} 天',
+      // 见英文目录同名键：Recharts 的 Brush 会用数据里的 name 拼出
+      // "Min value: undefined, Max value: undefined"，读屏会照读。
+      brushRange: '曲线范围',
     },
     comparison: {
       title: '内核对比',

@@ -147,3 +147,84 @@ project in its own right. C is orthogonal.
 - Did not claim the ZIP bomb is solved. The gate bounds the upload; the inflation
   is still unbounded. Anyone reading a summary of this phase should take away that
   the *known* exposure is narrower and *documented*, not closed.
+
+## 6. Measured cost of the unbounded inflation (2026-04, this machine)
+
+§3 said the residual risk is "denial of service on the tab that opened the file".
+That sentence is now a measurement rather than an inference. Two archives were
+built to the same recipe — a minimal valid workbook whose `xl/worksheets/sheet1.xml`
+is one 48-byte row repeated, which is what a bomb actually exploits — and uploaded
+through the real UI in headless Chrome against the production build.
+
+| upload | compressed | inflated sheet XML | ratio | wall time | main-thread blocking | JS heap |
+|---|---:|---:|---:|---:|---:|---:|
+| A | 30 KiB | 10.0 MB | 326:1 | 349 ms | 303 ms (1 long task) | 2.3 → 7.9 MB |
+| B | 570 KiB | 200.0 MB | 343:1 | 6,924 ms | 6,389 ms (1 long task) | 4.3 → 130.5 MB |
+
+Both are accepted by the 32 MiB gate: they are 30 KiB and 570 KiB. The numbers are
+the tab's own state, read over the DevTools Protocol (`Runtime.getHeapUsage` for the
+heap, a `longtask` observer for the blocking, wall clock around the upload); the heap
+shown is the peak observed before a forced GC, and after a forced GC it returns to
+~2.5 MB, so this is spent CPU and transient memory rather than a leak.
+
+Two costs scale with the inflated size, and they agree across the two sizes:
+
+- **CPU ≈ 32 ms per MB of sheet XML** (303 ms / 10 MB, 6,389 ms / 200 MB). This is a
+  single uninterrupted task, so the interface is frozen for its whole duration.
+- **Peak heap ≈ 0.6 MB per MB of sheet XML** (0.56 and 0.63), i.e. roughly the
+  inflated text plus a similar amount for the XML DOM.
+
+Extrapolating to an upload the gate does accept: a 2 MiB archive at ~340:1 inflates
+to ~680 MB of XML, which by these rates is **~22 s of frozen tab and ~430 MB of
+peak heap**, on one core, before the 20,000-row check can refuse anything. Multiple
+`.xml` parts multiply it, since `unzip` inflates every entry it is not told to skip.
+
+The legal ceiling is a different number: §2 measured the largest *legitimate*
+workbook at 16.8 MiB inflated. So an inflated-size bound of 32 MiB would leave ~2x
+headroom on every legal input measured and would refuse bomb B at 0.7% of its
+inflation.
+
+## 7. An implementable bounded design (proposal, not implemented)
+
+Option B from §4 can be built without writing an XLSX reader, which is what made it
+look like "a project in its own right". The key is that the bound only has to apply
+to the *bytes handed to the reader*, so the unpack can be replaced and the reader
+kept:
+
+1. **Inflate under a ceiling, entry by entry.** Use fflate's streaming `Unzip`
+   class rather than the one-shot `unzip`, count bytes as they are emitted, and
+   throw once the total passes `MAX_INFLATED_BYTES` (32 MiB, §6) or the entry count
+   passes a small ceiling (64, since a real workbook has a handful of `.xml` parts).
+   Keep `read-excel-file`'s own entry filter (`.xml` / `.xml.rels`) so images and
+   fonts are still skipped. Throwing from fflate's per-entry callback is what aborts
+   the inflate loop.
+2. **Re-pack the accepted parts and hand *that* to `read-excel-file`.** `zipSync`
+   the parts back into an archive with `level: 0`. The reader then sees the same
+   entry names and byte-identical XML, so its parsing behaviour, and all 21 tests in
+   `BatchCalculator.excel.test.jsx`, keep their meaning. Its own inflate becomes a
+   memcpy of a size that is already bounded.
+3. **Keep the 32 MiB compressed gate and the 20,000-row cap.** The gate still bounds
+   `arrayBuffer()`; the row cap is still the right error for a legitimate oversized
+   file. Neither is a substitute for the inflated ceiling.
+
+What this buys: a real bound on resident bytes during the read, a real bound on
+main-thread time (≈32 MiB × 32 ms/MB ≈ **1.0 s**, against 6.9 s measured for a
+570 KiB upload today), and an entry-count ceiling that nothing provides now.
+
+What it costs: one extra pass over the parts (the re-pack) whose size is bounded by
+the ceiling, ~60 lines plus tests, and a rejection path that has to be visible in
+the interface like the other import errors.
+
+What it does not buy: the bound is on the *total*, so a legal-looking workbook that
+inflates to just under the ceiling is still read and still costs ~1 s. And the
+declared-size pre-flight (Option A, §4) remains useful on top: it is ~40 lines, needs
+no new dependency, and rejects an honest bomb before any inflation, while an inflated
+byte ceiling is what catches a dishonest header. Option C (do the read in the
+existing batch Worker) is orthogonal and would move even the bounded 1 s off the
+main thread.
+
+The compatibility gate for step 2 is already written: the 21 XLSX tests were taken
+against the current reader's measured behaviour, and they are the specification a
+bounded unpack has to keep satisfying. New tests the change would need: a refusal
+past the inflated ceiling, a refusal past the entry count, an archive whose declared
+sizes lie, and the largest legal workbook from §2 still accepted.

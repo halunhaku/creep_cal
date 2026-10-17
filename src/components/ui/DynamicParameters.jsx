@@ -212,7 +212,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
             {pick(inputIssue.message)}
           </div>
         )}
-        <button onClick={handleCalculate} className="button-primary w-full">
+        <button onClick={handleCalculate} data-action="calculate" className="button-primary w-full">
           {invalidCount > 0
             ? t('parameters.requireAttention', { count: invalidCount })
             : inputIssue ? t('parameters.outOfRangeButton') : buttonText}

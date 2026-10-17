@@ -429,7 +429,13 @@ Ordered by what would be worth doing next.
    and a few-kilobyte bomb is unaffected by it. Do not read the gate as a fix. The
    path audit, the measurements and the two implementable options are in
    **docs/xlsx-input-limits.md**; implementing either was explicitly out of scope
-   for the phase that added the gate.
+   for the phase that added the gate. That document's §6 now prices the exposure
+   instead of describing it: a 570 KiB upload the gate accepts froze the tab for
+   6.9 s in one task and grew its heap by 126 MB, and the CPU cost is ~32 ms per MB
+   of inflated sheet XML. §7 works out a bounded unpack that keeps
+   `read-excel-file` as the reader — inflate under a ceiling with fflate's
+   streaming `Unzip`, then re-pack the accepted parts and hand those over — which
+   is implementable without touching the parser.
 4. **`exportCSV` builds every row on the main thread.** Up to 20,000 rows ×
    (inputs + results) are mapped and serialised synchronously on click. Chunking
    it would change the export into an async operation, so it was left alone; it is
