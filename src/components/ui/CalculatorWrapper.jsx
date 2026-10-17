@@ -443,7 +443,7 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady, comp
   const speedup = comparison && comparison.rust > 0 ? comparison.js / comparison.rust : null;
 
   return (
-    <section className="workbench-panel p-4">
+    <section className="workbench-panel p-4" data-kernel-comparison data-ready={comparison ? 'true' : 'false'}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="eyebrow">{t('calculator.comparison.title')}</div>
@@ -451,7 +451,7 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady, comp
             {compareNote ?? t('calculator.comparison.note', { days: formatInteger(MAX_SERIES_DAYS, locale) })}
           </p>
         </div>
-        <button onClick={onCompare} disabled={comparing || !compareReady} title={compareNote ?? undefined} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
+        <button type="button" onClick={onCompare} data-action="compare-kernels" disabled={comparing || !compareReady} title={compareNote ?? undefined} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
           {comparing ? t('calculator.comparison.measure') : t('calculator.comparison.run')}
         </button>
       </div>
@@ -548,9 +548,21 @@ export default function CalculatorWrapper({
     return () => window.removeEventListener('keydown', handler);
   }, [calculateReady, onCalculate]);
 
+  /*
+   * `data-run-status` and `data-kernel` are the settle signals for the browser
+   * gates in scripts/. They waited on the English words "Last compute" and
+   * "JavaScript reference", so the gates could only run on an English interface
+   * and only by reading display copy. An attribute is neither: the gates now wait
+   * for `[data-run-status="computed"]` and read `data-kernel` directly, and the
+   * wording can change without breaking them.
+   */
   return (
     <div className="min-w-0">
-      <header className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+      <header
+        data-run-status={duration != null ? 'computed' : 'idle'}
+        data-kernel={engine}
+        className="mb-5 flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
+      >
         <div className="min-w-0 max-w-3xl">
           <div className="flex items-center gap-2">
             <span className="status-dot" />

@@ -107,6 +107,7 @@ export default function Header({ activeMode, onModeChange, onOpenDocs, onOpenPal
           <button
             type="button"
             onClick={onOpenPalette}
+            data-action="open-palette"
             className="touch-target flex h-12 w-11 shrink-0 items-center justify-center gap-2 md:w-12 border-x border-line bg-surface text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink lg:w-auto lg:justify-start lg:px-4"
             aria-label={t('search.label')}
             title={t('search.title')}

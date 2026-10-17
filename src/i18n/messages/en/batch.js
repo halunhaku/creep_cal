@@ -61,6 +61,7 @@ export default {
     error: {
       empty: 'File is empty. Upload a CSV or XLSX file with headers and data.',
       rowLimit: 'File has {rows} rows, above the {limit}-row limit. Split the file and upload it in parts.',
+      fileTooLarge: 'File is {size} MB, above the {limit} MB limit for XLSX. Split the file and upload it in parts.',
       missing: 'Missing required columns: {fields}',
       missingColumn: 'Required column is missing',
       mappingConflict: 'Two fields cannot use the same column: {fields}',

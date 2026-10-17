@@ -1,8 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { bundleGuardPlugin } from './scripts/bundleGuard.mjs';
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Fails `npm run build` if a Node-only module reaches the browser bundle. See
+    // scripts/bundleGuard.mjs for why the check reads the module graph instead of
+    // the source, and what it can and cannot tell you.
+    bundleGuardPlugin(),
+  ],
   build: {
     rollupOptions: {
       output: {

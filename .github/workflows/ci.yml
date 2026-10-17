@@ -18,7 +18,12 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run lint
-      - run: npm run build
+      # The build fails if a Node-only module reaches the browser payload. The
+      # guard reads the emitted module graph (scripts/bundleGuard.mjs) and prints a
+      # one-line summary, so a passing log is evidence it ran rather than stayed
+      # silent. Its own failure modes are covered by src/bundleGuard.build.test.js.
+      - name: Build (includes the production bundle guard)
+        run: npm run build
 
   rust:
     runs-on: ubuntu-latest

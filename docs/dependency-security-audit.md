@@ -82,7 +82,7 @@ code is installed, is reachable from `read-excel-file/node`, and would matter fo
 any future Node-side use of that package (a build script, an SSR path, a CI data
 check). That is what `npm audit --omit=dev` was reporting, and it is why the bump
 was worth taking rather than arguing away. It is *not* a claim that the package
-could never become reachable — see §8.1.
+could never become reachable — see §8.1 (now closed).
 
 **Fix.** `npm audit fix` resolved `@xmldom/xmldom` to `0.9.12`. read-excel-file
 declares `^0.9.9`, which for a `0.x` version means `>=0.9.9 <0.10.0`, so `0.9.12`
@@ -231,7 +231,7 @@ sentence — added `.collapse{visibility:collapse}` to the stylesheet, 30 bytes.
 `tailwind.config.js` scans `./src/**/*.{js,jsx,ts,tsx}`, which includes prose in
 comments, so any comment word that happens to match a utility name is emitted.
 The comment now says "flatten" and the stylesheet is byte-identical again. See
-§8.8.
+§8.7.
 
 ## 6. Proposed follow-up: Tailwind 3 → 4
 
@@ -350,7 +350,37 @@ exists anywhere in the tree — the reference library moved to model Markdown in
 `578f490`, and the section it named is gone. Replaced by a real load signal: a
 rendered `[data-doc-heading]`, which only exists once the Markdown has parsed.
 
-### 7.4 `docs/images/` was stale, and the broken gate is why nobody noticed
+### 7.4 The gates were then hardened
+
+The two defects in §7.3 and the near-miss they caused share one root: a gate that
+cannot tell "everything passed" from "nothing ran". A follow-up pass changed how
+they decide, and how they report:
+
+- **They no longer read display copy.** Waiting for the English words
+  "Time-dependent concrete analysis", "Result matrix" and "Rust speed-up", and
+  clicking buttons by their visible text, meant a rename could break a gate and a
+  translation could break it silently. Every probe now reads a `data-` hook or an
+  `id` the component sets for the purpose (`data-workspace` on `<main>`,
+  `data-run-status`, `data-kernel`, `data-action`, `data-result-matrix`,
+  `[data-doc-heading]`), or the URL — workspaces are opened with the app's own
+  `?mode=` parameter, which is what a shared link does.
+- **They verify what they produced.** `capture-screenshots.mjs` used to exit 0
+  after writing whatever the capture returned, so an empty capture wrote a zero-byte
+  PNG and reported success. It now checks every expected file exists, is a PNG and
+  clears a size floor, and that the set of images in `docs/images` did not silently
+  lose a member (`scripts/artifacts.mjs`, `src/artifacts.test.js`).
+- **`dom-snapshot.mjs --check` can see a run that measured less.** It iterated the
+  fingerprints it *had*, so a key recorded in the baseline and absent from the run
+  was not mismatched — it was not looked at. Both directions are checked now, and
+  the check is demonstrated, not asserted: a baseline with a phantom key fails the
+  run.
+- **Failure propagation is proven, not assumed.** Against a deliberately broken
+  `dist/`, both scripts exit non-zero with the failing wait and the page contents;
+  a `vitest` invocation matching no tests exits 1; and the artifact checks are
+  covered by 18 unit tests for the missing, empty, truncated, non-PNG and
+  unexpected-set cases.
+
+### 7.5 `docs/images/` was stale, and the broken gate is why nobody noticed
 
 With the gates runnable, the regenerated screenshots differ from the committed
 ones — and the differences are the *committed* ones being out of date, not the
@@ -372,43 +402,46 @@ reads `— ms / — ms / —×`. The committed image has the same placeholders.
 
 Ordered by what would be worth doing next.
 
-1. **No guard against a Node-only dependency re-entering the bundle.** §3.1's
-   conclusion rests on one measurement taken by hand, with a temporary build
-   config that is not in the repository. Nothing fails if a later change imports
-   `read-excel-file/node` — or any other Node-only entry — and drags
-   `@xmldom/xmldom` into the browser bundle: the unit tests would still pass,
-   because they never exercise that path, and `npm audit --omit=dev` would stay
-   green because the package is *already* a production dependency. The cheap
-   permanent control is a checked-in script that records the production module
-   graph and fails on a deny-list, run next to `npm run build`. It was not added
-   here, to keep this phase's diff to what was asked; it is the highest-value
-   follow-up in this report.
+1. **Closed.** ~~No guard against a Node-only dependency re-entering the bundle.~~
+   §3.1's conclusion used to rest on one measurement taken by hand, with a
+   temporary build config that was not in the repository, so nothing failed if a
+   later change imported `read-excel-file/node` and dragged `@xmldom/xmldom` into
+   the browser bundle. There is now a checked-in guard
+   (`scripts/bundleGuard.mjs`) that reads the emitted bundle's module graph during
+   `npm run build` and fails the build on a deny-list, with both directions
+   covered by `src/bundleGuard.build.test.js`. What remains is that the guard
+   speaks only about *inclusion*: it cannot see an advisory inside a module that
+   legitimately belongs in the browser, and that is what `npm audit --omit=dev` is
+   for.
 2. **Tailwind toolchain, 7 advisories, 5 high** — no upstream patch exists for
    `braces`; clearing it requires Tailwind 4 (§6). Not shipped, not
    attacker-reachable. Development and CI only.
-3. **XLSX inflation is unbounded before the row limit applies.** The 20,000-row
-   cap is checked after `readSheet()` has inflated and parsed the whole part, so a
-   hostile `.xlsx` whose XML inflates to gigabytes is decompressed in the tab
-   before it is refused. Demonstrated in
-   `BatchCalculator.excel.test.jsx` (a ~153 KB archive holding ~975 KB of sheet
-   XML is accepted and then refused by the row limit). `read-excel-file` exposes
-   no inflated-size bound, so this cannot be fixed without reimplementing its
-   unzip step; the practical mitigation would be a pre-parse `file.size` cap,
-   which is a product decision and was not taken unilaterally.
-4. **No `file.size` cap before parsing** — same root, one step earlier. A very
-   large upload is read fully into memory before any limit applies.
-5. **`exportCSV` builds every row on the main thread.** Up to 20,000 rows ×
+3. **XLSX inflation is still unbounded. The upload is not.** The 20,000-row cap is
+   checked after `readSheet()` has inflated and parsed the whole part, so a hostile
+   `.xlsx` whose XML inflates to gigabytes is still decompressed in the tab before
+   it is refused — demonstrated in `BatchCalculator.excel.test.jsx`, where a 153 KB
+   archive holding 975 KB of sheet XML is accepted and then refused by the row
+   limit. What changed: a 32 MiB compressed-size gate now runs before the file is
+   read at all, derived from measurements of the largest legal upload (worst case
+   16.8 MiB) rather than guessed, and `read-excel-file` is confirmed to offer no
+   decompressed-size, per-entry, entry-count or ratio option. The gate bounds the
+   upload and the archive handed to the inflater; it does not bound the inflation,
+   and a few-kilobyte bomb is unaffected by it. Do not read the gate as a fix. The
+   path audit, the measurements and the two implementable options are in
+   **docs/xlsx-input-limits.md**; implementing either was explicitly out of scope
+   for the phase that added the gate.
+4. **`exportCSV` builds every row on the main thread.** Up to 20,000 rows ×
    (inputs + results) are mapped and serialised synchronously on click. Chunking
    it would change the export into an async operation, so it was left alone; it is
    a responsiveness concern for the maximum-size dataset, not a correctness one.
-6. **`setTimeout` without an unmount guard** in `CopyValue`
+5. **`setTimeout` without an unmount guard** in `CopyValue`
    (`src/components/ui/CalculatorWrapper.jsx:83`) and `downloadBlob`
    (`src/components/BatchCalculator.jsx:492`) — a state update and an
    `URL.revokeObjectURL` scheduled after a possible unmount. Both are benign under
    React 19 and the object URL is revoked either way.
-7. **`chai` 6.2.2 → 6.3.0 and `tinyrainbow` 3.1.0 → 3.2.0** arrived as part of the
+6. **`chai` 6.2.2 → 6.3.0 and `tinyrainbow` 3.1.0 → 3.2.0** arrived as part of the
    vitest patch bump. Covered by the passing suite.
-8. **Tailwind's content globs scan comments.** `content: ['./index.html',
+7. **Tailwind's content globs scan comments.** `content: ['./index.html',
    './src/**/*.{js,jsx,ts,tsx}']` matches prose in JSDoc blocks and in test files,
    so an English word that collides with a utility name is emitted into the
    shipped stylesheet — measured, not theoretical: one comment word added 30 bytes

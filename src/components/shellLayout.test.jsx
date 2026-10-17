@@ -116,3 +116,27 @@ describe('the popover shadow token', () => {
     expect([...dialog.classList].some((c) => c.startsWith('shadow-['))).toBe(false);
   });
 });
+
+describe('nothing leaks out of the source', () => {
+  // Regression, found by the screenshot gate rather than by a test: a `/* … */`
+  // block written among a JSX element's children is not a comment. It is text, and
+  // React renders it — the single-analysis header printed its own explanation of
+  // `data-run-status` at the user in twelve-point type. Only `{/* … */}` is a
+  // comment inside JSX, and only a rendered-text assertion can tell the difference.
+  const leaks = (text) => {
+    const offenders = ['/*', '*/', 'data-run-status', 'data-kernel', 'data-action', 'data-result-matrix', 'data-workspace', 'useEffect', 'className='];
+    return offenders.filter((needle) => text.includes(needle));
+  };
+
+  test('the application shell renders no source syntax as text', async () => {
+    await renderApp();
+    expect(leaks(document.body.textContent)).toEqual([]);
+  });
+
+  test('the same holds after switching workspaces, and in Chinese', async () => {
+    await renderApp();
+    act(() => setLocale('zh'));
+    await screen.findByRole('heading', { name: /混凝土时变分析/ });
+    expect(leaks(document.body.textContent)).toEqual([]);
+  });
+});

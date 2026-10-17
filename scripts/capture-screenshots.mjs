@@ -20,10 +20,11 @@
  * if you get one without meaning to, a timing has escaped the stamping.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { stampVolatile } from './stampVolatile.mjs';
+import { assertSameImageSet, verifyScreenshots } from './artifacts.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(ROOT, 'docs/images');
@@ -59,25 +60,46 @@ const SHOTS = [
   { file: 'readme-hero.png', width: 1440, height: 760, workspace: 'single', prepare: 'compare' },
   { file: 'ui-wide-single-analysis.png', width: 1800, height: 1250, workspace: 'single', prepare: 'compare' },
   { file: 'ui-wide-batch-matrix.png', width: 1800, height: 1250, workspace: 'batch', prepare: 'sample' },
-  { file: 'ui-wide-model-docs.png', width: 1800, height: 1250, workspace: 'docs', selectModel: 'RILEM Model B4' },
+  { file: 'ui-wide-model-docs.png', width: 1800, height: 1250, workspace: 'docs', model: 'b4' },
   { file: 'ui-single-analysis.png', width: 488, height: 1055, workspace: 'single', prepare: 'compare' },
   { file: 'ui-batch-matrix.png', width: 488, height: 1055, workspace: 'batch', prepare: 'sample' },
-  { file: 'ui-model-docs.png', width: 488, height: 1055, workspace: 'docs', selectModel: 'RILEM Model B4' },
+  { file: 'ui-model-docs.png', width: 488, height: 1055, workspace: 'docs', model: 'b4' },
   { file: 'responsive-single-390.png', width: 390, height: 844, workspace: 'single' },
   { file: 'responsive-single-768.png', width: 768, height: 1024, workspace: 'single' },
   { file: 'responsive-single-1440.png', width: 1440, height: 900, workspace: 'single' },
   { file: 'responsive-single-1920.png', width: 1920, height: 1080, workspace: 'single' },
 ];
 
-const HEADINGS = {
-  single: 'Time-dependent concrete analysis',
-  batch: 'Dataset pipeline',
-  docs: 'Model standards and equations',
+/*
+ * Every probe below reads a `data-` hook or an `id` the component sets for the
+ * purpose, or the URL. None of them read display copy: the gate used to wait on
+ * the English words "Time-dependent concrete analysis", "Result matrix" and "Rust
+ * speed-up" and to click buttons by their visible text, so translating a label
+ * could break it and a rename would break it silently.
+ */
+const hook = (selector) => `!!document.querySelector(${JSON.stringify(selector)})`;
+
+/*
+ * What "this workspace is ready" means, per workspace. `data-workspace` says the
+ * right workspace is mounted; it does not say the workspace has anything in it —
+ * every workspace is lazy-loaded, and the reference library fetches its Markdown.
+ * Waiting on these instead of on a heading is also what keeps the shots
+ * reproducible: a capture taken before the calculation finished was a capture of a
+ * different screen.
+ */
+const WORKSPACE_READY = {
+  single: hook('[data-run-status="computed"]'),
+  batch: hook('#batch-model'),
+  docs: hook('[data-doc-heading]'),
 };
 
-// innerText reflects rendered text, and the interface uppercases its labels via
-// CSS, so every text probe has to be case-insensitive.
-const hasText = (text) => `document.body.innerText.toLowerCase().includes(${JSON.stringify(text.toLowerCase())})`;
+/** Everything a shot needs is in its URL: workspace (`?mode=`) and model. */
+const shotSearch = (shot) => {
+  const query = new URLSearchParams();
+  query.set('mode', shot.workspace);
+  if (shot.model) query.set('model', shot.model);
+  return `?${query}`;
+};
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -147,52 +169,45 @@ class Cdp {
   }
 }
 
-/** Click the first enabled button whose trimmed text matches; report if absent. */
-const clickButton = (label) => `(() => {
-  const wanted = ${JSON.stringify(label)}.toLowerCase();
-  const buttons = [...document.querySelectorAll('button')];
-  // The reference library's model buttons lead with their index ("03 RILEM
-  // Model B4"), so leading digits are stripped before matching.
-  const textOf = (item) => item.textContent.trim().replace(/^\\d+\\s*/, '').toLowerCase();
-  const button = buttons.find((item) => textOf(item).startsWith(wanted));
-  if (!button) return { clicked: false, seen: buttons.map((item) => item.textContent.trim()).filter(Boolean) };
-  if (button.disabled) return { clicked: false, disabled: true, seen: [] };
-  button.click();
+/** Fire a control by the action it advertises, and say what was on the page if it is absent. */
+const triggerAction = (action) => `(() => {
+  const el = document.querySelector(${JSON.stringify(`[data-action="${action}"]`)});
+  if (!el) return { clicked: false, seen: [...document.querySelectorAll('[data-action]')].map((node) => node.dataset.action) };
+  if (el.disabled) return { clicked: false, disabled: true };
+  el.click();
   return { clicked: true };
 })()`;
 
-async function click(cdp, label) {
-  const outcome = await cdp.evaluate(clickButton(label));
-  if (!outcome.clicked) {
-    const detail = outcome.disabled
-      ? 'the button is disabled'
-      : `no button starts with that text. Buttons on the page: ${JSON.stringify(outcome.seen)}`;
-    throw new Error(`Could not click "${label}": ${detail}`);
-  }
+async function trigger(cdp, action) {
+  const outcome = await cdp.evaluate(triggerAction(action));
+  if (outcome.clicked) return;
+  const detail = outcome.disabled
+    ? 'the control is disabled'
+    : `no control carries it. Controls on the page: ${JSON.stringify(outcome.seen)}`;
+  throw new Error(`Could not trigger "${action}": ${detail}`);
 }
 
 async function openWorkspace(cdp, shot) {
-  const { workspace } = shot;
-  await cdp.send('Page.navigate', { url: appUrl(shot.url) });
-  await cdp.waitFor(hasText(HEADINGS.single), { label: 'the app shell' });
-  if (workspace !== 'single') {
-    await click(cdp, workspace === 'batch' ? 'Batch' : 'Reference');
-  }
-  await cdp.waitFor(hasText(HEADINGS[workspace]), { label: `the ${workspace} workspace` });
-  // Selecting the model by clicking keeps this a client-side change, so the
-  // session stays warm; loading the URL in a new document would show an idle
-  // kernel in this one README image and a ready one in the rest.
-  if (shot.selectModel) await click(cdp, shot.selectModel);
+  // Opened through the URL rather than by clicking the nav: `?mode=` is the app's
+  // own parameter, it is what a shared link does, and it removes the class of
+  // failure where the click targets the wrong button because a label changed.
+  await cdp.send('Page.navigate', { url: appUrl(shotSearch(shot)) });
+  // `data-workspace` on <main> is set from the store's mode, so this asserts the
+  // right workspace rendered rather than that some heading happens to be on screen.
+  await cdp.waitFor(hook(`[data-workspace="${shot.workspace}"]`), { label: `the ${shot.workspace} workspace` });
+  await cdp.waitFor(WORKSPACE_READY[shot.workspace], { label: `the ${shot.workspace} workspace to have content` });
 }
 
 async function prepare(cdp, shot) {
   if (shot.prepare === 'sample') {
-    await click(cdp, 'Load demo sweep');
-    await cdp.waitFor(hasText('Result matrix'), { label: 'the sample result matrix' });
+    await trigger(cdp, 'load-demo-sweep');
+    await cdp.waitFor(hook('[data-result-matrix]'), { label: 'the sample result matrix' });
   }
   if (shot.prepare === 'compare') {
-    await click(cdp, 'Compare kernels');
-    await cdp.waitFor(hasText('Rust speed-up'), { label: 'the kernel comparison' });
+    // `openWorkspace` has already waited for a finished run, which is what the
+    // comparison needs before it can be measured at all.
+    await trigger(cdp, 'compare-kernels');
+    await cdp.waitFor(hook('[data-kernel-comparison][data-ready="true"]'), { label: 'the kernel comparison' });
   }
   // Wait for webfonts before capturing. Without this the same page can render
   // with fallback metrics on a slow run, which makes the PNGs differ between
@@ -215,6 +230,18 @@ async function prepare(cdp, shot) {
 async function main() {
   const chrome = findChrome();
   mkdirSync(OUT_DIR, { recursive: true });
+
+  /*
+   * The images docs/images already ships, before this run touches anything.
+   *
+   * This is the only count that can be checked without restating the shot list:
+   * "every name in SHOTS was produced" is true of a list that just lost an entry,
+   * which is exactly how a documentation image disappears without anyone noticing.
+   * A run that does not reproduce an image that is already in the repository, or
+   * that leaves one behind that it no longer produces, has changed the shipped set
+   * — which should be a deliberate edit, not a side effect.
+   */
+  const shipped = readdirSync(OUT_DIR).filter((name) => name.endsWith('.png')).sort();
 
   // Bind IPv4 explicitly: vite's default `localhost` can end up on ::1 only,
   // which the 127.0.0.1 health check and Chrome's CDP client would both miss.
@@ -292,6 +319,21 @@ async function main() {
       writeFileSync(resolve(OUT_DIR, shot.file), Buffer.from(data, 'base64'));
       console.log(`${shot.file.padEnd(34)} ${shot.width}x${shot.height}  ${shot.workspace}${shot.prepare ? ` + ${shot.prepare}` : ''}`);
     }
+
+    /*
+     * Written is not the same as produced.
+     *
+     * A capture that returns nothing writes a zero-byte file, and this script used
+     * to exit 0 on that — the file was written, after all. Worse, it failed *before*
+     * writing anything for months (see the note above `appUrl`), which left the
+     * committed images untouched and the working tree clean, which reads exactly
+     * like a pass. So the run now proves what it produced: every expected file
+     * exists, is a PNG, and is too big to be blank, or it exits non-zero.
+     */
+    const produced = verifyScreenshots({ names: SHOTS.map((shot) => shot.file), dir: OUT_DIR });
+    assertSameImageSet({ produced: produced.map((entry) => entry.file), shipped });
+    const total = produced.reduce((sum, entry) => sum + entry.bytes, 0);
+    console.log(`all ${produced.length} screenshots written to ${OUT_DIR} (${(total / 1024).toFixed(0)} KB)`);
   } finally {
     socket?.close();
     browser.kill();
@@ -300,6 +342,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
+  console.error(error.stack ?? error.message);
+  // `exitCode` rather than `exit()`: the failure message goes to a pipe in CI, and
+  // an immediate exit can cut it off before it is flushed.
+  process.exitCode = 1;
 });

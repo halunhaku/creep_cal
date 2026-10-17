@@ -24,6 +24,7 @@
  */
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { assertComplete } from './artifacts.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const PORT = Number(process.env.PREVIEW_PORT ?? 4180);
@@ -42,6 +43,33 @@ const appUrl = (search = '') => {
   const query = new URLSearchParams(search.replace(/^\?/, ''));
   query.set('lang', 'en');
   return `${BASE}?${query}`;
+};
+
+/**
+ * Everything a scene needs is in its URL: the workspace (`?mode=`) and, for the
+ * reference library, the model. Built from the scene rather than written out per
+ * scene so a new scene cannot forget one of them.
+ */
+const sceneSearch = (scene) => {
+  const query = new URLSearchParams((scene.url ?? '').replace(/^\?/, ''));
+  if (!query.has('mode')) query.set('mode', scene.workspace);
+  return `?${query}`;
+};
+
+/**
+ * The fingerprints a complete run produces. Asserted against, rather than derived
+ * from the output, because "the keys I happened to collect all match" is true for a
+ * run that collected nothing.
+ */
+const expectedFingerprintKeys = () => {
+  const keys = [];
+  for (const viewport of VIEWPORTS) {
+    for (const scene of SCENES) {
+      if (viewport.primary) keys.push(scene.key);
+      keys.push(`${scene.key}::styles${viewport.suffix}`);
+    }
+  }
+  return keys;
 };
 
 const DEFAULT_BASELINE = '/tmp/creep-dom-baseline.json';
@@ -76,7 +104,15 @@ const NORMALISE = `
 // `settled` / `after` are in-page predicates, not loose text: matching the
 // page's own prose ("…the JavaScript reference kernel…", "…a reproducible result
 // matrix.") would return before the state is reached.
-const labelled = (label) => `[...document.querySelectorAll('.eyebrow')].some((el) => el.textContent.trim() === ${JSON.stringify(label)})`;
+//
+// They are also no longer *display copy*. Every predicate below reads a `data-`
+// hook or `id` that the component sets for this purpose, so renaming a label or
+// translating the interface cannot break a gate — and a gate that silently stops
+// matching is exactly the failure this file has already suffered twice.
+const hook = (selector) => `!!document.querySelector(${JSON.stringify(selector)})`;
+// A run has finished: the header carries `data-run-status="computed"` only once a
+// result exists. This replaced waiting for the words "Last compute".
+const RAN = hook('[data-run-status="computed"]');
 // The reference library renders the "On this page" list before the document arrives,
 // so its eyebrow is not a load signal. A rendered heading is: `[data-doc-heading]`
 // is set by MarkdownDocument and only exists once the Markdown has been parsed.
@@ -102,28 +138,31 @@ const STYLE_FINGERPRINT = `
             s.margin, s.maxWidth, s.boxShadow].join('|');
   }).join('\\n')
 `;
-
+//
+// Every scene opens its workspace through the URL rather than by clicking a nav
+// button. `?mode=batch` is the app's own supported parameter, it is what a shared
+// link does, and it removes the class of failure where a click matches the wrong
+// button because the label changed.
 const SCENES = [
-  // "Last compute" only appears once a run has finished. The "Computed" badge is
-  // rendered from the first paint (dirty starts false), so waiting on it let the
-  // engine switch race the initial calculation and changed the log contents.
-  { key: 'single-js', workspace: 'Calculate', settled: labelled('Last compute'), click: 'JS Ref.', after: labelled('JavaScript reference') },
-  { key: 'single-rust', workspace: 'Calculate', settled: labelled('Last compute') },
-  { key: 'single-compare', workspace: 'Calculate', settled: labelled('Last compute'), click: 'Compare kernels', after: labelled('Rust speed-up') },
-  { key: 'batch-empty', workspace: 'Batch', settled: labelled('Prediction model') },
-  { key: 'batch-loaded', workspace: 'Batch', settled: labelled('Prediction model'), click: 'Load demo sweep', after: labelled('Result matrix') },
+  // A run has to have finished before the fingerprint means anything; `RAN` is the
+  // header's own `data-run-status`.
+  { key: 'single-js', workspace: 'single', settled: RAN, action: 'kernel-js', after: hook('[data-kernel="js"]') },
+  { key: 'single-rust', workspace: 'single', settled: RAN },
+  { key: 'single-compare', workspace: 'single', settled: RAN, action: 'compare-kernels', after: hook('[data-kernel-comparison][data-ready="true"]') },
+  { key: 'batch-empty', workspace: 'batch', settled: hook('#batch-model') },
+  { key: 'batch-loaded', workspace: 'batch', settled: hook('#batch-model'), action: 'load-demo-sweep', after: hook('[data-result-matrix]') },
   // Deep-linked: the reference library now follows the app's model, and B4 is the
   // richest page to fingerprint.
-  { key: 'docs-b4', workspace: 'Reference', settled: documentReady, url: '?mode=docs&model=b4' },
+  { key: 'docs-b4', workspace: 'docs', settled: documentReady, url: '?mode=docs&model=b4' },
   // The palette is the only surface that carries the popover shadow token, and the
   // chart tooltips that share it need a hover. Without this scene the fingerprint's
   // boxShadow field observes nothing and the token can go dead unnoticed.
   {
     key: 'palette-open',
-    workspace: 'Calculate',
-    settled: labelled('Last compute'),
-    click: 'Search',
-    after: `!!document.querySelector('[role="dialog"][aria-label="Command palette"]')`,
+    workspace: 'single',
+    settled: RAN,
+    action: 'open-palette',
+    after: `!!document.querySelector('[role="dialog"]')`,
   },
 ];
 
@@ -255,27 +294,26 @@ async function main() {
     //
     // Pulled out of the loop so the same scene can be re-measured at each viewport.
     const settleScene = async (scene) => {
-      await send('Page.navigate', { url: appUrl(scene.url) });
-      await sleep(900);
-      if (scene.workspace !== 'Calculate' && !scene.url) {
-        // Matched on the accessible name, not on `textContent`. The nav button
-        // renders both labels — `<span class="hidden md:inline">Batch</span>` and
-        // `<span class="md:hidden">Batch</span>` — so its textContent is
-        // "BatchBatch" and an exact text match never found it, which made this
-        // script fail on the first non-Calculate scene.
-        await evaluate(`[...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === ${JSON.stringify(scene.workspace)})?.click()`);
-        await waitFor(labelled('Prediction model'), `the ${scene.workspace} workspace`);
-      }
+      // The workspace comes from the URL, so there is no nav click to mis-target
+      // and the scene is reached the way a shared link reaches it.
+      await send('Page.navigate', { url: appUrl(sceneSearch(scene)) });
+      await waitFor(hook(`[data-workspace="${scene.workspace}"]`), `the ${scene.workspace} workspace`);
       await waitFor(scene.settled, `the settled ${scene.key} state`);
-      if (scene.click) {
-        const clicked = await evaluate(`(() => {
-          const button = [...document.querySelectorAll('button')].find((b) => b.textContent.trim().toLowerCase().startsWith(${JSON.stringify(scene.click)}.toLowerCase()));
-          if (!button || button.disabled) return false;
-          button.click();
-          return true;
+      if (scene.action) {
+        const outcome = await evaluate(`(() => {
+          const el = document.querySelector(${JSON.stringify(`[data-action="${scene.action}"]`)});
+          if (!el) return { clicked: false, seen: [...document.querySelectorAll('[data-action]')].map((node) => node.dataset.action) };
+          if (el.disabled) return { clicked: false, disabled: true };
+          el.click();
+          return { clicked: true };
         })()`);
-        if (!clicked) throw new Error(`could not click "${scene.click}" in scene ${scene.key}`);
-        await waitFor(scene.after, `the post-click state of ${scene.key}`);
+        if (!outcome.clicked) {
+          const why = outcome.disabled
+            ? 'the control is disabled'
+            : `no control carries it. Controls on the page: ${JSON.stringify(outcome.seen)}`;
+          throw new Error(`could not trigger "${scene.action}" in scene ${scene.key}: ${why}`);
+        }
+        await waitFor(scene.after, `the post-action state of ${scene.key}`);
       }
       await evaluate('document.fonts.ready.then(() => true)');
       // recharts writes its *measured* size inline on .recharts-wrapper and only
@@ -335,6 +373,8 @@ async function main() {
       }
     }
 
+    assertComplete(Object.keys(snapshot), expectedFingerprintKeys(), 'fingerprints');
+
     if (mode === 'save') {
       writeFileSync(baselinePath, `${JSON.stringify(snapshot, null, 2)}\n`);
       console.log(`baseline written to ${baselinePath}`);
@@ -343,16 +383,29 @@ async function main() {
       const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
       const keys = Object.keys(snapshot).filter((key) => !STYLE_ONLY || key.includes('::styles'));
       const changed = keys.filter((key) => snapshot[key] !== baseline[key]);
-      const removed = keys.filter((key) => !(key in baseline));
+      /*
+       * The direction that used to be missing, and the reason it mattered.
+       *
+       * `changed` walks the keys this run produced, so a fingerprint the baseline
+       * records and this run never measured was not mismatched — it was simply not
+       * looked at. A pass that measured five scenes out of seven therefore reported
+       * "all 5 fingerprints match". The expectation has to come from the baseline as
+       * well as from the output, or "measured less" and "measured nothing" are
+       * indistinguishable from "everything passed".
+       */
+      const unmeasured = Object.keys(baseline)
+        .filter((key) => (!STYLE_ONLY || key.includes('::styles')) && !(key in snapshot));
+      const added = keys.filter((key) => !(key in baseline));
       const domOnly = Object.keys(snapshot)
         .filter((key) => !key.includes('::styles') && snapshot[key] !== baseline[key]);
       if (STYLE_ONLY && domOnly.length) {
         console.log(`(html changed in ${domOnly.length} scene(s), which a class rename is expected to do)`);
       }
-      if (changed.length || removed.length) {
+      if (changed.length || added.length || unmeasured.length) {
         for (const key of changed) console.error(`${key}: ${baseline[key]} -> ${snapshot[key]}`);
-        for (const key of removed) console.error(`${key}: missing from snapshot`);
-        throw new Error(`${changed.length + removed.length} fingerprint(s) changed — this pass was supposed to be invisible`);
+        for (const key of added) console.error(`${key}: not in the baseline, so nothing to compare against`);
+        for (const key of unmeasured) console.error(`${key}: in the baseline but not measured by this run`);
+        throw new Error(`${changed.length + added.length + unmeasured.length} fingerprint(s) changed or went unmeasured — this pass was supposed to be invisible`);
       }
       console.log(`all ${keys.length} ${STYLE_ONLY ? 'computed-style' : ''} fingerprints match ${baselinePath}`);
     } else {
@@ -366,6 +419,9 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
+  console.error(error.stack ?? error.message);
+  // `exitCode` rather than `exit()`: the failure message above goes to a pipe in
+  // CI, and an immediate exit can cut it off before it is flushed — which is the
+  // one line someone needs to read.
+  process.exitCode = 1;
 });

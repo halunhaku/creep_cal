@@ -11,12 +11,14 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import Papa from 'papaparse';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import BatchCalculator from './BatchCalculator';
 import { aci209Single } from '../math/creepModels';
 import { bigSheet, buildXlsx, truncate, zip } from '../testUtils/xlsx';
+import { MAX_XLSX_BYTES } from './uploadLimits';
+import { setLocale } from '../state/appStore';
 
 const ACI_HEADER = ['curingType', 't0', 'H', 'VS', 'slump', 'fineAggregate', 'airContent', 't'];
 const ACI_ROW = ['moist', 28, 70, 100, 100, 50, 8, 365];
@@ -399,4 +401,60 @@ describe('XLSX and CSV parity', () => {
 
     expect(fromXlsx).toEqual(fromCsv);
   });
+});
+
+describe('XLSX import: input size gate', () => {
+  // The gate bounds the compressed upload, not the inflation — see
+  // docs/dependency-security-audit.md for why that is a real but partial
+  // protection. These tests pin where the boundary sits and that the message
+  // reaches the user in both languages.
+  //
+  // A file one byte over the limit is a `Uint8Array` of the limit plus one, not a
+  // workbook: the gate runs before anything reads the file, so the contents never
+  // matter here. That is the point — it is a check on the upload, not the parse.
+  const oversize = new Uint8Array(MAX_XLSX_BYTES + 1);
+  const atLimit = new Uint8Array(MAX_XLSX_BYTES);
+
+  test('a file over the limit is refused with its size and the limit, and keeps the dataset', async () => {
+    const { container } = renderAci();
+    upload(container, buildXlsx({ sheets: [{ name: 'kept', rows: [ACI_HEADER, ACI_ROW] }] }), 'kept.xlsx');
+    await waitFor(() => expect(resultSections()).toHaveLength(1));
+
+    upload(container, oversize, 'too-big.xlsx');
+
+    await waitFor(() => expect(screen.getByText(/above the 32 MB limit/i)).toBeInTheDocument());
+    expect(screen.getByText(/File is 32\.0 MB/)).toBeInTheDocument();
+    // Deliberately different from a parse failure: the file never entered the
+    // pipeline, so the file that *is* loaded is still loaded, under its own name.
+    expect(resultSections()).toHaveLength(1);
+    expect(screen.getByText('kept.xlsx')).toBeInTheDocument();
+    expect(screen.queryByText(/Could not parse XLSX/i)).not.toBeInTheDocument();
+  }, 30000);
+
+  test('a file of exactly the limit is not refused by the gate', async () => {
+    const { container } = renderAci();
+    upload(container, atLimit, 'exactly-limit.xlsx');
+
+    // It gets past the gate and fails as an archive, which is a different answer.
+    await waitFor(() => expect(screen.getByText(/Could not parse XLSX/i)).toBeInTheDocument());
+    expect(screen.queryByText(/above the 32 MB limit/i)).not.toBeInTheDocument();
+  }, 30000);
+
+  test('the refusal is localised', async () => {
+    const { container } = renderAci();
+    act(() => setLocale('zh'));
+    upload(container, oversize, '太大.xlsx');
+
+    await waitFor(() => expect(screen.getByText(/超过 XLSX 的 32 MB 上限/)).toBeInTheDocument());
+    expect(screen.getByText(/文件为 32\.0 MB/)).toBeInTheDocument();
+  }, 30000);
+
+  test('a CSV is never gated by the XLSX limit', async () => {
+    const { container } = renderAci();
+    const rows = Array.from({ length: 20001 }, (_, index) => `moist,28,70,100,100,50,8,${index}`).join('\n');
+    upload(container, `${ACI_HEADER.join(',')}\n${rows}\n`, 'huge.csv');
+
+    await waitFor(() => expect(screen.getByText(/Split the file/i)).toBeInTheDocument());
+    expect(screen.queryByText(/above the 32 MB limit/i)).not.toBeInTheDocument();
+  }, 60000);
 });

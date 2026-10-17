@@ -32,7 +32,7 @@ export default function Layout({ activeMode, onModeChange, onOpenDocs, children 
         onOpenDocs={onOpenDocs}
         onOpenPalette={() => setPaletteOpen(true)}
       />
-      <main id="main-content" className="shell-gutter flex-1 py-8 lg:py-12">
+      <main id="main-content" data-workspace={activeMode} className="shell-gutter flex-1 py-8 lg:py-12">
         {children}
       </main>
       <footer className="shrink-0 border-t border-[#393939] bg-[#161616] text-white">

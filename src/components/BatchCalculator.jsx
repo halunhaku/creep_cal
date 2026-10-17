@@ -19,6 +19,7 @@ import { MODELS } from './batchModels';
 import { isBatchWorkerAvailable, runBatchInWorker } from './batchWorkerClient';
 import { applyMapping, suggestMapping } from './columnMapping';
 import { CHART, axisTitleStyle, tickGap, tickStyle } from './chartTheme';
+import { MAX_XLSX_BYTES, isOversizedXlsx, megabytes } from './uploadLimits';
 
 /**
  * Collapsed columns, reported the same way for both importers.
@@ -365,7 +366,27 @@ export default function BatchCalculator() {
   };
 
   const readFile = async (file) => {
-    if (!file || !confirmReplacement(file.name)) return;
+    if (!file) return;
+    /*
+     * Refused before the replacement prompt and before anything is cleared.
+     *
+     * The other failure paths in this function deliberately throw the previous
+     * dataset away, because a parse that failed halfway left results on screen
+     * under the new file's name. This one has not touched the dataset: the file
+     * never entered the pipeline, so the work that is already there is still the
+     * user's and asking them to confirm discarding it would be a lie.
+     */
+    if (isOversizedXlsx(file.name, file.size)) {
+      setBatchError({
+        key: 'batch.error.fileTooLarge',
+        vars: {
+          size: formatNumber(megabytes(file.size), locale, 1),
+          limit: formatNumber(megabytes(MAX_XLSX_BYTES), locale, 0),
+        },
+      });
+      return;
+    }
+    if (!confirmReplacement(file.name)) return;
     const seq = readSeq.current + 1;
     readSeq.current = seq;
     const generation = getState().batch.generation;
@@ -641,6 +662,7 @@ export default function BatchCalculator() {
                 type="button"
                 onClick={loadSampleDataset}
                 disabled={isProcessing}
+                data-action="load-demo-sweep"
                 className="inline-flex min-h-8 items-center font-semibold text-action hover:underline"
               >
                 {t('batch.loadDemo')}
@@ -735,7 +757,7 @@ export default function BatchCalculator() {
       </section>}
 
       {batchResults.length>0 && <>
-        <section className="mt-5 workbench-panel overflow-hidden">
+        <section className="mt-5 workbench-panel overflow-hidden" data-result-matrix>
           <div className="flex items-center justify-between border-b border-line px-4 py-3">
             <div>
               <div className="eyebrow">{t('batch.matrix')}</div>

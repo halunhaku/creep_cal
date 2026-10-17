@@ -61,6 +61,7 @@ export default {
     error: {
       empty: '文件为空。请上传包含表头和数据的 CSV 或 XLSX 文件。',
       rowLimit: '文件包含 {rows} 行，超过 {limit} 行上限。请拆分文件后分批上传。',
+      fileTooLarge: '文件为 {size} MB，超过 XLSX 的 {limit} MB 上限。请拆分文件后分批上传。',
       missing: '缺少必填列：{fields}',
       missingColumn: '缺少必填列',
       mappingConflict: '两个字段不能使用同一列：{fields}',
