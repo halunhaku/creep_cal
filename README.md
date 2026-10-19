@@ -41,6 +41,7 @@ $$
 | Reference library | Read implementation scope, calibrated ranges, equations, source mapping, limitations, and official references. |
 | Dual engine | Use pure JavaScript reference kernels or Rust WebAssembly kernels, with a parity suite and an in-app timing comparison between them. The batch pipeline computes with the reference kernels for all six models — the Rust kernel exposes batch entry points for ACI 209 and MC 2010 only, so using it there would compute different models with different kernels. |
 | Command palette | `⌘K` / `Ctrl+K`, or the header's Search button, reaches every destination from anywhere: workspaces, models, kernels, saved parameter sets, the reference library's sections, and the theme. |
+| Keyboard and accessibility | In the calculation workspace, `⌘Enter` / `Ctrl+Enter` runs the calculation or focuses the first invalid parameter. Invalid inputs are associated with their error descriptions, and chart range handles expose minimum, maximum, and current values in data units to assistive technology. |
 | Shareable state | The workspace, model and kernel live in the URL (`?mode=docs&model=b4&kernel=js`), so a view can be linked to, Back and Forward move between workspaces, and a refresh keeps the edited parameters. |
 
 ### Deep links
@@ -166,7 +167,7 @@ npm run lint:fix
 
 ### Screenshots
 
-Every image in this README is produced from the running app rather than captured by hand, so they cannot drift from the interface:
+Every image in this README is generated from the running app by a script. After changing the interface, rebuild the app and regenerate the images to keep them in sync:
 
 ```bash
 npm run build
