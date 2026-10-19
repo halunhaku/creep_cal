@@ -277,6 +277,24 @@
 @media (pointer: coarse) {
   .touch-target { min-width: 48px; min-height: 48px; }
   .button-primary, .btn-primary, .button-secondary, .btn-secondary, .field-control { min-height: 48px; }
+  /* Command rows sit edge-to-edge in a vertical list, so the `.touch-hit`
+   * pseudo-expansion would overlap neighbours and mis-route taps to the wrong
+   * command. Real height instead: the dialog scrolls, so taller rows only cost
+   * a little list length. */
+  .command-option { min-height: 48px; }
+  /* Compact icon/text controls keep their dense desktop sizing but must still
+   * expose a 48 px hit area on touch. The pseudo-element expands the hit target
+   * without moving the visual box or reflowing the dense chart toolbar. */
+  .touch-hit { position: relative; }
+  .touch-hit::after {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: max(100%, 48px);
+    height: max(100%, 48px);
+    content: "";
+    transform: translate(-50%, -50%);
+  }
+  .recharts-brush-traveller > rect { width: 18px; height: 32px; }
 }
 
 @media (pointer: fine) {

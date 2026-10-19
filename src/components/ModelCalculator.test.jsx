@@ -115,6 +115,8 @@ describe('ModelCalculator workspace state', () => {
     const button = await screen.findByRole('button', { name: /inputs out of range/i });
     expect(button).toBeEnabled();
     expect(screen.getByText(/0\.6·fcm = 24 MPa/)).toBeInTheDocument();
+    expect(sigma).toHaveAttribute('aria-invalid', 'true');
+    expect(sigma.getAttribute('aria-describedby')).toContain('param-cross-field-issue');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 
     fireEvent.click(button);
@@ -141,6 +143,22 @@ describe('ModelCalculator workspace state', () => {
     expect(button).toBeEnabled();
     fireEvent.click(button);
     expect(VS).toHaveFocus();
+  });
+
+  test('the calculate shortcut uses the same invalid-field focus path as the button', async () => {
+    render(<Aci209Calculator engine="js" />);
+    const humidity = await screen.findByLabelText(/Relative Humidity/i);
+    fireEvent.change(humidity, { target: { value: '101' } });
+    fireEvent.blur(humidity);
+
+    await screen.findByRole('button', { name: /input requires attention/i });
+    expect(humidity).toHaveAttribute('aria-invalid', 'true');
+    expect(humidity.getAttribute('aria-describedby')).toContain('param-message-H');
+    expect(document.getElementById('param-message-H')).toHaveTextContent(/Outside calibrated range/i);
+
+    document.body.focus();
+    fireEvent.keyDown(window, { key: 'Enter', metaKey: true });
+    expect(humidity).toHaveFocus();
   });
 
   // Regression: the "Instantaneous q₁" readout was computed as J − C₀ − C_d, but

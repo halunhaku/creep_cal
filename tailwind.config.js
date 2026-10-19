@@ -1,5 +1,8 @@
+import forms from '@tailwindcss/forms';
+import containerQueries from '@tailwindcss/container-queries';
+
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
   darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
@@ -53,5 +56,5 @@ module.exports = {
       boxShadow: { popover: 'var(--shadow-popover)' },
     },
   },
-  plugins: [require('@tailwindcss/forms'), require('@tailwindcss/container-queries')],
+  plugins: [forms, containerQueries],
 };

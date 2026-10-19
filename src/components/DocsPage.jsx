@@ -104,7 +104,7 @@ export default function DocsPage() {
           <div className="eyebrow">{t('docs.contents')}</div>
           <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-2 2xl:block 2xl:max-h-[75vh] 2xl:overflow-y-auto 2xl:border-l 2xl:border-line" aria-label={t('docs.sectionNavigation')} aria-busy={!content && !failed}>
             {content?.parsed.headings.map((heading) => (
-              <a key={heading.id} href={`#${heading.id}`} onClick={() => rememberAnchor(heading.id)} className={`block py-1 text-xs text-muted hover:text-action 2xl:border-l 2xl:border-transparent 2xl:py-1.5 2xl:hover:border-action ${heading.depth > 2 ? '2xl:pl-6 2xl:pr-2' : '2xl:px-3'}`}>
+              <a key={heading.id} href={`#${heading.id}`} onClick={() => rememberAnchor(heading.id)} className={`touch-hit block py-1 text-xs text-muted hover:text-action 2xl:border-l 2xl:border-transparent 2xl:py-1.5 2xl:hover:border-action ${heading.depth > 2 ? '2xl:pl-6 2xl:pr-2' : '2xl:px-3'}`}>
                 {heading.label}
               </a>
             ))}
@@ -114,7 +114,7 @@ export default function DocsPage() {
         <article ref={article} aria-busy={!content && !failed} data-document-key={content ? key : undefined} className="min-w-0 workbench-panel overflow-hidden lg:col-start-2 2xl:row-start-1">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 md:px-7">
             <span className="eyebrow">{pick(model.category, locale)}</span>
-            <a href={documentUrl(model.id, locale)} download={`${model.id}.${locale}.md`} className="button-secondary !min-h-8 !px-2.5 !text-3xs">{t('docs.download')}</a>
+            <a href={documentUrl(model.id, locale)} download={`${model.id}.${locale}.md`} className="button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs">{t('docs.download')}</a>
           </div>
           <div className="p-5 md:p-7">
             {content ? <MarkdownDocument document={content.parsed} headingOffset={1} onNavigate={rememberAnchor} /> : failed ? (

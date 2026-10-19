@@ -261,7 +261,6 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       resultParams={runParams}
       onParamChange={handleParamChange}
       onCalculate={calculate}
-      calculateReady={ready}
       dirty={dirty}
       inputIssue={inputIssue}
       duration={duration}

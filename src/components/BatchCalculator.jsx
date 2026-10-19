@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Papa from 'papaparse';
 // read-excel-file v9 changed the default export to return `[{ sheet, data }]`.
 // `readSheet()` is the API that still returns plain rows for a single sheet.
@@ -7,6 +7,7 @@ import {
   ScatterChart, Scatter, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Brush
 } from 'recharts';
+import { BrushA11ySync } from './brushA11y';
 import { coerceNumber } from '../math/creepModels';
 import { computeRow } from './batchCompute';
 import CustomSelect from './ui/CustomSelect';
@@ -163,6 +164,11 @@ export default function BatchCalculator() {
   // of the shared dataset, same split as the single-analysis chart.
   const [logX, setLogX] = useState(false);
   const [logY, setLogY] = useState(false);
+  // Brush handle positions for the a11y patch below. The batch Brush is
+  // display-only (no zoom state reads it), so without tracking onChange the
+  // patched values would freeze at full range after the first drag.
+  const [brushIndices, setBrushIndices] = useState(null);
+  const chartBoxRef = useRef(null);
   const model = MODELS.find((item) => item.id === activeModel);
   const requiredColumns = useMemo(() => model.req.split(', '), [model.req]);
   // A read that is still parsing must not be able to overwrite a newer one, and
@@ -552,6 +558,10 @@ export default function BatchCalculator() {
     })();
     return { basePoints: base, filteredPoints: filtered, visiblePoints: visible, scatterPoints: scatter, linePoints: line, scatterStep: step };
   }, [batchResults, xKey, yKey, logX, logY]);
+  // A fresh `linePoints` array makes Recharts reset its handles to full width,
+  // so the tracked copy resets with it instead of pointing at stale indices.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors Brush reset
+  useEffect(() => { setBrushIndices(null); }, [linePoints]);
   const yHasNegative = visiblePoints.some((point) => point.y < 0);
   const excludedCount = batchResults.length - basePoints.length;
   const logHiddenCount = basePoints.length - visiblePoints.length;
@@ -567,7 +577,7 @@ export default function BatchCalculator() {
         {/* The audit found the batch silently computing with a different kernel than
             the header badge implied. State it, and state why. */}
         <details className="group mt-3 text-xs text-muted">
-          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+          <summary className="touch-hit flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
             <span className="rounded-none border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold text-muted">{t('batch.kernel')}</span>
             <span className="font-semibold text-action">{t('batch.kernelDetails')}</span>
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current text-faint transition-transform group-open:rotate-180" aria-hidden="true">
@@ -605,7 +615,7 @@ export default function BatchCalculator() {
               />
             </div>
             <details className="group mt-5 border-y border-line">
-              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--action)] [&::-webkit-details-marker]:hidden">
+              <summary className="touch-hit flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--action)] [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center gap-2 text-xs font-semibold text-ink">
                   <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 shrink-0 fill-none stroke-current transition-transform -rotate-90 group-open:rotate-0" aria-hidden="true">
                     <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -630,7 +640,7 @@ export default function BatchCalculator() {
                         key={file}
                         href={encodeURI(`/模型示例/${file}`)}
                         download
-                        className="button-secondary !min-h-8 !px-2.5 !text-3xs"
+                        className="button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs"
                       >
                         {file.endsWith('.csv') ? 'CSV' : 'XLSX'}
                       </a>
@@ -673,7 +683,7 @@ export default function BatchCalculator() {
                 onClick={loadSampleDataset}
                 disabled={isProcessing}
                 data-action="load-demo-sweep"
-                className="inline-flex min-h-8 items-center font-semibold text-action hover:underline"
+                className="touch-hit inline-flex min-h-8 items-center font-semibold text-action hover:underline"
               >
                 {t('batch.loadDemo')}
               </button>
@@ -710,7 +720,7 @@ export default function BatchCalculator() {
               type="button"
               onClick={applyColumnMapping}
               disabled={mapping.some((entry) => !entry.source)}
-              className="button-primary !min-h-9 !px-3 !text-1xs"
+              className="button-primary touch-hit !min-h-9 !px-3 !text-1xs"
             >
               {t('batch.applyMapping')}
             </button>
@@ -776,7 +786,7 @@ export default function BatchCalculator() {
                 {batchResults.length > 100 && t('batch.matrixLimit', { shown: count(100), total: count(batchResults.length) })}
               </div>
             </div>
-            <button type="button" onClick={exportCSV} data-action="export-csv" className="button-primary !min-h-9">{t('batch.exportCsv')}</button>
+            <button type="button" onClick={exportCSV} data-action="export-csv" className="button-primary touch-hit !min-h-9">{t('batch.exportCsv')}</button>
           </div>
           <div id="batch-matrix-scroll-hint" className="flex items-center gap-2 border-b border-line bg-surface-2 px-4 py-2 font-mono text-3xs text-faint md:hidden">
             <svg viewBox="0 0 20 20" className="h-4 w-4 shrink-0 fill-none stroke-current" aria-hidden="true">
@@ -851,7 +861,8 @@ export default function BatchCalculator() {
                     key={type}
                     type="button"
                     onClick={() => updateBatch({ chartType: type })}
-                    className={`rounded-none px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
+                    aria-pressed={chartType === type}
+                    className={`touch-hit rounded-none px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
                   >
                     {t(`batch.${type}`)}
                   </button>
@@ -861,7 +872,7 @@ export default function BatchCalculator() {
                 type="button"
                 onClick={() => setLogX((value) => !value)}
                 aria-pressed={logX}
-                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
+                className={`button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
               >
                 {t(logX ? 'batch.logX' : 'batch.linearX')}
               </button>
@@ -869,7 +880,7 @@ export default function BatchCalculator() {
                 type="button"
                 onClick={() => setLogY((value) => !value)}
                 aria-pressed={logY}
-                className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-action-border !bg-action-soft !text-action' : ''}`}
+                className={`button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs ${logY ? '!border-action-border !bg-action-soft !text-action' : ''}`}
               >
                 {t(logY ? 'batch.logY' : 'batch.linearY')}
               </button>
@@ -910,7 +921,15 @@ export default function BatchCalculator() {
               {t('batch.noPoints', { x: xKey, y: yKey })}
             </div>
           ) : (
-          <div className="h-[380px] p-4">
+          <div ref={chartBoxRef} className="h-[380px] p-4">
+            <BrushA11ySync
+              containerRef={chartBoxRef}
+              data={linePoints}
+              dataKey="x"
+              startIndex={brushIndices?.startIndex}
+              endIndex={brushIndices?.endIndex}
+              format={formatTick}
+            />
             <ResponsiveContainer width="100%" height="100%">
               {chartType === 'scatter' ? (
                 <ScatterChart margin={{ top: 10, right: 20, left: 8, bottom: 28 }}>
@@ -979,6 +998,7 @@ export default function BatchCalculator() {
                       fill={CHART.brushTrack}
                       stroke={CHART.brushSelection}
                       tickFormatter={formatTick}
+                      onChange={setBrushIndices}
                     />
                   )}
                 </LineChart>

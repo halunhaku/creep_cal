@@ -68,6 +68,9 @@ export default {
       referenceLoading: 't′ {days} 天',
       // 见英文目录同名键：Recharts 的 Brush 会用数据里的 name 拼出
       // "Min value: undefined, Max value: undefined"，读屏会照读。
+      // 手柄保持 `role="slider"`；min/max/now/text 由 `brushA11y.js`
+      // 按数据单位补到渲染后的 DOM 上，因为 Recharts 只写死
+      // `aria-label` 和像素单位的 `aria-valuenow`。
       brushRange: '曲线范围',
     },
     comparison: {

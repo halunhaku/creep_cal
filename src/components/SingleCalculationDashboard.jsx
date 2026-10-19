@@ -92,7 +92,7 @@ export default function SingleCalculationDashboard() {
                   onClick={() => setEngine(id)}
                   aria-pressed={engine === id}
                   data-action={`kernel-${id}`}
-                  className={`rounded-none px-2 py-2 font-mono text-3xs font-semibold ${engine === id ? 'bg-surface text-ink' : 'text-faint hover:text-ink'}`}
+                  className={`touch-hit rounded-none px-2 py-2 font-mono text-3xs font-semibold ${engine === id ? 'bg-surface text-ink' : 'text-faint hover:text-ink'}`}
                 >
                   {label}
                 </button>

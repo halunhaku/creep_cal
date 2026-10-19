@@ -45,7 +45,7 @@ export default function ParameterSets({ modelId, params }) {
       <div className="mb-2.5 flex items-center justify-between">
         <span className="eyebrow">{t('parameterSets.heading')}</span>
         {edited && (
-          <button onClick={() => resetModelParams(modelId)} className="font-mono text-3xs text-faint hover:text-ink">
+          <button onClick={() => resetModelParams(modelId)} className="touch-hit font-mono text-3xs text-faint hover:text-ink">
             {t('parameterSets.reset')}
           </button>
         )}
@@ -63,13 +63,13 @@ export default function ParameterSets({ modelId, params }) {
           <div className="flex gap-2">
             <button
               onClick={() => loadParameterSet(modelId, chosen)}
-              className="button-secondary !min-h-8 flex-1 !px-2 !text-3xs"
+              className="button-secondary touch-hit !min-h-8 flex-1 !px-2 !text-3xs"
             >
               {t('parameterSets.load')}
             </button>
             <button
               onClick={() => { deleteParameterSet(modelId, chosen); setSelected(''); }}
-              className="button-secondary !min-h-8 flex-1 !px-2 !text-3xs"
+              className="button-secondary touch-hit !min-h-8 flex-1 !px-2 !text-3xs"
             >
               {t('parameterSets.delete')}
             </button>
@@ -88,9 +88,9 @@ export default function ParameterSets({ modelId, params }) {
           aria-label={t('parameterSets.nameLabel')}
           name="parameter-set-name"
           autoComplete="off"
-          className="h-8 min-w-0 flex-1 rounded-none border border-line bg-surface px-2 font-mono text-1xs text-ink outline-none placeholder:text-faint focus:border-action focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
+          className="touch-target h-8 min-w-0 flex-1 rounded-none border border-line bg-surface px-2 font-mono text-1xs text-ink outline-none placeholder:text-faint focus:border-action focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
         />
-        <button onClick={save} className="button-secondary !min-h-8 !px-2.5 !text-3xs">{t('parameterSets.save')}</button>
+        <button onClick={save} className="button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs">{t('parameterSets.save')}</button>
       </div>
     </div>
   );

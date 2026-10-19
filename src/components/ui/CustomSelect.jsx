@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function CustomSelect({ name, value, onChange, options, id, ariaLabel }) {
+export default function CustomSelect({ name, value, onChange, options, id, ariaLabel, describedBy, invalid = false }) {
   const normalized = options.map((option) => typeof option === 'string' ? { value: option, label: option } : option);
   return (
     <div className="field-control relative overflow-hidden">
@@ -10,6 +10,8 @@ export default function CustomSelect({ name, value, onChange, options, id, ariaL
         value={value}
         onChange={onChange}
         aria-label={ariaLabel}
+        aria-describedby={describedBy}
+        aria-invalid={invalid}
         className="h-12 w-full appearance-none border-0 !bg-none bg-transparent px-3 pr-9 font-mono text-2xs font-medium text-ink outline-none focus:ring-0"
       >
         {normalized.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}

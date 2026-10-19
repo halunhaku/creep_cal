@@ -65,6 +65,8 @@ describe('batch locale is a display concern', () => {
     render(<App />);
     await screen.findByRole('heading', { name: 'Dataset pipeline' });
     fireEvent.click(screen.getByRole('button', { name: 'Line', exact: true }));
+    expect(screen.getByRole('button', { name: 'Line', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Scatter', exact: true })).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByRole('button', { name: 'Linear X', exact: true }));
     fireEvent.click(screen.getByRole('button', { name: 'Linear Y', exact: true }));
     const before = getState().batch;

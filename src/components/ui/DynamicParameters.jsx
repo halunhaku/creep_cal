@@ -34,7 +34,18 @@ function groupFor(name) {
   return 'material';
 }
 
-function NumericInput({ config, value, onChange }) {
+// Cross-field rules point at a field name, not a control type. Numeric fields
+// render as `param-input-*`, option fields as `param-select-*`; today's rules
+// (sigma, t0) are numeric, but the focus path should not assume that.
+function focusParamField(name) {
+  if (!name) return false;
+  const target = document.getElementById(`param-input-${name}`)
+    ?? document.getElementById(`param-select-${name}`);
+  target?.focus();
+  return Boolean(target);
+}
+
+function NumericInput({ config, value, onChange, crossFieldInvalid = false }) {
   const t = useT();
   const { name, min, max } = config;
   // `Days` is a sentinel in the model configs, not a unit symbol: it has a word for
@@ -44,6 +55,8 @@ function NumericInput({ config, value, onChange }) {
   const [draft, setDraft] = useState(String(value));
   const cancelRef = useRef(false);
   const invalid = !Number.isFinite(Number(value)) || Number(value) < min || Number(value) > max;
+  const messageId = `param-message-${name}`;
+  const describedBy = [messageId, crossFieldInvalid ? 'param-cross-field-issue' : null].filter(Boolean).join(' ');
 
   useEffect(() => {
     // Not while the field is focused: the user is mid-edit, and rewriting the box
@@ -72,10 +85,12 @@ function NumericInput({ config, value, onChange }) {
 
   return (
     <>
-      <div className={`field-control flex overflow-hidden ${invalid ? '!border-error' : ''}`}>
+      <div className={`field-control flex overflow-hidden ${invalid || crossFieldInvalid ? '!border-error' : ''}`}>
         <input
           id={`param-input-${name}`} type="number" inputMode="decimal" autoComplete="off" value={draft} min={min} max={max} step={step}
           onChange={(event) => setDraft(event.target.value)} onBlur={commit}
+          aria-invalid={invalid || crossFieldInvalid}
+          aria-describedby={describedBy}
           onKeyDown={(event) => {
             if (event.key === 'Enter') event.currentTarget.blur();
             if (event.key === 'Escape') { cancelRef.current = true; setDraft(String(value)); event.currentTarget.blur(); }
@@ -88,7 +103,7 @@ function NumericInput({ config, value, onChange }) {
           </span>
         )}
       </div>
-      <div className={`mt-1.5 font-mono text-3xs ${invalid ? 'text-error' : 'text-faint'}`}>
+      <div id={messageId} className={`mt-1.5 font-mono text-3xs ${invalid || crossFieldInvalid ? 'text-error' : 'text-faint'}`}>
         {invalid
           ? t('parameters.outOfRange', { min, max })
           : t('parameters.recommended', { ...range, unit: unit ? range.unit : '' })}
@@ -97,11 +112,11 @@ function NumericInput({ config, value, onChange }) {
   );
 }
 
-function ParameterField({ config, value, onChange }) {
+function ParameterField({ config, value, onChange, crossFieldInvalid = false }) {
   const pick = usePick();
   const label = pick(config.label);
   return (
-    <div className="py-3 first:pt-1">
+    <div className="py-3 first:pt-1" data-parameter-name={config.name}>
       <div className="mb-2 flex items-start justify-between gap-3">
         <label htmlFor={config.options ? `param-select-${config.name}` : `param-input-${config.name}`} className="min-w-0">
           <span className="block text-body-sm font-semibold leading-tight text-ink">{label}</span>
@@ -109,8 +124,16 @@ function ParameterField({ config, value, onChange }) {
         {SYMBOLS[config.name] && <span className="shrink-0 font-mono text-2xs italic text-faint">{SYMBOLS[config.name]}</span>}
       </div>
       {config.options
-        ? <CustomSelect id={`param-select-${config.name}`} name={config.name} value={value} onChange={onChange} options={config.options.map((option) => ({ ...option, label: pick(option.label) }))} />
-        : <NumericInput config={config} value={value} onChange={onChange} />}
+        ? <CustomSelect
+            id={`param-select-${config.name}`}
+            name={config.name}
+            value={value}
+            onChange={onChange}
+            describedBy={crossFieldInvalid ? 'param-cross-field-issue' : undefined}
+            invalid={crossFieldInvalid}
+            options={config.options.map((option) => ({ ...option, label: pick(option.label) }))}
+          />
+        : <NumericInput config={config} value={value} onChange={onChange} crossFieldInvalid={crossFieldInvalid} />}
     </div>
   );
 }
@@ -142,14 +165,27 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
    * `inputIssue` is the model's cross-field rule (e.g. MC2010's |σ| ≤ 0.6·fcm):
    * the field's own range is satisfied, so the field grid cannot report it.
    */
+  // A plain string dep: `invalid` is a fresh array every render, so depending
+  // on it re-bound this listener on every keystroke in the panel.
+  const firstInvalidName = invalid[0]?.name ?? inputIssue?.field ?? null;
+
+  const focusInvalidField = () => focusParamField(firstInvalidName);
+
   const handleCalculate = () => {
-    const firstBad = invalid[0]?.name ?? inputIssue?.field;
-    if (firstBad) {
-      document.getElementById(`param-input-${firstBad}`)?.focus();
-      return;
-    }
+    if (focusInvalidField()) return;
     onCalculate();
   };
+
+  useEffect(() => {
+    const onShortcut = (event) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key !== 'Enter') return;
+      event.preventDefault();
+      if (focusParamField(firstInvalidName)) return;
+      onCalculate();
+    };
+    window.addEventListener('keydown', onShortcut);
+    return () => window.removeEventListener('keydown', onShortcut);
+  }, [firstInvalidName, onCalculate]);
 
   return (
     <section className="workbench-panel overflow-hidden">
@@ -178,6 +214,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
                   config={item}
                   value={params[item.name] ?? item.min}
                   onChange={onParamChange}
+                  crossFieldInvalid={item.name === inputIssue?.field}
                 />
               ))}
             </div>
@@ -207,7 +244,7 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
           </div>
         )}
         {inputIssue && (
-          <div className="mb-2.5 flex items-center gap-2 rounded-none bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
+          <div id="param-cross-field-issue" className="mb-2.5 flex items-center gap-2 rounded-none bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {pick(inputIssue.message)}
           </div>

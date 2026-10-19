@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DynamicParameters from './DynamicParameters';
+import { BrushA11ySync } from '../brushA11y';
 import { useLocale, usePick, useT } from '../../i18n';
 import { formatInteger } from '../../i18n/format';
 import { MAX_SERIES_DAYS } from '../../math/creepModels';
@@ -93,7 +94,7 @@ function CopyValue({ text, label }) {
       onClick={onCopy}
       title={name}
       aria-label={name}
-      className="rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action min-h-6 items-center justify-center inline-flex"
+      className="touch-hit rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action min-h-6 items-center justify-center inline-flex"
     >
       {copied ? t('calculator.copy.done') : t('calculator.copy.text')}
     </button>
@@ -213,6 +214,11 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
   // Brush window in data days. The t domain (0–10,000) is constant across runs,
   // so the window survives recalculation; dragging back to full width clears it.
   const [zoom, setZoom] = useState(null);
+  // Brush handle positions for the a11y patch below. Recharts owns the real
+  // slider state internally and only reports it through onChange, so the patch
+  // tracks a copy; a fresh `chartData` array resets the handles to full width.
+  const [brushIndices, setBrushIndices] = useState(null);
+  const chartBoxRef = useRef(null);
   const visibleLines = useMemo(
     () => (hasShrinkage ? lines.filter((line) => line.kind === view) : lines),
     [hasShrinkage, lines, view],
@@ -240,6 +246,10 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
       : baseData),
     [baseData, useLogY, visibleLines],
   );
+  // A fresh `chartData` array makes Recharts reset its handles to full width,
+  // so the tracked copy resets with it instead of pointing at stale indices.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mirrors Brush reset
+  useEffect(() => { setBrushIndices(null); }, [chartData]);
   // Previous run, shaped by the same rules so the dashed overlay stays
   // comparable point-for-point with the current series.
   const prevChartData = useMemo(() => {
@@ -254,6 +264,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
   // ~800 points — the overview stays cheap, the close-up stays sharp.
   const handleBrushChange = ({ startIndex, endIndex }) => {
     if (startIndex == null || endIndex == null || chartData.length < 2) return;
+    setBrushIndices({ startIndex, endIndex });
     if (startIndex === 0 && endIndex >= chartData.length - 1) {
       setZoom(null);
     } else {
@@ -281,7 +292,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               key={id}
               onClick={() => setView(id)}
               aria-pressed={view === id}
-              className={`rounded-none px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
+              className={`touch-hit rounded-none px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
             >
               {label}
             </button>
@@ -292,7 +303,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
             <button
               onClick={() => setLogX((value) => !value)}
               aria-pressed={logX}
-              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
+              className={`button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs ${logX ? '!border-action-border !bg-action-soft !text-action' : ''}`}
             >
               {logX ? t('calculator.chart.logX') : t('calculator.chart.linearX')}
             </button>
@@ -303,14 +314,14 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               aria-pressed={useLogY}
               disabled={logYBlocked}
               title={logYBlocked ? t('calculator.chart.logYBlocked') : undefined}
-              className={`button-secondary !min-h-8 !px-2.5 !text-3xs ${useLogY ? '!border-action-border !bg-action-soft !text-action' : ''} ${logYBlocked ? '!cursor-not-allowed !opacity-40' : ''}`}
+              className={`button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs ${useLogY ? '!border-action-border !bg-action-soft !text-action' : ''} ${logYBlocked ? '!cursor-not-allowed !opacity-40' : ''}`}
             >
               {useLogY ? t('calculator.chart.logY') : t('calculator.chart.linearY')}
             </button>
           )}
           <button
             onClick={() => exportSeries(modelName, resultParams ?? params, data, lines)}
-            className="button-secondary !min-h-8 !px-2.5 !text-3xs"
+            className="button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs"
           >
             {t('calculator.chart.export')}
           </button>
@@ -346,7 +357,15 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
           </div>
         </div>
       ) : (
-        <div className="h-[430px] p-2 sm:p-4">
+        <div ref={chartBoxRef} className="h-[430px] p-2 sm:p-4">
+          <BrushA11ySync
+            containerRef={chartBoxRef}
+            data={chartData}
+            dataKey="t"
+            startIndex={brushIndices?.startIndex}
+            endIndex={brushIndices?.endIndex}
+            format={(value) => String(value)}
+          />
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top:12, right:18, left:0, bottom:24 }}>
               <CartesianGrid stroke="var(--chart-grid)" vertical={false} />
@@ -452,7 +471,7 @@ function KernelComparison({ comparison, comparing, onCompare, compareReady, comp
             {compareNote ?? t('calculator.comparison.note', { days: formatInteger(MAX_SERIES_DAYS, locale) })}
           </p>
         </div>
-        <button type="button" onClick={onCompare} data-action="compare-kernels" disabled={comparing || !compareReady} title={compareNote ?? undefined} className="button-secondary !min-h-8 !px-2.5 !text-3xs">
+        <button type="button" onClick={onCompare} data-action="compare-kernels" disabled={comparing || !compareReady} title={compareNote ?? undefined} className="button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs">
           {comparing ? t('calculator.comparison.measure') : t('calculator.comparison.run')}
         </button>
       </div>
@@ -488,7 +507,7 @@ function NoticeBanner({ notices, onDismiss }) {
             <div className="font-mono text-2xs font-semibold text-[var(--warning)]">{notice.title}</div>
             <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]">{notice.message}</p>
           </div>
-          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary !min-h-8 shrink-0 !px-2.5 !text-3xs">{t('calculator.notice.dismiss')}</button>}
+          {onDismiss && <button onClick={() => onDismiss(notice.id)} className="button-secondary touch-hit !min-h-8 shrink-0 !px-2.5 !text-3xs">{t('calculator.notice.dismiss')}</button>}
         </div>
       ))}
     </div>
@@ -504,7 +523,6 @@ export default function CalculatorWrapper({
   resultParams,
   onParamChange,
   onCalculate,
-  calculateReady,
   inputIssue,
   buttonText,
   phiResult,
@@ -541,14 +559,6 @@ export default function CalculatorWrapper({
     () => (chartLines ?? []).map((line) => ({ ...line, name: pick(line.name) })),
     [chartLines, pick],
   );
-  useEffect(() => {
-    const handler = (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (calculateReady) onCalculate(); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [calculateReady, onCalculate]);
-
   /*
    * `data-run-status` and `data-kernel` are the settle signals for the browser
    * gates in scripts/. They waited on the English words "Last compute" and

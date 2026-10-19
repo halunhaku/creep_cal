@@ -72,7 +72,9 @@ export default {
       // Recharts' Brush labels its two drag handles from the series data and
       // renders "Min value: undefined, Max value: undefined" when the data has no
       // `name` field — which announced as that literal string to a screen reader.
-      // This replaces it; the handles remain sliders with aria-valuenow.
+      // This replaces it. The handles stay `role="slider"`; min/max/now/text in
+      // data units are patched onto the rendered DOM by `brushA11y.js`, because
+      // Recharts hardcodes only `aria-label` and a pixel `aria-valuenow`.
       brushRange: 'Series range',
     },
     comparison: {

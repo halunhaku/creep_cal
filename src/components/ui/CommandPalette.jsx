@@ -203,7 +203,7 @@ export default function CommandPalette({ onClose }) {
                   aria-selected={index === active}
                   onMouseEnter={() => setActive(index)}
                   onClick={() => runCommand(command)}
-                  className={`mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-none px-3 py-2 text-sm ${index === active ? 'bg-action-soft text-ink' : 'text-muted'}`}
+                  className={`command-option mx-1 flex cursor-pointer items-center justify-between gap-3 rounded-none px-3 py-2 text-sm ${index === active ? 'bg-action-soft text-ink' : 'text-muted'}`}
                 >
                   <span className="truncate">{command.label}</span>
                   {command.hint && <span className="shrink-0 font-mono text-3xs text-faint">{command.hint}</span>}
