@@ -28,6 +28,11 @@ coverage/
 *.local
 *.sublime*
 
+# Playwright MCP scratch output (page snapshots and console logs, regenerated on use)
+.playwright-mcp/
+# Ad-hoc UI review screenshots captured at the repo root by browser inspection
+/review-*.png
+
 # Fixture directory created and removed by src/bundleGuard.build.test.js, which
 # builds real Vite entry points to prove the bundle guard fails on a Node-only
 # import. Listed so a crashed run cannot leave it staged.
