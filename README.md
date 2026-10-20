@@ -1,3 +1,12 @@
+<!-- project-status:start -->
+## 项目状态与入口
+
+- **维护状态**：主线维护 · 独立专业工具。
+- **项目入口**：运行、构建与计算模型说明见下方文档。
+- **项目导航**：[全部项目与维护安排](https://github.com/halunhaku)。
+
+<!-- project-status:end -->
+
 <p align="center">
   <img src="docs/images/readme-hero.png" alt="CREEP_LAB interface hero" width="100%">
 </p>
