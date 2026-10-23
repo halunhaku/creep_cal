@@ -207,13 +207,28 @@ The WASM package is prebuilt in `src/wasm-pkg/`, so the app can run without rebu
 When changing Rust source, regenerate the committed package:
 
 ```bash
-cd rust-engine
-wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
+npm run build:wasm        # rust-engine/build.sh, from the repository root
 ```
+
+The script wraps `wasm-pack build --target web --out-dir src/wasm-pkg
+--scope creep-calculator` and restores the curated `src/wasm-pkg/.gitignore`
+that `wasm-pack` overwrites with a bare `*`; running `wasm-pack` by hand leaves
+that file modified and the CI drift check failing on its own.
 
 `src/wasm-pkg/` is a build artifact that ships with the app, so it must be
 regenerated in the same commit as any Rust change — the JavaScript/Rust parity
 tests in `src/wasm/kernelParity.test.js` fail if the two drift apart.
+
+CI rebuilds the package with `wasm-pack` **0.13.1**, the version that produced
+the committed one, and fails if the rebuild differs — a newer `wasm-pack` writes
+`package.json` with a trailing newline this one does not, so bump that pin in
+`.github/workflows/ci.yml` and regenerate the package in the same commit.
+
+The build also drops the `producers` section `wasm-bindgen` stamps into the
+module (`scripts/stripWasmProducers.mjs`). Its contents name the wasm-bindgen
+build — a released binary says `0.2.129 (165586f85)`, a `cargo install`ed one
+says `0.2.129` — and nothing reads it at run time, so without the strip the
+committed package disagreed with a rebuild done on the other kind of machine.
 
 `rust-engine/Cargo.lock` is committed because the `wasm-bindgen` version in it
 must match the CLI that produced the generated JavaScript glue. Without the

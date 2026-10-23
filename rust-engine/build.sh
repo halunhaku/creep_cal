@@ -32,6 +32,11 @@ if [ $? -eq 0 ]; then
     # wasm-pack rewrites the out-dir `.gitignore` to a bare `*`; this package
     # is committed on purpose, so restore the curated file.
     git -C .. checkout -- src/wasm-pkg/.gitignore 2>/dev/null || true
+    # wasm-bindgen stamps its own build identity into the `producers` section,
+    # and a released binary stamps a different string than a `cargo install`ed
+    # one. Dropping the section keeps the committed bytes the same whichever
+    # wasm-bindgen built them (see scripts/stripWasmProducers.mjs).
+    node ../scripts/stripWasmProducers.mjs ../src/wasm-pkg/*.wasm
     echo "✅ WebAssembly 构建成功！"
     echo "📁 输出目录: ../src/wasm-pkg"
     

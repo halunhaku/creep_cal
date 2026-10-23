@@ -30,6 +30,9 @@ REM 构建 WebAssembly 包
 wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
 
 if %ERRORLEVEL% EQU 0 (
+    REM wasm-bindgen stamps its own build identity into the `producers` section;
+    REM dropping it keeps the committed bytes generator-independent.
+    node ..\scripts\stripWasmProducers.mjs ..\src\wasm-pkg\creep_calculator_engine_bg.wasm
     echo ✅ WebAssembly 构建成功！
     echo 📁 输出目录: ../src/wasm-pkg
     
