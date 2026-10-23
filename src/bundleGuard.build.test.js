@@ -18,7 +18,7 @@
  *     test below exists precisely to catch that trap: it builds the xmldom fixture
  *     with the guard switched off and asserts the parser really is in the graph.
  */
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { build, loadConfigFromFile } from 'vite';
@@ -191,8 +191,12 @@ describe('legitimate browser code still builds', () => {
     expect(ids.some((id) => id.includes('@xmldom/xmldom'))).toBe(false);
   }, 30000);
 
+  // `write: false` keeps the real build off the working tree, so the emitted
+  // index.html is asserted from the returned bundle: a clean checkout has no
+  // dist/, and checking the disk made this case fail wherever one had not been
+  // built by hand first.
   test('the real production build, through vite.config.js', async () => {
-    await build({ root: ROOT, logLevel: 'silent', build: { write: false } });
-    expect(existsSync(resolve(ROOT, 'dist/index.html'))).toBe(true);
+    const { output } = await build({ root: ROOT, logLevel: 'silent', build: { write: false } });
+    expect(output.some((entry) => entry.type === 'asset' && entry.fileName === 'index.html')).toBe(true);
   }, 120000);
 });

@@ -35,12 +35,22 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup target add wasm32-unknown-unknown
-      - run: cargo install wasm-pack --locked
+      # The committed package's bytes are whatever the generator wrote, so the
+      # checker has to run the generator that wrote them. `latest` silently means
+      # a newer wasm-pack (0.15 and counting) rewrites the .wasm and the
+      # package.json of a package that is otherwise current, and the drift check
+      # then fails on a commit that changed no Rust at all. Bump this and
+      # regenerate src/wasm-pkg in the same commit; `--locked` keeps the
+      # toolchain's own dependency resolution out of the picture.
+      - run: cargo install wasm-pack --version 0.13.1 --locked
       - run: npm ci
       - name: Rust unit tests
         run: cargo test --manifest-path rust-engine/Cargo.toml
+      # `npm run build:wasm` is rust-engine/build.sh: it builds through wasm-pack
+      # and restores the curated src/wasm-pkg/.gitignore that wasm-pack overwrites
+      # with a bare `*`. Running wasm-pack directly here used to leave that one
+      # file dirty and fail the drift check by itself.
       - name: WASM artifact must match Rust source
         run: |
-          cd rust-engine
-          wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
-          git diff --exit-code -- ../src/wasm-pkg || (echo "::error::src/wasm-pkg is stale — rebuild in the same commit (see README Rust WebAssembly)" && exit 1)
+          npm run build:wasm
+          git diff --exit-code -- src/wasm-pkg || (echo "::error::src/wasm-pkg is stale — rebuild in the same commit (see README Rust WebAssembly)" && exit 1)
