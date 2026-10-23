@@ -230,6 +230,13 @@ build — a released binary says `0.2.129 (165586f85)`, a `cargo install`ed one
 says `0.2.129` — and nothing reads it at run time, so without the strip the
 committed package disagreed with a rebuild done on the other kind of machine.
 
+It remaps the absolute paths rustc embeds in the module — the checkout and the
+cargo registry — to `/build/rust-engine` and `/cargo` (the `RUSTFLAGS`
+`--remap-path-prefix` pair in `rust-engine/build.sh`). Those paths sit in the
+data section, so the same source compiled at `/Users/…` and at
+`/home/runner/work/…` otherwise differs by a few bytes and the drift check can
+never pass in both places.
+
 `rust-engine/Cargo.lock` is committed because the `wasm-bindgen` version in it
 must match the CLI that produced the generated JavaScript glue. Without the
 lockfile a rebuild can pick a newer `wasm-bindgen` and rewrite the glue.

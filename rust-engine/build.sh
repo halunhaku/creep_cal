@@ -25,6 +25,15 @@ rustup target add wasm32-unknown-unknown
 
 echo "📦 构建 WebAssembly 包..."
 
+# Rust embeds the paths it compiled from in the module's data section, and both
+# this project's directory and the cargo registry's live at a user- or
+# runner-specific absolute path. Without remapping them, a checkout in
+# /Users/x/... and a CI checkout in /home/runner/work/... produce modules that
+# differ in a handful of bytes and the drift check in CI can never pass. See
+# README "Rust WebAssembly".
+export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+export RUSTFLAGS="--remap-path-prefix=$(pwd)=/build/rust-engine --remap-path-prefix=$CARGO_HOME=/cargo ${RUSTFLAGS:-}"
+
 # 构建 WebAssembly 包
 wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
 

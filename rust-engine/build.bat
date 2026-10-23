@@ -26,6 +26,11 @@ rustup target add wasm32-unknown-unknown
 
 echo 📦 构建 WebAssembly 包...
 
+REM Rust embeds the paths it compiled from in the module's data section; remap
+REM them so a rebuild anywhere produces the same bytes (see build.sh).
+if "%CARGO_HOME%"=="" set "CARGO_HOME=%USERPROFILE%\.cargo"
+set "RUSTFLAGS=--remap-path-prefix=%CD%=/build/rust-engine --remap-path-prefix=%CARGO_HOME%=/cargo %RUSTFLAGS%"
+
 REM 构建 WebAssembly 包
 wasm-pack build --target web --out-dir ../src/wasm-pkg --scope creep-calculator
 
