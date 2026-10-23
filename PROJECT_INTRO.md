@@ -2,7 +2,7 @@
 
 CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。项目集成 ACI 209R-92、fib Model Code 2010、RILEM B4、RILEM B4s、GL2000、AASHTO LRFD 六类预测模型，提供单点参数分析、批量数据计算和模型公式文档浏览能力。
 
-平台采用 React + Vite 构建前端界面，使用 Tailwind CSS 和项目内的 [IBM/Carbon 设计规范](docs/design-system.md) 统一视觉风格（IBM Plex Sans、IBM Blue、方角无阴影面板）。计算层同时提供 JavaScript 参考实现与 Rust WebAssembly 高性能实现，用户可以在单点计算场景中切换引擎，便于对比结果、验证模型和观察性能差异。批量管线六个模型统一用 JavaScript 参考内核计算（Rust 仅暴露 ACI 209 和 MC 2010 的 batch 入口，混用会导致行间不可比）。
+平台采用 React + Vite 构建前端界面，使用 Tailwind CSS 和项目内的 [暖色编辑风格设计规范](docs/design-system.md) 统一视觉风格（米白画布、陶土色强调、衬线标题、可收起侧栏）。计算层同时提供 JavaScript 参考实现与 Rust WebAssembly 高性能实现，用户可以在单点计算场景中切换引擎，便于对比结果、验证模型和观察性能差异。批量管线六个模型统一用 JavaScript 参考内核计算（Rust 仅暴露 ACI 209 和 MC 2010 的 batch 入口，混用会导致行间不可比）。
 
 ## 核心功能
 
@@ -17,7 +17,7 @@ CREEP_LAB 是一个面向混凝土徐变与收缩分析的本地计算平台。�
 | 层级 | 内容 |
 | --- | --- |
 | 前端框架 | React 19、Vite |
-| 样式系统 | Tailwind CSS、CSS 变量、IBM/Carbon Design System |
+| 样式系统 | Tailwind CSS、CSS 变量、暖色编辑式设计系统（Claude 风格） |
 | 图表 | Recharts |
 | 文档公式 | KaTeX 渲染 + 模型说明 Markdown 下载 |
 | 数据导入 | PapaParse、read-excel-file |

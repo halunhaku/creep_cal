@@ -1,17 +1,13 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, test } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { beforeEach, describe, expect, test } from 'vitest';
 import App from '../App';
 import { setLocale } from '../state/appStore';
 
 /**
- * Regression: header, main and footer each carried their own hand-copied copy of the
- * gutter utilities (`mx-auto max-w-content px-4 … lg:px-8`). Keeping them aligned
- * meant editing three sites, and missing one silently re-created the misalignment
- * the shell was fixed to remove. Nothing expressed "these three are equal" — this
- * does.
+ * The shell's contract.
  *
- * jsdom does not apply the stylesheet, so these pin the contract rather than the
- * rendered geometry; the geometry itself is covered by scripts/dom-snapshot.mjs,
+ * jsdom does not apply the stylesheet, so these pin structure and behaviour rather
+ * than rendered geometry; the geometry itself is covered by scripts/dom-snapshot.mjs,
  * which fingerprints computed styles at four viewports.
  */
 async function renderApp() {
@@ -19,18 +15,21 @@ async function renderApp() {
   await screen.findByRole('heading', { name: /time-dependent concrete analysis/i });
 }
 
-const gutterSites = () => ({
+const shell = () => ({
   header: document.querySelector('header > div'),
   main: document.getElementById('main-content'),
   footer: document.querySelector('footer > div'),
 });
 
+beforeEach(() => {
+  window.localStorage.clear();
+});
+
 describe('the application shell', () => {
   test('header, main and footer share one gutter class', async () => {
     await renderApp();
-    const sites = gutterSites();
 
-    for (const [name, element] of Object.entries(sites)) {
+    for (const [name, element] of Object.entries(shell())) {
       expect(element, `${name} should exist`).not.toBeNull();
       expect(element, `${name} should carry the shared gutter`).toHaveClass('shell-gutter');
     }
@@ -40,7 +39,7 @@ describe('the application shell', () => {
     await renderApp();
     // A `px-*` here would win or lose against .shell-gutter depending on where
     // Tailwind emits it, which is exactly the positional fragility being removed.
-    for (const [name, element] of Object.entries(gutterSites())) {
+    for (const [name, element] of Object.entries(shell())) {
       const own = [...element.classList].filter((c) => /(^|:)px-/.test(c));
       expect(own, `${name} should not set its own horizontal padding`).toEqual([]);
     }
@@ -49,41 +48,104 @@ describe('the application shell', () => {
   test('main fills the viewport instead of claiming a hand-computed height', async () => {
     await renderApp();
     const main = document.getElementById('main-content');
-    // The removed `min-h-[calc(100dvh-49px)]` hard-coded the header height plus its
-    // border, so raising --header-h moved anchor scrolling but not this.
     expect([...main.classList].some((c) => c.includes('100dvh'))).toBe(false);
     expect(main).toHaveClass('flex-1');
   });
 });
 
-describe('header controls under pressure', () => {
+describe('sidebar navigation', () => {
   test.each([
-    ['en', ['Calculate', 'Batch', 'Reference'], ['Calc', 'Batch', 'Docs']],
-    ['zh', ['计算', '批量', '参考'], ['计算', '批量', '参考']],
-  ])('compact %s controls keep full accessible names and the original navigation behavior', async (locale, names, short) => {
+    ['en', ['Calculate', 'Batch', 'Reference']],
+    ['zh', ['计算', '批量', '参考']],
+  ])('%s destinations keep full accessible names and navigate', async (locale, names) => {
     await renderApp();
     act(() => setLocale(locale));
-    const nav = within(document.querySelector('header nav'));
-    for (let index = 0; index < names.length; index += 1) {
-      const button = nav.getByRole('button', { name: names[index], exact: true });
-      expect(button).toHaveAttribute('aria-label', names[index]);
-      expect(button.querySelector('.md\\:hidden')).toHaveTextContent(short[index]);
-      expect(button.querySelector('.hidden')).toHaveTextContent(names[index]);
+    const nav = within(screen.getByRole('navigation', { name: locale === 'en' ? 'Workspace' : '工作区' }));
+    for (const name of names) {
+      const button = nav.getByRole('button', { name, exact: true });
+      expect(button).toHaveAttribute('aria-label', name);
     }
-    const language = document.querySelector('button[lang]');
-    expect(language).toHaveClass('touch-target');
-    expect(language.querySelector('.md\\:hidden')).toHaveTextContent(locale === 'en' ? '中' : 'EN');
-    expect(language.getAttribute('aria-label')).toBeTruthy();
+    expect(nav.getByRole('button', { name: names[0], exact: true })).toHaveAttribute('aria-current', 'page');
     fireEvent.click(nav.getByRole('button', { name: names[2], exact: true }));
     await screen.findByRole('heading', { name: locale === 'en' ? 'Model standards and equations' : '模型标准与计算公式' });
+    const docs = within(screen.getByRole('navigation', { name: locale === 'en' ? 'Workspace' : '工作区' })).getByRole('button', { name: names[2], exact: true });
+    expect(docs).toHaveAttribute('aria-current', 'page');
   });
 
+  test('the desktop rail collapses and remembers the choice', async () => {
+    await renderApp();
+    const aside = document.getElementById('app-sidebar');
+    expect(aside).toHaveAttribute('data-sidebar', 'expanded');
+
+    const toggle = screen.getByRole('button', { name: 'Collapse sidebar' });
+    fireEvent.click(toggle);
+
+    expect(aside).toHaveAttribute('data-sidebar', 'collapsed');
+    expect(window.localStorage.getItem('creep-lab:sidebar')).toBe('collapsed');
+    expect(screen.getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    expect(aside).toHaveAttribute('data-sidebar', 'expanded');
+    expect(window.localStorage.getItem('creep-lab:sidebar')).toBe('expanded');
+  });
+
+  test('a stored collapse preference applies on the next render', async () => {
+    window.localStorage.setItem('creep-lab:sidebar', 'collapsed');
+    await renderApp();
+    expect(document.getElementById('app-sidebar')).toHaveAttribute('data-sidebar', 'collapsed');
+  });
+});
+
+describe('the narrow-screen drawer', () => {
+  const drawer = () => document.getElementById('app-sidebar');
+  const menuButton = () => screen.getByRole('button', { name: 'Open navigation' });
+
+  test('opens from the topbar, takes focus, locks scroll and closes on Escape', async () => {
+    await renderApp();
+    expect(menuButton()).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(menuButton());
+
+    expect(menuButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(document.body.style.overflow).toBe('hidden');
+    expect(drawer().contains(document.activeElement)).toBe(true);
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(menuButton()).toHaveAttribute('aria-expanded', 'false'));
+    expect(document.body.style.overflow).toBe('');
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  test('choosing a destination closes it and restores focus', async () => {
+    await renderApp();
+    fireEvent.click(menuButton());
+    const nav = within(screen.getByRole('navigation', { name: 'Workspace' }));
+    fireEvent.click(nav.getByRole('button', { name: 'Batch' }));
+
+    await screen.findByRole('heading', { name: /dataset pipeline/i });
+    await waitFor(() => expect(menuButton()).toHaveAttribute('aria-expanded', 'false'));
+    expect(document.activeElement).toBe(menuButton());
+  });
+
+  test('Tab cycles inside the drawer instead of reaching the page behind it', async () => {
+    await renderApp();
+    fireEvent.click(menuButton());
+    const focusable = [...drawer().querySelectorAll('a[href], button:not([disabled])')];
+    expect(focusable.length).toBeGreaterThan(2);
+
+    focusable.at(-1).focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(document.activeElement).toBe(focusable[0]);
+  });
+});
+
+describe('topbar controls under pressure', () => {
   test('the kernel badge is the row’s slack-taker, not shrink-0', async () => {
     await renderApp();
     const badge = screen.getByRole('status');
 
     // Every control around it is shrink-0, so the badge is what has to give when
-    // the row runs out of room — otherwise the badge and the nav overlap.
+    // the row runs out of room — otherwise the badge and the title overlap.
     expect(badge).toHaveClass('min-w-0');
     expect(badge).not.toHaveClass('shrink-0');
     expect(within(badge).getByText(/.+/)).toHaveClass('truncate');
@@ -93,8 +155,8 @@ describe('header controls under pressure', () => {
     await renderApp();
     const button = screen.getByRole('button', { name: /search commands/i });
 
-    // Below lg the label and the kbd are both display:none, so this title is the
-    // only remaining pointer to the shortcut across 768-1023px.
+    // Below lg the sidebar is off-screen, so this title is the only remaining
+    // pointer to the shortcut once the drawer is closed.
     expect(button).toHaveAttribute('title', 'Search commands (⌘K)');
   });
 });

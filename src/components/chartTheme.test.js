@@ -4,7 +4,7 @@ import { contrast, cssVariables } from '../testUtils/contrast';
 
 const THEMES = { light: cssVariables(':root'), dark: cssVariables('[data-theme="dark"]') };
 
-/** Carbon uses neutral ink for reference geometry and labels. These tests
+/** The theme uses neutral ink for reference geometry and labels. These tests
  * protect the consumer-visible contrast and chart type floor, not token identity. */
 describe('chart colours', () => {
   for (const [theme, vars] of Object.entries(THEMES)) {

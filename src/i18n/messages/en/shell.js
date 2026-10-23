@@ -25,12 +25,22 @@ export default {
     docs: 'Reference',
   },
   skipToContent: 'Skip to content',
+  sidebar: {
+    label: 'Main navigation',
+    open: 'Open navigation',
+    close: 'Close navigation',
+    collapse: 'Collapse sidebar',
+    expand: 'Expand sidebar',
+    toggleTitle: 'Sidebar width',
+  },
   search: {
     label: 'Search commands',
     title: 'Search commands (⌘K)',
     text: 'Search',
   },
   theme: {
+    light: 'Light theme',
+    dark: 'Dark theme',
     toLight: 'Switch to light theme',
     toDark: 'Switch to dark theme',
   },

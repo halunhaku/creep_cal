@@ -59,12 +59,16 @@ const CHROME_CANDIDATES = [
 const SHOTS = [
   { file: 'readme-hero.png', width: 1440, height: 760, workspace: 'single', prepare: 'compare' },
   { file: 'ui-wide-single-analysis.png', width: 1800, height: 1250, workspace: 'single', prepare: 'compare' },
+  { file: 'ui-wide-single-analysis-collapsed.png', width: 1800, height: 1250, workspace: 'single', prepare: 'compare', sidebar: 'collapsed' },
+  { file: 'ui-wide-single-analysis-dark.png', width: 1800, height: 1250, workspace: 'single', prepare: 'compare', theme: 'dark' },
   { file: 'ui-wide-batch-matrix.png', width: 1800, height: 1250, workspace: 'batch', prepare: 'sample' },
   { file: 'ui-wide-model-docs.png', width: 1800, height: 1250, workspace: 'docs', model: 'b4' },
+  { file: 'ui-wide-model-docs-dark.png', width: 1800, height: 1250, workspace: 'docs', model: 'b4', theme: 'dark' },
   { file: 'ui-single-analysis.png', width: 488, height: 1055, workspace: 'single', prepare: 'compare' },
   { file: 'ui-batch-matrix.png', width: 488, height: 1055, workspace: 'batch', prepare: 'sample' },
   { file: 'ui-model-docs.png', width: 488, height: 1055, workspace: 'docs', model: 'b4' },
   { file: 'responsive-single-390.png', width: 390, height: 844, workspace: 'single' },
+  { file: 'responsive-single-390-drawer.png', width: 390, height: 844, workspace: 'single', prepare: 'drawer' },
   { file: 'responsive-single-768.png', width: 768, height: 1024, workspace: 'single' },
   { file: 'responsive-single-1440.png', width: 1440, height: 900, workspace: 'single' },
   { file: 'responsive-single-1920.png', width: 1920, height: 1080, workspace: 'single' },
@@ -199,9 +203,24 @@ async function openWorkspace(cdp, shot) {
 }
 
 async function prepare(cdp, shot) {
+  // Screenshot runs share one browser profile, so both preferences outlive a
+  // navigation. Put each shot back into the state it is meant to show instead of
+  // inheriting whatever the previous shot left behind.
+  const theme = await cdp.evaluate("document.body.dataset.theme || 'light'");
+  if (theme !== (shot.theme === 'dark' ? 'dark' : 'light')) {
+    await cdp.evaluate('window.toggleTheme()');
+  }
+  const collapsed = await cdp.evaluate("document.getElementById('app-sidebar')?.dataset.sidebar === 'collapsed'");
+  if (collapsed !== (shot.sidebar === 'collapsed')) {
+    await trigger(cdp, 'toggle-sidebar');
+  }
   if (shot.prepare === 'sample') {
     await trigger(cdp, 'load-demo-sweep');
     await cdp.waitFor(hook('[data-result-matrix]'), { label: 'the sample result matrix' });
+  }
+  if (shot.prepare === 'drawer') {
+    await trigger(cdp, 'open-navigation');
+    await cdp.waitFor(hook('#app-sidebar[data-drawer="open"]'), { label: 'the navigation drawer' });
   }
   if (shot.prepare === 'compare') {
     // `openWorkspace` has already waited for a finished run, which is what the

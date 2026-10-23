@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 import { setEngine, setModel, useAppSelector } from '../state/appStore';
 import { usePick, useT } from '../i18n';
@@ -44,67 +44,78 @@ export default function SingleCalculationDashboard() {
 
   return (
     <div className="animate-fade-in">
-      <header className="workspace-header flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <header className="workspace-header flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="eyebrow">{t('dashboard.eyebrow')}</div>
-          <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">{t('dashboard.title')}</h1>
-          <p className="mt-1 max-w-2xl text-sm text-muted">{t('dashboard.intro')}</p>
+          <h1 className="mt-2 font-display text-[28px] font-normal leading-[1.15] text-ink md:text-display-sm">{t('dashboard.title')}</h1>
+          <p className="mt-2 max-w-2xl text-body-sm leading-relaxed text-muted">{t('dashboard.intro')}</p>
         </div>
         <div className="font-mono text-3xs text-faint">{t('dashboard.precision')}</div>
       </header>
 
-      <div className="grid items-start gap-5 xl:grid-cols-[216px_minmax(0,1fr)]">
-        <aside className="workbench-panel overflow-hidden xl:sticky xl:top-[88px]">
-          <div className="border-b border-line px-3.5 py-3"><div className="eyebrow">{t('dashboard.modelsEyebrow')}</div></div>
-          <div role="group" aria-label={t('dashboard.modelsLabel')} className="flex snap-x snap-mandatory gap-1 overflow-x-auto scroll-px-2 p-2 xl:block xl:space-y-1">
+      {/* The model picker is a horizontal strip rather than a second left column:
+          the shell already owns the only persistent rail on screen. */}
+      <section className="mb-5 rounded-card border border-line bg-surface p-2.5 shadow-card">
+        <div className="flex flex-col gap-2.5 2xl:flex-row 2xl:items-center">
+          <div
+            role="group"
+            aria-label={t('dashboard.modelsLabel')}
+            className="flex min-w-0 flex-1 snap-x snap-mandatory gap-1.5 overflow-x-auto scroll-px-1 p-0.5"
+          >
             {MODELS.map((model) => {
               const selected = model.id === algorithm;
               return (
                 <button
                   key={model.id}
+                  type="button"
                   ref={selected ? activeModelRef : null}
                   onClick={() => setModel(model.id)}
                   data-model={model.id}
                   aria-pressed={selected}
-                  className={`relative min-w-[190px] snap-start scroll-ml-2 rounded-none px-3 py-3 text-left transition-colors xl:min-w-0 xl:w-full xl:snap-none ${selected ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
+                  aria-label={`${model.name} · ${pick(model.type)}`}
+                  className={`min-w-[168px] snap-start scroll-ml-1 rounded-lg border px-3.5 py-2.5 text-left transition-colors ${selected ? 'border-action-border bg-action-soft text-ink' : 'border-transparent text-muted hover:bg-surface-2 hover:text-ink'}`}
                 >
-                  {selected && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-none bg-action" aria-hidden="true" />}
-                  <div className="flex items-baseline gap-2">
+                  <span className="flex items-baseline gap-2">
                     <span className="font-mono text-3xs text-faint">{model.index}</span>
-                    <span className="text-body-sm font-semibold">{model.name}</span>
-                  </div>
-                  <div className="mt-1.5 pl-[22px] font-mono text-3xs text-faint">{pick(model.type)}</div>
+                    <span className="truncate text-body-sm font-semibold">{model.name}</span>
+                  </span>
+                  <span className="mt-1 block truncate font-mono text-3xs text-faint">{pick(model.type)}</span>
                 </button>
               );
             })}
           </div>
-          <div className="border-t border-line px-3.5 py-4">
-            <div className="eyebrow">{t('dashboard.activeModel')}</div>
-            <p className="mt-2 text-xs font-medium text-ink">{pick(active.note)}</p>
-            <p className="mt-1 text-1xs text-muted">{t('dashboard.calibrated', { range: pick(active.range) })}</p>
-          </div>
-          <div className="border-t border-line px-3.5 py-4">
-            <div className="mb-2.5 flex items-center justify-between"><span className="eyebrow">{t('dashboard.kernel')}</span><span className="status-dot" /></div>
-            <div className="grid grid-cols-2 rounded-none border border-line bg-surface-2 p-0.5">
-              {[['rust',t('dashboard.rustTab')],['js',t('dashboard.jsTab')]].map(([id,label]) => (
+
+          <div className="flex shrink-0 flex-wrap items-center gap-2.5 px-0.5 2xl:border-l 2xl:border-line 2xl:pl-3">
+            <span className="eyebrow flex items-center gap-2">
+              <span className="status-dot" aria-hidden="true" />
+              {t('dashboard.kernel')}
+            </span>
+            <div className="grid grid-cols-2 rounded-input border border-line bg-surface-2 p-0.5">
+              {[['rust', t('dashboard.rustTab')], ['js', t('dashboard.jsTab')]].map(([id, label]) => (
                 <button
                   key={id}
+                  type="button"
                   onClick={() => setEngine(id)}
                   aria-pressed={engine === id}
                   data-action={`kernel-${id}`}
-                  className={`touch-hit rounded-none px-2 py-2 font-mono text-3xs font-semibold ${engine === id ? 'bg-surface text-ink' : 'text-faint hover:text-ink'}`}
+                  className={`touch-hit rounded-[7px] px-2.5 py-1.5 font-mono text-3xs font-semibold transition-colors ${engine === id ? 'bg-surface text-ink shadow-card' : 'text-faint hover:text-ink'}`}
                 >
                   {label}
                 </button>
               ))}
             </div>
           </div>
-        </aside>
+        </div>
+        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 px-1.5 text-xs">
+          <span className="font-medium text-ink">{pick(active.note)}</span>
+          <span className="text-faint" aria-hidden="true">·</span>
+          <span className="text-muted">{t('dashboard.calibrated', { range: pick(active.range) })}</span>
+        </div>
+      </section>
 
-        <Suspense fallback={<LoadingSpinner message={t('dashboard.loadingModel')} />}>
-          <ActiveComponent engine={engine} onEngineFallback={handleEngineFallback} />
-        </Suspense>
-      </div>
+      <Suspense fallback={<LoadingSpinner message={t('dashboard.loadingModel')} />}>
+        <ActiveComponent engine={engine} onEngineFallback={handleEngineFallback} />
+      </Suspense>
     </div>
   );
 }

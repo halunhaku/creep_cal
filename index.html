@@ -8,10 +8,13 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="/favicon.ico" />
+    <!-- Paint the canvas in the theme's own colour before the stylesheet or the
+         theme script runs, so the first frame is not a white flash. -->
+    <style>html,body{background:#faf9f5}html[data-theme="dark"],html[data-theme="dark"] body{background:#262624}</style>
     <!-- viewport-fit=cover so env(safe-area-inset-*) reports the real insets when
          the app is installed and there is no browser chrome. -->
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#faf9f5" />
     <meta
       name="description"
       content="混凝土徐变多模型平台，集成ACI209、MC2010、B4、B4S等主流模型，支持批量导入导出、可视化，适用于科研与工程设计。"
@@ -31,7 +34,7 @@
           localStorage.setItem('theme-mode', theme);
           document.documentElement.setAttribute('data-theme', theme);
           document.body.setAttribute('data-theme', theme);
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#161616' : '#ffffff');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#262624' : '#faf9f5');
         }
         window.toggleTheme = function () {
           applyTheme(document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');

@@ -1,13 +1,13 @@
 /**
- * Carbon chart theme. Recharts consumes sizes and colours as JavaScript props,
- * so SVG text and strokes resolve the same IBM Plex scale and semantic tokens as
- * the rest of the workbench. IBM Blue carries the data series; neutral ink carries
- * references, axes, and grid structure.
+ * Chart theme. Recharts consumes sizes and colours as JavaScript props, so SVG
+ * text and strokes resolve the same type scale and semantic tokens as the rest
+ * of the workbench. Terracotta carries the data series; neutral ink carries
+ * references, axes and grid structure.
  */
 export const CHART = {
   /** ticks, axis titles, legend — on the scale, not below it */
   font: 12,
-  /** reference-line labels use the 12px Carbon caption size */
+  /** reference-line labels use the 12px caption size */
   labelFont: 12,
   tick: 'var(--text-muted)',
   axisTitle: 'var(--text-faint)',

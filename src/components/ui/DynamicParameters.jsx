@@ -238,13 +238,13 @@ export default function DynamicParameters({ modelId, paramsConfig, params, onPar
       </div>
       <div className="sticky bottom-0 border-t border-line bg-surface p-3.5">
         {dirty && (
-          <div className="mb-2.5 flex items-center gap-2 rounded-none bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
+          <div className="mb-2.5 flex items-center gap-2 rounded-input bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {t('parameters.changed')} · {t('parameters.stale')}
           </div>
         )}
         {inputIssue && (
-          <div id="param-cross-field-issue" className="mb-2.5 flex items-center gap-2 rounded-none bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
+          <div id="param-cross-field-issue" className="mb-2.5 flex items-center gap-2 rounded-input bg-[var(--warning-soft)] px-3 py-2 text-1xs text-[var(--warning)]">
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
             {pick(inputIssue.message)}
           </div>

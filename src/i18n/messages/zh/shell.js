@@ -25,12 +25,22 @@ export default {
     docs: '参考',
   },
   skipToContent: '跳到主要内容',
+  sidebar: {
+    label: '主导航',
+    open: '打开导航',
+    close: '关闭导航',
+    collapse: '收起侧栏',
+    expand: '展开侧栏',
+    toggleTitle: '侧栏宽度',
+  },
   search: {
     label: '搜索命令',
     title: '搜索命令（⌘K）',
     text: '搜索',
   },
   theme: {
+    light: '浅色模式',
+    dark: '深色模式',
     toLight: '切换到浅色主题',
     toDark: '切换到深色主题',
   },

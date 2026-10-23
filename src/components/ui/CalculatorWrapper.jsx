@@ -94,7 +94,7 @@ function CopyValue({ text, label }) {
       onClick={onCopy}
       title={name}
       aria-label={name}
-      className="touch-hit rounded-none border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action min-h-6 items-center justify-center inline-flex"
+      className="touch-hit rounded-sm border border-line px-1.5 py-0.5 font-mono text-3xs text-faint transition-colors hover:border-action-border hover:text-action min-h-6 items-center justify-center inline-flex"
     >
       {copied ? t('calculator.copy.done') : t('calculator.copy.text')}
     </button>
@@ -128,7 +128,7 @@ function Decomposition({ items }) {
   return (
     <div className={`grid gap-4 ${groups.length > 1 ? 'md:grid-cols-2' : ''}`}>
       {groups.map((group) => (
-        <div key={group.id} className="rounded-none border border-line bg-surface-2 p-4">
+        <div key={group.id} className="rounded-card border border-line bg-surface-2 p-4">
           <div className="eyebrow">{group.label}</div>
           <div className="mt-3 divide-y divide-line">
             {group.items.map((item) => {
@@ -157,7 +157,7 @@ function ScientificTooltip({ active, payload, label }) {
   const numericLabel = Number(sourceTime);
   const title = Number.isFinite(numericLabel) ? new Intl.NumberFormat('en-US').format(numericLabel) : sourceTime;
   return (
-    <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-popover">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2.5 shadow-popover">
       <div className="mb-2 font-mono text-3xs font-semibold text-faint">{t('calculator.chart.tooltipTime', { days: title })}</div>
       <div className="space-y-1.5">
         {payload.map((item) => (
@@ -187,7 +187,7 @@ function ParamChanges({ before, after, config }) {
   });
   if (!changed.length) return null;
   return (
-    <div className="mt-4 rounded-none border border-line bg-surface-2 px-4 py-3">
+    <div className="mt-4 rounded-card border border-line bg-surface-2 px-4 py-3">
       <div className="eyebrow">{t('calculator.changedSinceRun')}</div>
       <ul className="mt-2 space-y-1 text-xs">
         {changed.map((item) => (
@@ -292,7 +292,7 @@ function AnalysisChart({ data, lines, params, resultParams, modelName, prevData 
               key={id}
               onClick={() => setView(id)}
               aria-pressed={view === id}
-              className={`touch-hit rounded-none px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
+              className={`touch-hit rounded-lg px-3 py-1.5 text-xs font-semibold ${view === id ? 'bg-action-soft text-action' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
             >
               {label}
             </button>
@@ -502,7 +502,7 @@ function NoticeBanner({ notices, onDismiss }) {
   return (
     <div className="mb-5 space-y-3">
       {notices.map((notice) => (
-        <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-none border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
+        <div key={notice.id} role="alert" className="flex flex-col gap-3 rounded-card border border-[var(--warning)] bg-[var(--warning-soft)] p-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             <div className="font-mono text-2xs font-semibold text-[var(--warning)]">{notice.title}</div>
             <p className="mt-1.5 max-w-[80ch] text-body-sm leading-5 text-[var(--warning)]">{notice.message}</p>
@@ -580,11 +580,11 @@ export default function CalculatorWrapper({
             <span className="status-dot" />
             <span className="eyebrow">{engine === 'rust' ? t('calculator.engineRust') : t('calculator.engineJs')}</span>
           </div>
-          <h2 className="mt-2 text-xl font-semibold text-ink">{modelName}</h2>
+          <h2 className="mt-2 font-display text-2xl font-semibold leading-tight text-ink">{modelName}</h2>
           <p className="mt-1.5 max-w-[72ch] text-body-sm leading-relaxed text-muted">{modelDescription}</p>
         </div>
         {duration != null && (
-          <div className="rounded-none border border-line bg-surface px-3 py-2 text-right">
+          <div className="rounded-lg border border-line bg-surface px-3 py-2 text-right">
             <div className="eyebrow">{t('calculator.lastCompute')}</div>
             <div className="mt-1 font-mono text-1xs text-ink">{duration.toFixed(2)} ms</div>
           </div>
@@ -594,7 +594,7 @@ export default function CalculatorWrapper({
       <NoticeBanner notices={notices} onDismiss={onDismissNotice} />
 
       <div className="grid items-start gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
-        <div className="lg:sticky lg:top-[88px] lg:max-h-[calc(100dvh-112px)] lg:overflow-y-auto lg:pr-1">
+        <div className="lg:sticky lg:top-[var(--sticky-offset)] lg:max-h-[calc(100dvh-var(--sticky-offset)-1.5rem)] lg:overflow-y-auto lg:pr-1">
           <DynamicParameters
             modelId={modelId}
             paramsConfig={paramsConfig}
@@ -616,12 +616,12 @@ export default function CalculatorWrapper({
               </div>
               <div className="flex items-center gap-2">
               {prevData && prevData.length > 0 && !dirty && (
-                <span className="rounded-none border border-dashed border-line-strong px-2.5 py-1 font-mono text-3xs font-semibold text-faint">
+                <span className="rounded-chip border border-dashed border-line-strong px-2.5 py-1 font-mono text-3xs font-semibold text-faint">
                   {t('calculator.vsPrevious')}
                 </span>
               )}
               <div
-                className={`rounded-none px-2.5 py-1 font-mono text-3xs font-semibold ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
+                className={`rounded-chip px-2.5 py-1 font-mono text-3xs font-semibold ${dirty ? 'bg-[var(--warning-soft)] text-[var(--warning)]' : 'bg-[var(--success-soft)] text-[var(--success)]'}`}
               >
                 {dirty ? t('calculator.stale') : t('calculator.computed')}
               </div>

@@ -103,7 +103,7 @@ function BatchTooltip({ active, payload, label, xKey, yKey }) {
   const x = point.x ?? label;
   const y = point.y ?? payload[0]?.value;
   return (
-    <div className="rounded-none border border-line-strong bg-surface px-3 py-2.5 shadow-popover">
+    <div className="rounded-lg border border-line bg-surface px-3 py-2.5 shadow-popover">
       <div className="mb-2 font-mono text-3xs font-semibold text-faint">
         {Number.isFinite(point.row) ? t('batch.tooltipRow', { row: formatInteger(point.row, locale) }) : t('batch.relation')}
       </div>
@@ -575,13 +575,13 @@ export default function BatchCalculator() {
     <div className="animate-fade-in">
       <header className="workspace-header">
         <div className="eyebrow">{t('batch.workspace')}</div>
-        <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">{t('batch.title')}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">{t('batch.description')}</p>
+        <h1 className="mt-2 font-display text-[28px] font-normal leading-[1.15] text-ink md:text-display-sm">{t('batch.title')}</h1>
+        <p className="mt-2 max-w-2xl text-body-sm leading-relaxed text-muted">{t('batch.description')}</p>
         {/* The audit found the batch silently computing with a different kernel than
             the header badge implied. State it, and state why. */}
         <details className="group mt-3 text-xs text-muted">
-          <summary className="touch-hit flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
-            <span className="rounded-none border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold text-muted">{t('batch.kernel')}</span>
+          <summary className="touch-hit flex cursor-pointer list-none flex-wrap items-center gap-2 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-[var(--action)] focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+            <span className="rounded-chip border border-line bg-surface-2 px-2 py-1 font-mono text-3xs font-semibold text-muted">{t('batch.kernel')}</span>
             <span className="font-semibold text-action">{t('batch.kernelDetails')}</span>
             <svg viewBox="0 0 16 16" className="h-3.5 w-3.5 fill-none stroke-current text-faint transition-transform group-open:rotate-180" aria-hidden="true">
               <path d="m4 6 4 4 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -591,7 +591,7 @@ export default function BatchCalculator() {
         </details>
       </header>
 
-      <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-none border border-line bg-surface">
+      <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-card border border-line bg-surface shadow-card">
         {['upload', 'validate', 'results'].map((step, index) => (
           <div
             key={step}
@@ -631,7 +631,7 @@ export default function BatchCalculator() {
                 <div className="eyebrow">{t('batch.requiredSchema')}</div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {requiredColumns.map((column) => (
-                    <code key={column} className="rounded-none border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
+                    <code key={column} className="rounded-sm border border-line bg-surface-2 px-1.5 py-1 font-mono text-3xs text-muted">{column}</code>
                   ))}
                 </div>
                 <button type="button" onClick={downloadTemplate} className="button-secondary mt-4 w-full">{t('batch.downloadTemplate')}</button>
@@ -657,14 +657,14 @@ export default function BatchCalculator() {
           <div className="p-4 sm:p-5">
             <label
               onDragOver={(event)=>event.preventDefault()} onDrop={(event)=>{event.preventDefault(); readFile(event.dataTransfer.files[0]);}}
-              className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-none border border-dashed border-line-strong bg-surface-2 px-4 text-center transition-colors hover:border-action-border hover:bg-action-soft focus-within:border-action-border focus-within:ring-2 focus-within:ring-[var(--action)] focus-within:ring-offset-2 sm:min-h-[205px] sm:px-6"
+              className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-card border border-dashed border-line-strong bg-surface-2 px-4 text-center transition-colors hover:border-action-border hover:bg-action-soft focus-within:border-action-border focus-within:ring-2 focus-within:ring-[var(--action)] focus-within:ring-offset-2 sm:min-h-[205px] sm:px-6"
             >
               <svg viewBox="0 0 24 24" className="h-7 w-7 fill-none stroke-current text-action" aria-hidden="true">
                 <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v5h14v-5" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="mt-3 text-sm font-semibold text-ink">{t('batch.dropFile')}</span>
               <span className="mt-1 text-xs text-muted">{t('batch.dropHint')}</span>
-              <span className="mt-3 rounded-none border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs text-muted">
+              <span className="mt-3 rounded-chip border border-line-strong bg-surface px-3 py-1.5 font-mono text-3xs text-muted">
                 {isProcessing ? (progress ? t('batch.progress', { done: count(progress.done), total: count(progress.total) }) : t('batch.processing')) : t('batch.chooseFile')}
               </span>
               <input
@@ -836,13 +836,13 @@ export default function BatchCalculator() {
                             autoComplete="off"
                             onBlur={(event) => commitCell(index, header, event.target.value)}
                             onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-                            className="w-full min-w-16 rounded-none bg-transparent font-mono text-1xs text-ink outline-none focus:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-action"
+                            className="w-full min-w-16 rounded-sm bg-transparent font-mono text-1xs text-ink outline-none focus:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-action"
                           />
                         ) : (isNumericCell(row[header]) ? formatBatchValue(row[header], inputFormatter) : row[header])}
                       </td>
                     ))}
                     {model.resultKeys.map((key) => (
-                      <td key={key} className="bg-action-soft/30 px-3 py-2 text-right font-mono text-1xs font-medium text-ink">{row[key] == null ? '—' : formatNumber(row[key], locale, String(row[key]).split('.')[1]?.length ?? 0)}</td>
+                      <td key={key} className="bg-[var(--action-wash)] px-3 py-2 text-right font-mono text-1xs font-medium text-ink">{row[key] == null ? '—' : formatNumber(row[key], locale, String(row[key]).split('.')[1]?.length ?? 0)}</td>
                     ))}
                   </tr>
                 ))}
@@ -858,14 +858,14 @@ export default function BatchCalculator() {
               <div className="mt-1 text-xs text-muted">{t('batch.visualizerHint')}</div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex gap-1 rounded-none border border-line bg-surface-2 p-0.5">
+              <div className="flex gap-1 rounded-input border border-line bg-surface-2 p-0.5">
                 {['scatter', 'line'].map((type) => (
                   <button
                     key={type}
                     type="button"
                     onClick={() => updateBatch({ chartType: type })}
                     aria-pressed={chartType === type}
-                    className={`touch-hit rounded-none px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
+                    className={`touch-hit rounded-[7px] px-3 py-1.5 font-mono text-3xs ${chartType === type ? 'bg-surface text-ink' : 'text-faint'}`}
                   >
                     {t(`batch.${type}`)}
                   </button>

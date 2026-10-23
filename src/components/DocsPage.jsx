@@ -6,7 +6,7 @@ import { DOCUMENTS, documentUrl } from '../docs/documents';
 import { loadDocument } from '../docs/loadDocument';
 import MarkdownDocument from '../docs/MarkdownDocument';
 
-const READING_LINE = 112; // fixed header plus the headings' scroll margin
+const READING_LINE = 80; // topbar height plus the headings' scroll margin
 
 export default function DocsPage() {
   const selected = useAppSelector((state) => state.model);
@@ -73,12 +73,12 @@ export default function DocsPage() {
     <div className="animate-fade-in">
       <header className="workspace-header">
         <div className="eyebrow">{t('docs.workspace')}</div>
-        <h1 className="mt-1.5 text-2xl font-light text-ink md:text-display-sm">{t('docs.title')}</h1>
-        <p className="mt-1 max-w-2xl text-sm text-muted">{t('docs.description')}</p>
+        <h1 className="mt-2 font-display text-[28px] font-normal leading-[1.15] text-ink md:text-display-sm">{t('docs.title')}</h1>
+        <p className="mt-2 max-w-2xl text-body-sm leading-relaxed text-muted">{t('docs.description')}</p>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[210px_minmax(0,1fr)] 2xl:grid-cols-[210px_minmax(0,1fr)_180px]">
-        <aside className="workbench-panel overflow-hidden lg:sticky lg:top-[88px] lg:row-span-2 2xl:row-span-1">
+      <div className="grid items-start gap-6 lg:grid-cols-[210px_minmax(0,1fr)] 2xl:grid-cols-[210px_minmax(0,1fr)_230px]">
+        <aside className="workbench-panel overflow-hidden lg:sticky lg:top-[var(--sticky-offset)] lg:row-span-2 2xl:row-span-1">
           <div className="border-b border-line px-4 py-3"><div className="eyebrow">{t('docs.models')}</div></div>
           <nav className="flex gap-1 overflow-x-auto p-2 lg:block lg:space-y-1" aria-label={t('docs.modelNavigation')}>
             {DOCUMENTS.map((item, index) => (
@@ -87,9 +87,9 @@ export default function DocsPage() {
                 type="button"
                 onClick={() => setModel(item.id)}
                 aria-pressed={item.id === model.id}
-                className={`relative min-w-[180px] rounded-none px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id === model.id ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
+                className={`relative min-w-[180px] rounded-lg px-3 py-3 text-left lg:w-full lg:min-w-0 ${item.id === model.id ? 'bg-action-soft text-ink' : 'text-muted hover:bg-surface-2 hover:text-ink'}`}
               >
-                {item.id === model.id && <span className="absolute bottom-2 left-0 top-2 w-[3px] bg-action" />}
+                {item.id === model.id && <span className="absolute bottom-2 left-0 top-2 w-[3px] rounded-full bg-action" />}
                 <span className="flex gap-2">
                   <span className="font-mono text-3xs text-faint">{String(index + 1).padStart(2, '0')}</span>
                   <span className="text-2xs font-semibold">{item.name}</span>
@@ -100,7 +100,7 @@ export default function DocsPage() {
           </nav>
         </aside>
 
-        <aside className="workbench-panel min-w-0 p-4 lg:col-start-2 2xl:col-start-3 2xl:row-start-1 2xl:sticky 2xl:top-[88px]">
+        <aside className="workbench-panel min-w-0 p-4 lg:col-start-2 2xl:col-start-3 2xl:row-start-1 2xl:sticky 2xl:top-[var(--sticky-offset)]">
           <div className="eyebrow">{t('docs.contents')}</div>
           <nav className="mt-3 flex flex-wrap gap-x-4 gap-y-2 2xl:block 2xl:max-h-[75vh] 2xl:overflow-y-auto 2xl:border-l 2xl:border-line" aria-label={t('docs.sectionNavigation')} aria-busy={!content && !failed}>
             {content?.parsed.headings.map((heading) => (

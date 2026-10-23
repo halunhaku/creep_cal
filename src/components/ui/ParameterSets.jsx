@@ -88,7 +88,7 @@ export default function ParameterSets({ modelId, params }) {
           aria-label={t('parameterSets.nameLabel')}
           name="parameter-set-name"
           autoComplete="off"
-          className="touch-target h-8 min-w-0 flex-1 rounded-none border border-line bg-surface px-2 font-mono text-1xs text-ink outline-none placeholder:text-faint focus:border-action focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
+          className="touch-target h-8 min-w-0 flex-1 rounded-input border border-line bg-surface px-2 font-mono text-1xs text-ink outline-none placeholder:text-faint focus:border-action focus-visible:ring-2 focus-visible:ring-action focus-visible:ring-offset-1 focus-visible:ring-offset-surface"
         />
         <button onClick={save} className="button-secondary touch-hit !min-h-8 !px-2.5 !text-3xs">{t('parameterSets.save')}</button>
       </div>

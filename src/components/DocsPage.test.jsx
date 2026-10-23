@@ -81,7 +81,7 @@ describe('the reference page renders the shipped Markdown', () => {
     act(() => setLocale('zh'));
     await waitFor(() => expect(heading('formulas')).toHaveTextContent('核心数学公式'));
     expect(HTMLElement.prototype.scrollIntoView.mock.contexts.at(-1).id).toBe('formulas');
-    expect(window.scrollBy).toHaveBeenCalledWith({ top: 152, behavior: 'instant' });
+    expect(window.scrollBy).toHaveBeenCalledWith({ top: 120, behavior: 'instant' });
     expect(window.location.hash).toBe('');
   });
 

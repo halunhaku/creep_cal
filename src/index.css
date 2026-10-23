@@ -2,83 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * The palette is warm and paper-like: an off-white canvas, a beige sidebar, soft
+ * hairline rules and a single terracotta accent. It replaces the earlier Carbon
+ * scheme (white, charcoal, IBM blue, square corners) wholesale; every consumer
+ * reads these variables through the semantic utilities in tailwind.config.js, so
+ * the two themes stay one edit away from each other.
+ */
 :root {
   color-scheme: light;
-  --bg: #ffffff;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, "Songti SC", "Source Han Serif SC", "Noto Serif SC", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --bg: #faf9f5;
   --surface: #ffffff;
-  --surface-2: #f4f4f4;
-  --surface-3: #e0e0e0;
-  --line: #e0e0e0;
-  --line-strong: #161616;
-  --text: #161616;
-  --text-muted: #525252;
-  --text-faint: #525252;
-  --text-subtle: #8c8c8c;
-  --action: #0f62fe;
-  --action-hover: #0050e6;
-  --action-active: #002d9c;
-  --action-soft: #edf5ff;
-  --action-border: #0f62fe;
-  --reference: #161616;
-  --reference-text: #161616;
-  --reference-soft: #f4f4f4;
-  --series-1: #0f62fe;
-  --series-2: #525252;
-  --series-3: #8c8c8c;
-  --success: #0e6027;
-  --success-soft: #defbe6;
-  --warning: #684e00;
-  --warning-soft: #fff1c2;
-  --error: #da1e28;
-  --error-soft: #fff1f1;
-  --header-bg: #ffffff;
-  --header-h: 48px;
+  --surface-2: #f1efe7;
+  --surface-3: #e5e1d6;
+  --line: #e6e1d5;
+  --line-strong: #cfc8ba;
+  --text: #1f1e1c;
+  --text-muted: #5c5952;
+  --text-faint: #6d6961;
+  --text-subtle: #8a857c;
+  --action: #b5542f;
+  --action-hover: #9c4526;
+  --action-active: #83391f;
+  --action-soft: #f6e9e1;
+  --action-wash: #fbf3ee;
+  --action-border: #b5542f;
+  --reference: #8a857c;
+  --reference-text: #3d3a34;
+  --reference-soft: #f1efe7;
+  --series-1: #b5542f;
+  --series-2: #3f6b5f;
+  --series-3: #8a6a3f;
+  --success: #3f6b4f;
+  --success-soft: #e7efe4;
+  --warning: #7a5a12;
+  --warning-soft: #f6ecd6;
+  --error: #a3352c;
+  --error-soft: #f7e3e0;
+  --sidebar-bg: #f0eee6;
+  --sidebar-line: #e2ddd0;
+  --sidebar-hover: #e8e4d8;
+  --sidebar-active: #ffffff;
+  --header-bg: #faf9f5;
+  --header-h: 56px;
   --sticky-offset: calc(var(--header-h) + 24px);
-  --content-width: 1584px;
-  --chart-grid: #e0e0e0;
-  --shadow-popover: 0 12px 24px rgba(0, 0, 0, 0.18);
+  --content-width: 1560px;
+  --sidebar-w: 264px;
+  --sidebar-w-collapsed: 76px;
+  --chart-grid: #e6e1d5;
+  --focus-ring: rgba(181, 84, 47, 0.18);
+  --shadow-card: 0 1px 2px rgba(31, 30, 28, 0.04);
+  --shadow-popover: 0 12px 32px rgba(31, 30, 28, 0.14), 0 2px 8px rgba(31, 30, 28, 0.08);
   --on-action: #ffffff;
-  --secondary-bg: #161616;
-  --secondary-hover: #393939;
-  --on-secondary: #ffffff;
+  --secondary-bg: #ffffff;
+  --secondary-hover: #f1efe7;
+  --on-secondary: #1f1e1c;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --bg: #161616;
-  --surface: #262626;
-  --surface-2: #393939;
-  --surface-3: #525252;
-  --line: #525252;
-  --line-strong: #c6c6c6;
-  --text: #f4f4f4;
-  --text-muted: #c6c6c6;
-  --text-faint: #c6c6c6;
-  --text-subtle: #8d8d8d;
-  --action: #78a9ff;
-  --action-hover: #a6c8ff;
-  --action-active: #4589ff;
-  --action-soft: #002d9c;
-  --action-border: #78a9ff;
-  --reference: #f4f4f4;
-  --reference-text: #f4f4f4;
-  --reference-soft: #393939;
-  --series-1: #78a9ff;
-  --series-2: #c6c6c6;
-  --series-3: #8d8d8d;
-  --success: #6fdc8c;
-  --success-soft: #044317;
-  --warning: #fddc69;
-  --warning-soft: #4d3800;
-  --error: #ff8389;
-  --error-soft: #520408;
-  --header-bg: #161616;
-  --chart-grid: #525252;
-  --shadow-popover: 0 12px 24px rgba(0, 0, 0, 0.5);
-  --on-action: #161616;
-  --secondary-bg: #f4f4f4;
-  --secondary-hover: #e0e0e0;
-  --on-secondary: #161616;
+  --bg: #262624;
+  --surface: #30302e;
+  --surface-2: #3a3936;
+  --surface-3: #474640;
+  --line: #3f3e3a;
+  --line-strong: #5c5a54;
+  --text: #f5f4ef;
+  --text-muted: #c2bfb6;
+  --text-faint: #b5b2a8;
+  --text-subtle: #8a877e;
+  --action: #e08b6e;
+  --action-hover: #e89b80;
+  --action-active: #cf6f50;
+  --action-soft: #4a3229;
+  --action-wash: #33251f;
+  --action-border: #e08b6e;
+  --reference: #8a877e;
+  --reference-text: #e8e5dc;
+  --reference-soft: #3a3936;
+  --series-1: #e08b6e;
+  --series-2: #8fb5a5;
+  --series-3: #d0b36a;
+  --success: #96c9a3;
+  --success-soft: #243a2a;
+  --warning: #e3c07d;
+  --warning-soft: #41341c;
+  --error: #f0938a;
+  --error-soft: #46211d;
+  --sidebar-bg: #1f1e1c;
+  --sidebar-line: #343330;
+  --sidebar-hover: #2b2a27;
+  --sidebar-active: #3a3936;
+  --header-bg: #262624;
+  --chart-grid: #3f3e3a;
+  --focus-ring: rgba(224, 139, 110, 0.26);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-popover: 0 16px 40px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.32);
+  --on-action: #1f1e1c;
+  --secondary-bg: #383734;
+  --secondary-hover: #474640;
+  --on-secondary: #f5f4ef;
 }
 
 @layer base {
@@ -90,134 +117,177 @@
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-family: var(--font-sans);
     font-size: 16px;
-    line-height: 1.5;
-    letter-spacing: .16px;
+    line-height: 1.6;
+    letter-spacing: 0;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
   header { padding-top: env(safe-area-inset-top); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
   main { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
   footer { padding-bottom: env(safe-area-inset-bottom); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
-  h1, h2 { text-wrap: balance; }
-  h1 { font-weight: 300; letter-spacing: 0; }
-  h2, h3 { font-weight: 400; letter-spacing: 0; }
+  h1, h2 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    text-wrap: balance;
+  }
+  h3, h4 { font-weight: 600; letter-spacing: -0.005em; }
+  p { text-wrap: pretty; }
   button, input, select, textarea { font: inherit; }
   button, a, select, summary { touch-action: manipulation; }
   option { background-color: var(--surface); color: var(--text); }
-  button { -webkit-tap-highlight-color: rgba(15, 98, 254, .18); }
+  button { -webkit-tap-highlight-color: var(--focus-ring); }
   [id] { scroll-margin-top: var(--sticky-offset); }
   button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible {
     outline: 2px solid var(--action);
     outline-offset: 2px;
   }
-  ::selection { background: var(--action); color: var(--on-action); }
+  ::selection { background: var(--action-soft); color: var(--text); }
   [class*="overflow-y-auto"], [class*="overflow-x-auto"] { overscroll-behavior: contain; }
   ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: var(--surface-2); }
-  ::-webkit-scrollbar-thumb { background: var(--text-subtle); border: 2px solid var(--surface-2); border-radius: 0; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line-strong); border: 2px solid transparent; background-clip: padding-box; border-radius: 9999px; }
 }
 
 @layer components {
   .workbench-panel,
   .card {
     border: 1px solid var(--line);
-    border-radius: 0;
+    border-radius: 12px;
     background: var(--surface);
-    box-shadow: none;
+    box-shadow: var(--shadow-card);
   }
   .surface-inset { background: var(--surface-2); }
-  /* The one horizontal rhythm the shell shares. Header, main and footer used to be
-   * three hand-copied utility strings, so re-aligning them meant editing three sites
-   * and missing one silently re-created the misalignment. One class, one edit.
-   *
-   * rem, not px: the shell's spacing follows the user's root font size, the way the
-   * utilities it replaced did. */
+  /* One horizontal rhythm for the shell: on narrow screens it pads the viewport,
+   * from 1280px it centres the content column beside the sidebar. */
   .shell-gutter {
     margin-inline: auto;
     width: 100%;
     max-width: var(--content-width);
     padding-inline: 1rem;
   }
-  @media (min-width: 1024px) {
-    .shell-gutter { padding-inline: 2rem; }
+  @media (min-width: 640px) {
+    .shell-gutter { padding-inline: 1.5rem; }
+  }
+  @media (min-width: 1280px) {
+    .shell-gutter { padding-inline: 2.5rem; }
   }
   .workspace-header {
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 1.25rem;
+    margin-bottom: 1.75rem;
   }
   .eyebrow {
-    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 1.29;
-    letter-spacing: .16px;
-    text-transform: none;
-    color: var(--text-muted);
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-faint);
   }
   .mono-data {
-    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums lining-nums;
   }
   .button-primary, .btn-primary {
     display: inline-flex;
-    min-height: 48px;
+    min-height: 40px;
     align-items: center;
     justify-content: center;
     gap: 8px;
     border: 1px solid var(--action);
-    border-radius: 0;
+    border-radius: 9px;
     background: var(--action);
     color: var(--on-action);
-    padding: 12px 16px;
-    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    padding: 9px 16px;
+    font-family: var(--font-sans);
     font-size: 14px;
-    font-weight: 400;
-    line-height: 1.29;
-    letter-spacing: .16px;
-    text-transform: none;
-    transition: background-color 110ms ease;
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: 0;
+    box-shadow: 0 1px 1px rgba(31, 30, 28, 0.06);
+    transition: background-color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
   }
-  .button-primary:hover, .btn-primary:hover { background: var(--action-hover); }
-  .button-primary:active, .btn-primary:active { background: var(--action-active); }
-  .button-primary:disabled, .btn-primary:disabled { cursor: not-allowed; opacity: .5; }
+  .button-primary:hover, .btn-primary:hover { background: var(--action-hover); border-color: var(--action-hover); }
+  .button-primary:active, .btn-primary:active { background: var(--action-active); border-color: var(--action-active); }
+  .button-primary:disabled, .btn-primary:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; }
   .button-secondary, .btn-secondary {
     display: inline-flex;
-    min-height: 48px;
+    min-height: 40px;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    border: 1px solid var(--secondary-bg);
-    border-radius: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
     background: var(--secondary-bg);
     color: var(--on-secondary);
-    padding: 12px 16px;
-    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+    padding: 9px 14px;
+    font-family: var(--font-sans);
     font-size: 14px;
-    font-weight: 400;
-    line-height: 1.29;
-    letter-spacing: .16px;
-    text-transform: none;
-    transition: background-color 110ms ease, border-color 110ms ease;
+    font-weight: 500;
+    line-height: 1.3;
+    letter-spacing: 0;
+    transition: background-color 140ms ease, border-color 140ms ease;
   }
-  .button-secondary:hover, .btn-secondary:hover { border-color: var(--secondary-hover); background: var(--secondary-hover); }
+  .button-secondary:hover, .btn-secondary:hover { border-color: var(--action-border); background: var(--secondary-hover); }
   .button-secondary:disabled, .btn-secondary:disabled { cursor: not-allowed; opacity: .5; }
   .field-control {
-    min-height: 48px;
-    border: 0;
-    border-bottom: 1px solid var(--line-strong);
-    border-radius: 0;
-    background: var(--surface-2);
-    transition: border-color 110ms ease;
+    min-height: 40px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: var(--surface);
+    overflow: hidden;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
   }
-  .field-control:focus-within { border-bottom: 2px solid var(--action); box-shadow: none; }
+  .field-control:hover { border-color: var(--text-subtle); }
+  .field-control:focus-within { border-color: var(--action); box-shadow: 0 0 0 3px var(--focus-ring); }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); }
   .chart-stage { background: var(--surface); }
+
+  /* Shell chrome ---------------------------------------------------------- */
+  .sidebar-surface { background: var(--sidebar-bg); }
+  .sidebar-rule { border-color: var(--sidebar-line); }
+  .nav-item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 10px;
+    border-radius: 9px;
+    padding: 9px 10px;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    text-align: left;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+  .nav-item:hover { background: var(--sidebar-hover); color: var(--text); }
+  .nav-item[aria-current="page"] {
+    background: var(--sidebar-active);
+    color: var(--text);
+    box-shadow: var(--shadow-card);
+  }
+  .icon-button {
+    display: inline-flex;
+    min-height: 36px;
+    min-width: 36px;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 9px;
+    color: var(--text-muted);
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+  .icon-button:hover { background: var(--sidebar-hover); color: var(--text); }
+  .topbar {
+    background: var(--header-bg);
+    background: color-mix(in srgb, var(--header-bg) 88%, transparent);
+    backdrop-filter: saturate(1.1) blur(8px);
+  }
 }
 
 @layer utilities {
+  .font-display { font-family: var(--font-display); }
   .text-ink { color: var(--text); }
   .text-muted { color: var(--text-muted); }
   .text-faint { color: var(--text-faint); }
@@ -227,27 +297,31 @@
   .bg-surface { background: var(--surface); }
   .bg-surface-2, .bg-surface-soft { background: var(--surface-2); }
   .bg-surface-3 { background: var(--surface-3); }
+  .bg-sidebar { background: var(--sidebar-bg); }
   .bg-action { background: var(--action); }
   .bg-action-soft { background: var(--action-soft); }
   .border-line { border-color: var(--line); }
   .border-line-strong { border-color: var(--line-strong); }
   .border-action-border { border-color: var(--action-border); }
-  .font-mono, .font-body, .font-sans {
-    font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+  .font-body, .font-sans {
+    font-family: var(--font-sans);
   }
-  .font-mono { font-variant-numeric: tabular-nums lining-nums; }
+  .font-mono {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums lining-nums;
+  }
   .font-bold { font-weight: 600; }
-  .uppercase { text-transform: none; }
-  .animate-fade-in { animation: fade-in 160ms ease-out both; }
+  .uppercase { text-transform: uppercase; }
+  .animate-fade-in { animation: fade-in 180ms ease-out both; }
 }
 
 .recharts-cartesian-axis-tick-value,
 .recharts-legend-item-text {
   fill: var(--text-muted) !important;
-  font-family: "IBM Plex Sans", "PingFang SC", sans-serif;
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums lining-nums;
 }
-.recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line-strong) !important; border-radius: 0 !important; }
+.recharts-default-tooltip { background: var(--surface) !important; border-color: var(--line) !important; border-radius: 10px !important; }
 
 /* The forms plugin adds its own focus ring to text inputs. The command palette
  * owns focus at the enclosing search row, so the child must not draw a second,
@@ -295,6 +369,7 @@
     transform: translate(-50%, -50%);
   }
   .recharts-brush-traveller > rect { width: 18px; height: 32px; }
+  .nav-item, .icon-button { min-height: 48px; }
 }
 
 @media (pointer: fine) {

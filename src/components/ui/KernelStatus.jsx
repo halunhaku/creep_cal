@@ -56,7 +56,7 @@ export default function KernelStatus({ workspace }) {
     // The English and Chinese labels are both short (≤ "Reference kernels" / "JavaScript 参考内核"),
     // so the slack-taking still has room at the widths the header gates allow.
     <div
-      className="kernel-status hidden min-w-0 shrink items-center gap-2 rounded-none border border-line bg-surface px-2.5 py-1.5 min-[480px]:flex"
+      className="kernel-status hidden min-w-0 shrink items-center gap-2 rounded-chip border border-line bg-surface px-2.5 py-1.5 min-[480px]:flex"
       title={badge.title}
       role="status"
       aria-live="polite"

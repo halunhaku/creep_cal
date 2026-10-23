@@ -230,17 +230,18 @@ build.bat
 
 ## Design Language
 
-CREEP_LAB uses the IBM/Carbon design language defined in [`docs/design-system.md`](docs/design-system.md). The workbench is flat, square, dense, and structured by surface changes and 1px rules instead of rounded cards or decorative shadows.
+CREEP_LAB uses the warm editorial language defined in [`docs/design-system.md`](docs/design-system.md), modelled on the Claude web interface: a paper-coloured canvas, a persistent beige navigation rail, soft 12px cards, serif display headings against a system-sans body, monospace engineering values and a single terracotta accent.
 
-| Token | Light (default) | Carbon dark |
+| Token | Light (default) | Dark |
 | --- | --- | --- |
-| Background | White `#ffffff` | Gray 100 `#161616` |
-| Emphasis | IBM Blue `#0f62fe` | Carbon Blue 40 `#78a9ff` |
-| Surfaces | White / Gray 10 / Gray 20, square corners | Gray 90 / Gray 80 / Gray 70 |
-| Type | IBM Plex Sans 300/400/600, locally bundled; KaTeX equations | Same |
-| Interaction | 48px targets, blue focus treatment, explicit calculation and keyboard shortcuts | Same |
+| Background | Warm paper `#faf9f5` | Charcoal `#262624` |
+| Navigation rail | Beige `#f0eee6` | Ink `#1f1e1c` |
+| Emphasis | Terracotta `#b5542f` | Terracotta 40 `#e08b6e` |
+| Surfaces | White cards, 12px corners, 1px hairlines | Gray 90 / Gray 80, same geometry |
+| Type | Serif display (Iowan / Songti) + system sans + system mono; KaTeX equations | Same |
+| Interaction | Collapsible sidebar, 48px touch targets, accent focus ring, explicit calculation and keyboard shortcuts | Same |
 
-The header toggle stores the theme in `localStorage`. The dark variant uses Carbon's Gray 100 companion palette; both variants are covered by the WCAG AA token contrast tests.
+The sidebar toggle stores both the theme (`theme-mode`) and the rail width (`creep-lab:sidebar`) in `localStorage`. Both themes are covered by the WCAG AA token contrast tests.
 
 ---
 
