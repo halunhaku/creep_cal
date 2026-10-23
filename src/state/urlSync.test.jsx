@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import App from '../App';
-import { getState } from './appStore';
+import { getState, setKernelFailure } from './appStore';
 import { buildSearch, readUrl } from './urlSync';
 
 const CALC_HEADING = /time-dependent concrete analysis/i;
@@ -121,6 +121,10 @@ describe('navigation state lives in the URL', () => {
   });
 
   test('a deep link that spells out a default still applies the rest, and is left alone', async () => {
+    // A stale address from an earlier mount must not be adopted by this one: the
+    // regression was a store write (the kernel fallback) rewriting the bar from the
+    // new mount's assumptions before the URL this mount opened had been read.
+    goTo('/?mode=batch');
     goTo('/?mode=single&model=b4&kernel=js');
     render(<App />);
     await screen.findByRole('heading', { name: CALC_HEADING });
@@ -128,6 +132,17 @@ describe('navigation state lives in the URL', () => {
     expect(getState().engine).toBe('js');
     // Nothing changed in the store, so the address bar keeps exactly what was opened.
     expect(window.location.search).toBe('?mode=single&model=b4&kernel=js');
+  });
+
+  test('a store write that says nothing about the URL leaves the address alone', async () => {
+    // The kernel's load failure lives in the store but not in the URL; writing the
+    // query string back on that change dropped an explicit default.
+    goTo('/?mode=single&model=b4&kernel=js');
+    render(<App />);
+    await screen.findByRole('heading', { name: CALC_HEADING });
+    const before = window.location.search;
+    act(() => { setKernelFailure('kernel unavailable (test)'); });
+    expect(window.location.search).toBe(before);
   });
 
   test('a refresh keeps the workspace and the edited parameters', async () => {

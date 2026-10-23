@@ -56,3 +56,36 @@ describe('kernel load failure', () => {
     await screen.findByRole('alert');
   });
 });
+
+describe('a workspace with no fallback can still retry the kernel', () => {
+  /*
+   * Regression: once a load failed, the trigger read "Kernel unavailable" and
+   * pressing it only logged "Rust WebAssembly kernel is not ready." — it never called
+   * `loadCreepEngine` again. The caller of the calculator is the workspace itself
+   * (no `onEngineFallback` prop), so the fallback that was supposed to hand control
+   * back never ran, and the notice's advice to click "Rust WASM to retry" meant
+   * leaving the workspace.
+   */
+  test('the trigger re-attempts the load instead of doing nothing', async () => {
+    const attempts = [];
+    // No `onEngineFallback` prop: this is the workspace's own configuration.
+    vi.resetModules();
+    vi.doMock('../wasm/creepEngine', async (importOriginal) => {
+      const actual = await importOriginal();
+      return { ...actual, loadCreepEngine: () => { attempts.push(1); return Promise.reject(new Error('kernel down')); } };
+    });
+
+    const { default: Calculator } = await import('./Aci209Calculator');
+    render(<Calculator engine="rust" />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/kernel down/);
+    // The retry is offered in the notice itself when nothing can fall back for us.
+    expect(alert).toHaveTextContent(/Press Calculate/i);
+
+    const before = attempts.length;
+    fireEvent.click(document.querySelector('[data-action="calculate"]'));
+    await waitFor(() => expect(attempts.length).toBeGreaterThan(before));
+    vi.doUnmock('../wasm/creepEngine');
+  });
+});

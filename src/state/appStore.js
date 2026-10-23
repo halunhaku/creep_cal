@@ -137,6 +137,24 @@ const initialState = {
   /** the interface language; see i18n/locales.js for why the id is not the html lang */
   locale: loadLocale(),
   engine: 'rust',
+  /**
+   * How many times the reader has asked for a kernel load to be retried.
+   *
+   * Here rather than in `ModelCalculator` because the component unmounts on every
+   * model switch (the six views are separate lazy chunks): a retry counter that
+   * lived in the component would reset to zero on remount, and the load would then
+   * be considered already attempted — which is exactly the state that left the
+   * workspace with "Kernel unavailable" and no way back.
+   */
+  kernelAttempt: 0,
+  /**
+   * Why the Rust kernel last failed to load, or null.
+   *
+   * The workspace unmounts on every model switch, so a failure recorded inside the
+   * calculator died with it: the reader then faced a "Kernel unavailable" button
+   * with no explanation and no retry. The reason lives above the workspace.
+   */
+  kernelFailure: null,
   /** the model the app is working with: drives the calculation and the docs */
   model: 'aci209',
   /** modelId -> the parameters the user has actually edited */
@@ -176,11 +194,13 @@ export function subscribe(listener) {
 }
 
 function set(patch) {
+  const previous = state;
   state = { ...state, ...patch };
-  // Listeners receive the new state: subscribers that need to compare (the URL
-  // sync) would otherwise have to call getState() again, and a listener written
-  // as (state) => ... silently gets undefined if this forwards nothing.
-  listeners.forEach((listener) => listener(state));
+  // Listeners receive the new state *and* the one it replaced: subscribers that need
+  // to compare (the URL sync) would otherwise have to call getState() again — and by
+  // then they are looking at the new state twice — while a listener written as
+  // (state) => ... silently gets undefined if this forwards nothing.
+  listeners.forEach((listener) => listener(state, previous));
 }
 
 export function setMode(mode) {
@@ -188,7 +208,22 @@ export function setMode(mode) {
 }
 
 export function setEngine(engine) {
-  if (state.engine !== engine) set({ engine });
+  // Switching kernels starts a new load, so the retry count starts over with it.
+  // The recorded failure is *kept*: the usual switch is the automatic fallback that
+  // follows a failure, and the notice explaining that failure is exactly what the
+  // reader needs to see after it. It is cleared by a successful load, by an explicit
+  // retry, or when the failure is dismissed.
+  if (state.engine !== engine) set({ engine, kernelAttempt: 0 });
+}
+
+/** Ask for the selected kernel to be loaded again, after a failed attempt. */
+export function retryKernel() {
+  set({ kernelAttempt: state.kernelAttempt + 1, kernelFailure: null });
+}
+
+/** Record why the kernel could not be loaded (`detail`), or clear it (null). */
+export function setKernelFailure(detail) {
+  if (state.kernelFailure !== detail) set({ kernelFailure: detail });
 }
 
 /**

@@ -3,7 +3,7 @@ import { appendFeedLog, errorMessage, loadCreepEngine, setKernelStatus } from '.
 import { MAX_SERIES_DAYS } from '../math/creepModels';
 import { useLocale, usePick, useT } from '../i18n';
 import { formatInteger } from '../i18n/format';
-import { saveModelParams, useAppSelector } from '../state/appStore';
+import { retryKernel, saveModelParams, setKernelFailure, useAppSelector } from '../state/appStore';
 import CalculatorWrapper from './ui/CalculatorWrapper';
 
 function initialFeed(engine, t) {
@@ -88,6 +88,9 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   }, []);
 
   const dismissNotice = useCallback((id) => {
+    // The kernel notice is derived from the store, so dismissing it clears the
+    // stored reason as well — otherwise the dismiss button would have no effect.
+    if (id === KERNEL_NOTICE) setKernelFailure(null);
     setNotices((previous) => previous.filter((notice) => notice.id !== id));
   }, []);
 
@@ -95,8 +98,35 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     setNotices((previous) => [...previous.filter((item) => item.id !== notice.id), notice]);
   }, []);
 
+  /*
+   * Kernel loading is a function of (engine, retry counter) rather than of the
+   * effect alone.
+   *
+   * An earlier revision turned the trigger button into "Kernel unavailable" once a
+   * load failed and expected the caller's fallback to switch engines — but the
+   * caller is the workspace itself (SingleCalculationDashboard passes no
+   * `onEngineFallback`), so the button read "Kernel unavailable", and pressing it
+   * logged "Rust WebAssembly kernel is not ready." without ever calling
+   * `loadCreepEngine` again. The notice's advice to "click Rust WASM to retry"
+   * therefore meant leaving and re-entering the kernel; `retryKernel` re-runs this
+   * effect, which is also what the palette and the engine toggle do when the
+   * selected engine is already selected.
+   */
+  // Kept in the store: this component unmounts on every model switch, and a
+  // component-local counter would restart at zero and re-issue a load the reader
+  // had already asked for (or, worse, consider the failed one still current).
+  const kernelAttempt = useAppSelector((state) => state.kernelAttempt);
+  // Read inside the kernel-load handlers, which outlive the effect that started them.
+  const engineRef = useRef(engine);
+  const kernelAttemptRef = useRef(kernelAttempt);
+  // Declared *before* the loading effect so it runs first in commit order: the
+  // handlers that outlive it then read this commit's values, not the previous one's.
   useEffect(() => {
-    let cancelled = false;
+    engineRef.current = engine;
+    kernelAttemptRef.current = kernelAttempt;
+  }, [engine, kernelAttempt]);
+
+  useEffect(() => {
     // Deliberate reset when the selected kernel changes: user-entered params are
     // preserved across an engine switch, everything derived from a run is not.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on kernel change
@@ -117,39 +147,47 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
     setWasmModule(null);
     setWasmReady(false);
     setKernelStatus({ engine: 'rust', state: 'loading' });
+    /*
+     * Not cancelled by cleanup. This effect re-runs whenever the callbacks or the
+     * config change — which is every store update — and the original revision
+     * dropped the in-flight load on each one. The outcome was that a load still in
+     * progress when the store moved never reported success *or* failure: no notice,
+     * no fallback, and a module whose `enginePromise` had already been discarded, so
+     * the retry below could not even observe the failure. A load that finishes after
+     * an engine switch is ignored by checking the engine it was started for, and a
+     * genuinely new attempt supersedes it by version rather than by cancellation.
+     */
+    const attempt = kernelAttempt;
     loadCreepEngine()
       .then((module) => {
-        if (cancelled) return;
+        if (attempt !== kernelAttemptRef.current || engineRef.current !== 'rust') return;
         setWasmModule(module);
         setWasmReady(true);
+        setKernelFailure(null);
         setKernelStatus({ engine: 'rust', state: 'ready' });
         addLog(pick(config.readyMessage), 'success');
       })
       .catch((error) => {
-        if (cancelled) return;
+        if (attempt !== kernelAttemptRef.current || engineRef.current !== 'rust') return;
         const detail = errorMessage(error);
-        const canFallBack = Boolean(fallbackRef.current);
-        setKernelStatus({ engine: 'js', state: 'failed', detail });
+        /*
+         * The failure is published to the store, not to local state. The fallback
+         * below switches the engine, which re-renders this component and discards any
+         * state update queued behind it — the visible notice used to be raised that
+         * way and was therefore lost on the same frame it was created (only the log
+         * line survived). `appStore.kernelFailure` outlives both the re-render and
+         * this component's own unmount on a model switch.
+         */
+        setKernelFailure(detail);
         addLog(translateRef.current('calculator.log.wasmFailed', { detail }), 'error');
-        raiseNotice({
-          id: KERNEL_NOTICE,
-          title: translateRef.current('calculator.notice.kernelTitle'),
-          message: canFallBack
-            ? translateRef.current('calculator.notice.kernelFallback', { detail })
-            : detail,
-        });
-        // Do not leave the workspace stuck on a disabled button: hand control back
-        // to the caller so it can switch kernels, and let the JS kernel take over.
-        if (canFallBack) fallbackRef.current();
+        setKernelStatus({ engine: 'js', state: 'failed', detail });
+        // Hand control back to the caller so it can switch kernels and let the JS
+        // kernel take over. Without a caller to fall back to, the notice below (fed
+        // by the store) offers the retry and the button keeps doing something.
+        if (fallbackRef.current) fallbackRef.current();
       });
+  }, [addLog, config, engine, isRust, kernelAttempt, pick]);
 
-    return () => { cancelled = true; };
-    // `pick` is deliberately absent: it is a new function on every locale change, so
-    // depending on it would tear down and re-run the kernel init whenever the reader
-    // switches language, throwing away the results they were looking at. The
-    // translateRef indirection is what lets the log lines follow the locale instead.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- locale-bound t() is read via translateRef
-  }, [addLog, config, engine, isRust, raiseNotice]);
 
   const stringParams = useMemo(
     () => new Set(config.paramsConfig.filter((item) => item.options).map((item) => item.name)),
@@ -171,6 +209,9 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   const calculate = useCallback(() => {
     if (isRust && (!wasmReady || !wasmModule)) {
       addLog(t('calculator.log.kernelNotReady'), 'error');
+      // A second attempt from the trigger re-tries the load: "Kernel unavailable"
+      // is a state of the kernel, not a verdict on the button.
+      if (!wasmReady) retryKernel();
       return;
     }
 
@@ -237,7 +278,34 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   ));
   const inputIssue = config.validateInputs?.(params) ?? null;
   const inputsValid = fieldsValid && !inputIssue;
-  const kernelFailed = isRust && !wasmReady && notices.some((notice) => notice.id === KERNEL_NOTICE);
+  /*
+   * The kernel notice is derived, not stored. `kernelFailure` lives in the store, so
+   * the explanation survives the fallback re-render and a model switch, and the
+   * message is re-built in the current language instead of being captured at
+   * failure time. The parent's `onEngineFallback` tells the two variants apart: with a
+   * caller that can switch engines the notice says so; without one it explains the
+   * retry.
+   */
+  const kernelFailure = useAppSelector((state) => state.kernelFailure);
+  // Whether a fallback exists is a prop fact, so it can be read during render.
+  const canFallBack = Boolean(onEngineFallback);
+  const derivedNotices = useMemo(() => {
+    if (!kernelFailure || notices.some((notice) => notice.id === KERNEL_NOTICE)) return notices;
+    return [{
+      id: KERNEL_NOTICE,
+      title: t('calculator.notice.kernelTitle'),
+      message: canFallBack
+        ? t('calculator.notice.kernelFallback', { detail: kernelFailure })
+        : t('calculator.notice.kernelRetry', { detail: kernelFailure }),
+    }, ...notices];
+    // `t` is bound to the locale, which is a *state* field: depending on it made the
+    // memo churn on every unrelated store write (kernel status included), re-rendering
+    // the wrapper and re-running its Brush/reset effects for no visible change. The
+    // notice is re-built in the current language whenever the failure or the reader's
+    // own list changes; a language switch re-renders through `useT` anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see the note above
+  }, [canFallBack, kernelFailure, notices]);
+  const kernelFailed = isRust && !wasmReady && Boolean(kernelFailure);
   const ready = (!isRust || wasmReady) && inputsValid;
   useEffect(() => {
     if (!ready || initialRunRef.current) return;
@@ -248,7 +316,13 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
   // Results on screen belong to `runParams`; anything that moves the inputs since
   // — a field, a loaded parameter set, Reset, the palette — makes them stale.
   const dirty = runParams !== null && !sameRunInputs(runParams, params);
-  const summary = useMemo(() => config.getSummary(results, params), [config, params, results]);
+  // `runParams` is passed too: a model can derive a decomposition entry from the
+  // inputs (B4's q₁ needs the Tc the run used), and those must not be read from
+  // half-edited fields while the results on screen belong to the previous run.
+  const summary = useMemo(
+    () => config.getSummary(results, params, runParams),
+    [config, params, results, runParams],
+  );
 
   return (
     <CalculatorWrapper
@@ -272,7 +346,7 @@ export default function ModelCalculator({ engine, config, onEngineFallback }) {
       prevData={prevRun && prevRun.model === config.id ? prevRun.data : null}
       resultLabel={config.resultLabel}
       extraResults={summary.extraResults}
-      notices={notices}
+      notices={derivedNotices}
       onDismissNotice={dismissNotice}
       comparison={comparison}
       comparing={comparing}

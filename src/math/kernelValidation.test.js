@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { aci209Phi, aci209Single, b4Point, b4Single, b4sSingle, mc2010Point, mc2010Single } from './creepModels';
+import { aci209Phi, aci209Single, b4Point, b4Single, b4sPoint, b4sSingle, mc2010Point, mc2010Single } from './creepModels';
 
 const aciBase = {
   curingType: 'moist', t0: 28, H: 70, VS: 100,
@@ -178,5 +178,106 @@ describe('B4 humidity factor stays physical', () => {
     expect(point.Cd * 1e6).toBeCloseTo(81.44, 1);
     expect(point.epsilonSH * 1e6).toBeCloseTo(-434.74, 1);
     expect(point.epsilonAU * 1e6).toBeCloseTo(-36.97, 1);
+  });
+});
+
+describe('B4 loading age cannot precede drying', () => {
+  /*
+   * Regression: B4 defines t0 as drying start and t′ as loading. A row with
+   * t′ < t0 was computed and reported as a valid one, and the drying-creep term was
+   * identically zero for every age — the humidity at loading and the humidity at
+   * drying start are the same instant, so the two exponentials in Eq. (34) cancel.
+   * Measured: t0 = 28, t′ = 3 returned C_d = 0 at t = 365 d and t = 3650 d.
+   */
+  test('tPrime below t0 is rejected', () => {
+    expect(() => b4Single({ ...b4Base, t0: 28, tPrime: 3 })).toThrow(/tPrime ≥ t0/);
+    expect(() => b4sSingle({ ...b4Base, t0: 28, tPrime: 3 })).toThrow(/tPrime ≥ t0/);
+    expect(() => b4Single({ ...b4Base, t0: 28, tPrime: 27.99 })).toThrow(/tPrime ≥ t0/);
+  });
+
+  test('tPrime equal to t0 stays legal — that is the instantaneous-loading case', () => {
+    expect(() => b4Single({ ...b4Base, t0: 28, tPrime: 28 })).not.toThrow();
+  });
+});
+
+describe('B4 compliance is a strain history from casting', () => {
+  /*
+   * Regression: the creep terms were gated on `t ≥ t′` only, so a target age before
+   * loading returned the *whole* loaded response — q₁ + β(Tc)·C₀ + C_d — for a load
+   * that had not been applied. Measured at t = 3 d with t′ = 28 d: J = 147.1
+   * µε/MPa, of which C₀ = 119.0 and C_d = 0 — i.e. the creep that belongs to 28 days
+   * of loading, reported four weeks early.
+   */
+  const instantaneous = () => {
+    // q₁ = p₁ / (E28·1000); recover it from the loading-age point, where C₀ and C_d
+    // are zero by definition.
+    return b4Point({ ...b4Base, t: 28 }).J;
+  };
+
+  test('before loading, J is the instantaneous compliance and no creep is reported', () => {
+    const before = b4Point({ ...b4Base, t: 3 });
+    expect(before.C0).toBe(0);
+    expect(before.Cd).toBe(0);
+    // Both come from the same q₁, so the only difference is the 16th-digit arithmetic
+    // of evaluating the temperature-transformed clock at 3 d instead of 28 d.
+    expect(before.J).toBeCloseTo(instantaneous(), 12);
+    expect(before.J).toBeGreaterThan(instantaneous() * 0.999999);
+  });
+
+  test('the series is monotone in age across the loading boundary', () => {
+    const at = (t) => b4Point({ ...b4Base, t }).J;
+    expect(at(0)).toBeLessThanOrEqual(at(3));
+    expect(at(3)).toBeCloseTo(at(28), 12);
+    expect(at(29)).toBeGreaterThan(at(28));
+    expect(at(112)).toBeGreaterThan(at(29));
+  });
+
+  test('B4s shares the same strain-history rule', () => {
+    const params = { ...b4Base, t0: 28, tPrime: 28 };
+    const before = b4sPoint({ ...params, t: 3 });
+    expect(before.C0).toBe(0);
+    expect(before.Cd).toBe(0);
+    expect(before.J).toBeCloseTo(b4sPoint({ ...params, t: 28 }).J, 12);
+  });
+});
+
+describe('loading ages outside every model’s scope are refused', () => {
+  test('ACI 209R-92 stops at its 365-day calibration ceiling', () => {
+    // Measured before: t0 = 5000 d returned phi = 0 for every age up to 5000 d,
+    // which the batch pipeline reported as a valid row.
+    expect(() => aci209Single({ ...aciBase, t0: 5000 })).toThrow(/t0 ≤ 365/);
+    expect(() => aci209Single({ ...aciBase, t0: 366 })).toThrow(/t0 ≤ 365/);
+  });
+
+  test('and the shipped ceiling itself still computes', () => {
+    expect(aci209Single({ ...aciBase, t0: 365, t: 366 })).toBeGreaterThan(0);
+  });
+
+  test('MC2010 refuses a loading age beyond the series it reports', () => {
+    expect(() => mc2010Single({ ...mc2010Base, t0: 5000 })).not.toThrow();
+    expect(mc2010Single({ ...mc2010Base, t0: 5000, t: 365 }).phi).toBe(0);
+    expect(() => mc2010Single({ ...mc2010Base, t0: 10001 })).toThrow(/t0 ≤ 10000/);
+  });
+});
+
+describe('B4s refuses mix proportions outside the calibration set', () => {
+  /*
+   * B4s is strength based, so c, w/c and a/c do not enter its equations — but the
+   * batch contract for the model carries the three columns, and the diagnostics table
+   * already had messages for them. They were never emitted: a row with c = 50 was
+   * computed exactly like one with c = 219.3.
+   */
+  const strengthOnly = { ...b4Base, t: 112 };
+  for (const key of ['c', 'wC', 'aC', 'retarder', 'flyAsh', 'superplasticizer', 'silicaFume', 'airEntrainingAgent', 'waterReducer']) delete strengthOnly[key];
+
+  test('a strength-only call is still legal', () => {
+    expect(() => b4sSingle(strengthOnly)).not.toThrow();
+    expect(b4sSingle(strengthOnly).J).toBeCloseTo(b4sSingle({ ...strengthOnly }).J, 12);
+  });
+
+  test('out-of-range proportions are reported, not ignored', () => {
+    expect(() => b4sSingle({ ...strengthOnly, c: 50 })).toThrow(/200 ≤ c ≤ 1500/);
+    expect(() => b4sSingle({ ...strengthOnly, wC: 1.2 })).toThrow(/0\.22 ≤ w\/c ≤ 0\.87/);
+    expect(() => b4sSingle({ ...strengthOnly, aC: 0.5 })).toThrow(/1 ≤ a\/c ≤ 13\.2/);
   });
 });

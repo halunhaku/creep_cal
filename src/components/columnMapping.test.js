@@ -115,3 +115,30 @@ describe('applying a mapping', () => {
     expect(reverse.rows).toEqual(forward.rows);
   });
 });
+
+describe('a source column can only fill one field', () => {
+  /*
+   * A file has one humidity column; the same source mapped to both `H` and `RH`
+   * was applied without a word, and the second field silently overwrote the first
+   * through the shared `used` map. The conflict has to be reported so the panel can
+   * ask, instead of computing one of the two with the other's number.
+   */
+  test('the same source offered to two fields is reported, not applied', () => {
+    const rows = [{ moisture: 70, age: 365 }];
+    const { rows: out, conflicts } = applyMapping(rows, [
+      { field: 'H', source: 'moisture' },
+      { field: 'RH', source: 'moisture' },
+    ]);
+    expect(conflicts).toEqual(['moisture → H and RH']);
+    expect(out).toBe(rows);          // untouched
+  });
+
+  test('distinct sources for distinct fields still apply', () => {
+    const { rows, conflicts } = applyMapping([{ moisture: 70, age: 365 }], [
+      { field: 'H', source: 'moisture' },
+      { field: 't', source: 'age' },
+    ]);
+    expect(conflicts).toEqual([]);
+    expect(rows[0]).toEqual({ H: 70, t: 365 });
+  });
+});

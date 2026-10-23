@@ -10,6 +10,17 @@
  */
 export const MAX_SERIES_DAYS = 10000;
 
+/**
+ * The oldest age at which any of the shipped models may be loaded.
+ *
+ * Loading-age fields in the workspace stop at 365 days (ACI 209R-92's correction
+ * is calibrated there), and B4/B4s/GL2000 use the same ceiling. MC2010 is the one
+ * model with a wider field range, but past one year the loading age is outside what
+ * any of the six models is used for, and a t0 beyond the requested series simply
+ * reports φ = 0 for every point — a valid-looking row that says nothing.
+ */
+export const MAX_LOADING_AGE_DAYS = 365;
+
 // Shared range guard used by every kernel's validation.
 const inRange = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
 
@@ -53,6 +64,12 @@ function validateAci209({ curingType, t0, H, VS, slump, fineAggregate, airConten
   }
   if (!Number.isFinite(t0) || t0 < 1) {
     throw new RangeError('ACI 209R-92 requires t0 ≥ 1 day.');
+  }
+  // ACI 209R-92's own loading-age correction is calibrated on t0 ≤ 365 d (the
+  // workspace field stops there too). Beyond it the kernel used to return exactly 0
+  // for every age up to and including t0 — a valid-looking row of zeros.
+  if (t0 > MAX_LOADING_AGE_DAYS) {
+    throw new RangeError('ACI 209R-92 requires t0 ≤ 365 days.');
   }
   if (!Number.isFinite(t) || t < 0) {
     throw new RangeError('ACI 209R-92 requires a non-negative finite concrete age t.');
@@ -146,6 +163,13 @@ function validateMc2010({ fcm, RH, t0, Ac, u, T, Cs, sigma }) {
   }
   if (!Number.isFinite(t0) || t0 < 1) {
     throw new RangeError('MC2010 requires t0 ≥ 1 day.');
+  }
+  // The series is 0…10,000 days, and a loading age beyond a year would report
+  // φ = 0 at every point of the default 365-day target for a period the model was
+  // not fitted to. The workspace field stops at 1000 d; the series length is the
+  // harder limit and the one a batch row can cross silently.
+  if (t0 > MAX_SERIES_DAYS) {
+    throw new RangeError('MC2010 requires t0 ≤ 10000 days.');
   }
   if (!Number.isFinite(Ac) || Ac <= 0 || !Number.isFinite(u) || u <= 0) {
     throw new RangeError('MC2010 requires positive Ac and u values.');
@@ -344,9 +368,25 @@ function b4DryingCreepScale(humidityFactor, shrinkageInfinity) {
   return Math.max(Math.abs(humidityFactor * shrinkageInfinity), 1e-9);
 }
 
+/**
+ * The cement-content, water-cement and aggregate-cement ranges B4 and B4s were
+ * calibrated on. Exported because the batch contract for B4s carries the three
+ * columns while the strength-based model does not read them: without this guard a
+ * row outside the calibration set was computed without complaint even though the
+ * batch diagnostics already have a message for exactly that case.
+ */
+export const B4_MIX_LIMITS = { c: [200, 1500], wC: [0.22, 0.87], aC: [1, 13.2] };
+
 function validateB4Common({ t0, tPrime, Tcur, Tsh, Tc, h, fc, vS, cementType, aggregateType, specimenShape, t }) {
   if (!Number.isFinite(t0) || t0 < 1 || !Number.isFinite(tPrime) || tPrime < 1) {
     throw new RangeError('B4 is not intended for concrete younger than 1 day.');
+  }
+  // B4 defines t0 as drying start and t′ as loading; the recommendation loads at or
+  // after drying begins, so t′ ≥ t0. With t′ < t0 the drying-creep term can never
+  // develop (its lower bound `max(t′̂, t̃₀)` makes the two humidity bounds equal and
+  // C_d collapses to 0 for every age), which used to be reported as a valid row.
+  if (tPrime < t0) {
+    throw new RangeError('B4 requires loading at or after drying started (tPrime ≥ t0).');
   }
   if (!Number.isFinite(t) || t < 0) throw new RangeError('B4 requires a non-negative concrete age t.');
   if (!inRange(fc, 15, 70)) throw new RangeError('B4 calibration range is 15 ≤ fc ≤ 70 MPa.');
@@ -449,7 +489,19 @@ function b4Result({ common, epsilonSHInf, tauSH, epsilonAUInf, tauAU, alphaAU, r
     ? epsilonAUInf * Math.pow(1 + Math.pow(tauAU / time.equivalentAge, alphaAU), rT)
     : 0;
 
-  let C0 = 0, Cd = 0, J = 0;
+  /*
+   * The series is a strain history from casting, so the compliance only contains
+   * what has actually happened by age t:
+   *   t < t′   the instantaneous response, q₁. `b4CreepTimeTerms` used to be given
+   *            a negative elapsed time and clamped it back to zero, which is why a
+   *            target age before loading reported *full* C₀ plus C_d for a load
+   *            that had not been applied (measured: t = 3 d, t′ = 28 d — J was
+   *            q₁ + C₀ + C_d, i.e. the 112-day value, at three days).
+   *   t ≥ t′    J = q₁ + β(Tc)·C₀ + C_d, the published form.
+   * C₀ and C_d stay 0 while t < t′ so the decomposition panel cannot show creep
+   * components beside a compliance that does not contain them.
+   */
+  let C0 = 0, Cd = 0, J = q1;
   if (t >= tPrime) {
     const terms = b4CreepTimeTerms(time.tPrimeHat, time.tHat);
     C0 = q2 * terms.Q + q3 * terms.logElapsed + q4 * terms.logAge;
@@ -471,9 +523,7 @@ export function b4Point(input) {
   const params = { ...input };
   for (const key of numericKeys) params[key] = coerceNumber(params[key]);
   validateB4Common(params);
-  if (!inRange(params.c, 200, 1500)) throw new RangeError('B4 calibration range is 200 ≤ c ≤ 1500 kg/m³.');
-  if (!inRange(params.wC, 0.22, 0.87)) throw new RangeError('B4 calibration range is 0.22 ≤ w/c ≤ 0.87.');
-  if (!inRange(params.aC, 1, 13.2)) throw new RangeError('B4 calibration range is 1 ≤ a/c ≤ 13.2.');
+  validateB4Mix(params);
 
   const cement = B4_CEMENT[params.cementType];
   const aggregate = B4_AGGREGATE[params.aggregateType];
@@ -510,12 +560,31 @@ export function b4Point(input) {
   });
 }
 
+function validateB4Mix({ c, wC, aC }) {
+  if (!inRange(c, ...B4_MIX_LIMITS.c)) throw new RangeError('B4 calibration range is 200 ≤ c ≤ 1500 kg/m³.');
+  if (!inRange(wC, ...B4_MIX_LIMITS.wC)) throw new RangeError('B4 calibration range is 0.22 ≤ w/c ≤ 0.87.');
+  if (!inRange(aC, ...B4_MIX_LIMITS.aC)) throw new RangeError('B4 calibration range is 1 ≤ a/c ≤ 13.2.');
+}
+
 /** RILEM Model B4s strength-based mean prediction. J is returned in 1/MPa. */
 export function b4sPoint(input) {
-  const numericKeys = ['t0','tPrime','Tcur','Tsh','Tc','h','fc','vS','t'];
+  // B4s is strength based, so the mix proportions do not enter the equations — but
+  // a row carrying them is claiming a concrete B4/B4s were calibrated on, and the
+  // batch shape includes them. Out-of-range proportions are refused rather than
+  // ignored, and the values stay optional for a pure strength-based call.
+  const numericKeys = ['t0','tPrime','Tcur','Tsh','Tc','h','fc','vS','t','c','wC','aC'];
   const params = { ...input };
   for (const key of numericKeys) params[key] = coerceNumber(params[key]);
   validateB4Common(params);
+  // Only the proportions the row actually carries are checked, so a strength-only
+  // call stays legal: a column the row does not have is `undefined` *before*
+  // coercion, and it must not count as out of range. (`??` cannot do this — the
+  // coerced absent value is NaN, not nullish.)
+  validateB4Mix({
+    c: input.c === undefined ? B4_MIX_LIMITS.c[0] : params.c,
+    wC: input.wC === undefined ? B4_MIX_LIMITS.wC[0] : params.wC,
+    aC: input.aC === undefined ? B4_MIX_LIMITS.aC[0] : params.aC,
+  });
   const cement = B4S_CEMENT[params.cementType];
   const aggregate = B4_AGGREGATE[params.aggregateType];
   const shape = B4_SHAPE[String(params.specimenShape)];
@@ -696,6 +765,13 @@ export function gl2000Compliance(row) {
 /**
  * Single-row version for batch use: compliance in 1/GPa plus the shrinkage
  * triplet, mirroring b4Single/b4sSingle so the batch matrix stays uniform.
+ *
+ * `gl2000Shrinkage` alone does not need a loading age, so it *accepts* t0 < tc
+ * (shrinkage starts before the load). The batch row is a compliance, though, and
+ * the workspace's GL2000 view refuses that combination up front because Φ(tc)
+ * needs a non-negative gap. Reading t0 through `gl2000CompliancePoint` is what
+ * makes a batch row obey the same rule as the single case; before this the batch
+ * pipeline accepted `t0 < tc` and reported a compliance the model cannot describe.
  */
 export function gl2000Single(row) {
   const { J } = gl2000Compliance(row);

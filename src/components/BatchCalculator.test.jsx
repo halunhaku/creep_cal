@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import Papa from 'papaparse';
 import BatchCalculator from './BatchCalculator';
@@ -442,5 +442,37 @@ describe('shipped sample datasets', () => {
     for (const row of parsed.data) {
       expect(() => run(row)).not.toThrow();
     }
+  });
+});
+
+describe('the matrix decides numeric alignment from the whole column', () => {
+  /*
+   * Regression: only the first 200 rows were scanned, so a column whose 201st row
+   * was text (or a column that was entirely text in a shorter file) was still
+   * right-aligned as if it held numbers — and `__status`, the pipeline's own private
+   * bookkeeping, was scanned as if it were an input column.
+   */
+  test('a text value past row 200 keeps its column left-aligned', async () => {
+    const rows = Array.from({ length: 210 }, (_, index) => ({ curingType: 'moist', t0: 28, H: 70, VS: 100, slump: 100, fineAggregate: 50, airContent: 8, t: 365, note: index === 205 ? 'n/a' : String(index) }));
+    act(() => {
+      updateBatch({
+        modelId: 'aci209',
+        headers: Object.keys(rows[0]),
+        rows: rows.map((row) => ({ ...row, result_phi: '0.0000', __status: 'valid' })),
+        issues: [],
+        fileName: 'column-scan.csv',
+        xKey: 't',
+        yKey: 'result_phi',
+      });
+    });
+    const { container } = render(<BatchCalculator />);
+    const header = await waitFor(() => {
+      const found = [...container.querySelectorAll('th')].find((cell) => cell.textContent === 'note');
+      expect(found).toBeTruthy();
+      return found;
+    });
+    expect(header.className).not.toContain('text-right');
+    const tHeader = [...container.querySelectorAll('th')].find((cell) => cell.textContent === 't');
+    expect(tHeader.className).toContain('text-right');
   });
 });

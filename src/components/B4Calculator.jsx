@@ -104,6 +104,24 @@ export const config = {
     { name: 'airEntrainingAgent', label: { en: 'Air-Entraining Agent', zh: '引气剂掺量' }, min: 0, max: 2, step: 0.01, unit: '% c' },
     { name: 'waterReducer', label: { en: 'Water Reducer', zh: '普通减水剂' }, min: 0, max: 10, step: 0.1, unit: '% c' },
   ],
+  /**
+   * t′ ≥ t0 spans two fields, so the per-field ranges cannot express it. B4 loads
+   * at or after drying starts; with t′ < t0 the drying-creep term can never develop
+   * and the row used to be computed as if nothing were wrong (the kernel now
+   * refuses it too). Reported before the run, with the cursor on t′.
+   */
+  validateInputs(params) {
+    if (Number.isFinite(Number(params.t0)) && Number.isFinite(Number(params.tPrime)) && Number(params.tPrime) < Number(params.t0)) {
+      return {
+        field: 'tPrime',
+        message: {
+          en: 'Age at loading must be at or after drying start (t′ ≥ t0) · B4 cannot develop drying creep otherwise',
+          zh: '加载龄期必须不早于开始干燥龄期（t′ ≥ t0）· 否则 B4 的干燥徐变项无法发展',
+        },
+      };
+    }
+    return null;
+  },
   readyMessage: {
     en: 'RILEM B4 composition-based kernel initialized successfully.',
     zh: 'RILEM B4 配合比型内核初始化成功。',
@@ -114,7 +132,7 @@ export const config = {
   calculateRust(wasm, params, maxDays) {
     return wasm.calculate_b4_series(buildB4Params(params), maxDays).map(rustChartPoint);
   },
-  getSummary(results, params) {
+  getSummary(results, params, runParams) {
     const current = results[Math.min(results.length - 1, Math.max(0, Math.round(params.targetAge ?? 10000)))];
     /*
      * J = q₁ + β(Tc)·C₀ + C_d, so the instantaneous compliance is only
@@ -122,7 +140,10 @@ export const config = {
      * 64.59 instead of 28.15 at Tc = 30 °C and a negative value at Tc = −25 °C.
      * Undo the temperature factor the kernel applied to C₀ instead.
      */
-    const betaTc = b4TemperatureAcceleration(Number(params.Tc));
+    // Undo it with the temperature the run *used*, not the one on screen: q₁ is
+    // reported next to J and C₀ for the same result, so reading a half-edited Tc
+    // would put an inconsistent q₁ in the decomposition panel.
+    const betaTc = b4TemperatureAcceleration(Number(runParams?.Tc ?? params.Tc));
     const q1 = current ? current.j_micro_mpa - betaTc * current.c0 - current.cd : NaN;
     return {
       primary: current ? current.j_micro_mpa / 1000 : NaN,

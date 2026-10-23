@@ -200,7 +200,10 @@ export default function BatchCalculator() {
    * the matrix take ~0.8 s to redraw — for the 100 rows it actually shows.
    */
   const numericColumns = useMemo(() => new Set(batchHeaders.filter((header) => (
-    batchResults.length > 0 && batchResults.slice(0, 200).every((row) => isNumericCell(row[header]))
+    batchHeaders.includes(header)
+    && header !== '__status'
+    && batchResults.length > 0
+    && batchResults.every((row) => isNumericCell(row[header]))
   ))), [batchHeaders, batchResults]);
 
   const numericColumn = (header) => numericColumns.has(header);

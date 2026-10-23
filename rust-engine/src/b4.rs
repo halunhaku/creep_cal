@@ -189,6 +189,12 @@ pub(crate) fn validate_common(
     if !t0.is_finite() || t0 < 1.0 || !t_prime.is_finite() || t_prime < 1.0 {
         return Err("B4 is not intended for concrete younger than 1 day.".into());
     }
+    // B4 requires loading at or after drying starts (t' >= t0). With t' < t0 the
+    // drying-creep bounds collapse and C_d is zero for every age; mirror the JS
+    // kernel and reject it instead of reporting a valid row.
+    if t_prime < t0 {
+        return Err("B4 requires loading at or after drying started (tPrime ≥ t0).".into());
+    }
     if !t.is_finite() || t < 0.0 {
         return Err("B4 requires a non-negative concrete age t.".into());
     }
@@ -302,7 +308,11 @@ pub(crate) fn finish(input: FinishInput) -> B4Result {
     } else {
         0.0
     };
-    let (mut c0, mut cd, mut j) = (0.0, 0.0, 0.0);
+    // The series is a strain history from casting: before loading there is no
+    // creep, so J is the instantaneous q1 and both creep components stay zero.
+    // Clamping the elapsed time to zero here used to hand back the full C0 + Cd
+    // for a load that had not been applied yet (see the JS kernel).
+    let (mut c0, mut cd, mut j) = (0.0, 0.0, input.q1);
     if input.t >= input.t_prime {
         let elapsed = (input.time.t_hat - input.time.t_prime_hat).max(0.0);
         if elapsed > 0.0 {
@@ -645,5 +655,27 @@ mod tests {
         assert!((point.epsilon_sh * 1e6 - -434.74).abs() < 0.1);
         assert!((point.epsilon_au * 1e6 - -36.97).abs() < 0.1);
         assert!((point.epsilon_total * 1e6 - -471.71).abs() < 0.1);
+    }
+
+    #[test]
+    fn rejects_loading_before_drying_starts() {
+        let early = B4Params { t_prime: 3.0, ..official_case() };
+        assert!(calculate_b4_point(&early, 112.0).is_err());
+    }
+
+    #[test]
+    fn compliance_before_loading_is_instantaneous_only() {
+        let params = B4Params { t_prime: 28.0, ..official_case() };
+        // q1 = p1 / (E28 * 1000) with the R cement's p1 = 0.70 and E28 from fc.
+        let e28 = 4734.0 * params.fc.sqrt() / 1000.0;
+        let q1 = 0.70 / (e28 * 1000.0);
+        let before = calculate_b4_point(&params, 3.0).unwrap();
+        assert_eq!(before.c0, 0.0);
+        assert_eq!(before.cd, 0.0);
+        assert!((before.j - q1).abs() < 1e-15);
+        // At the loading age itself the creep components are zero by definition,
+        // and creep only appears after it.
+        assert_eq!(calculate_b4_point(&params, 28.0).unwrap().c0, 0.0);
+        assert!(calculate_b4_point(&params, 29.0).unwrap().c0 > 0.0);
     }
 }

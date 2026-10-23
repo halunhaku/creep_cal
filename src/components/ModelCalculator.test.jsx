@@ -211,3 +211,41 @@ describe('ModelCalculator workspace state', () => {
     expect(screen.getByText(/moist → steam/)).toBeInTheDocument();
   });
 });
+
+describe('B4 workspace matches its kernel contract', () => {
+  test('loading before drying start is reported before the run, not computed silently', async () => {
+    // Regression: the kernel computed such rows with C_d ≡ 0 while the panel showed a
+    // result, so the only symptom was a drying-creep term that never developed.
+    render(<B4Calculator engine="js" />);
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+
+    const dryingStart = screen.getByLabelText(/Drying Start Age/i);
+    fireEvent.change(dryingStart, { target: { value: '30' } });
+    fireEvent.blur(dryingStart);
+
+    expect(await screen.findByText(/t′ ≥ t0/)).toBeInTheDocument();
+    expect(document.querySelector('[data-action="calculate"]')).toHaveTextContent(/Inputs out of range/);
+  });
+});
+
+describe('B4 decomposition entries belong to the run on screen', () => {
+  /*
+   * Regression: q₁ was derived from `J − β(Tc)·C₀ − C_d` using the temperature in
+   * the *live* fields. Editing Tc marked the results stale and reported the old J,
+   * but q₁ silently changed too, so the decomposition panel described a run that
+   * never happened.
+   */
+  test('editing Tc leaves every decomposition value of the finished run alone', async () => {
+    render(<B4Calculator engine="js" />);
+    await waitFor(() => expect(screen.getByText(/^Computed$/)).toBeInTheDocument());
+    const readQ1 = () => screen.getByText('Instantaneous q₁').parentElement.textContent;
+    const before = readQ1();
+
+    const tc = screen.getByLabelText(/Post-Loading Temperature/i);
+    fireEvent.change(tc, { target: { value: '30' } });
+    fireEvent.blur(tc);
+
+    await waitFor(() => expect(screen.getByText(/Results out of date/i)).toBeInTheDocument());
+    expect(readQ1()).toBe(before);
+  });
+});

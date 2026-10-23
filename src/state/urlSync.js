@@ -57,6 +57,17 @@ export function buildSearch(state) {
 }
 
 /**
+ * The parts of the store the URL describes, as one comparable string. Used to decide
+ * whether a store write is a *navigation* change worth writing back.
+ *
+ * @param {object} state
+ * @returns {string}
+ */
+function urlState(state) {
+  return [state.mode, state.model, state.engine, state.batch?.modelId, state.locale].join('|');
+}
+
+/**
  * Apply the URL to the store, then mirror store changes back into it.
  * Workspace changes push a history entry (so Back moves between workspaces);
  * model and kernel changes replace the current one, because they are selections
@@ -130,8 +141,21 @@ export function initUrlSync() {
 
   apply();
 
-  const unsubscribe = subscribe((state) => {
+  const unsubscribe = subscribe((state, previous) => {
     if (applyingFromUrl) return;
+    /*
+     * Write only when the URL-relevant state moved.
+     *
+     * The store also carries things the URL does not describe — the kernel's load
+     * failure, the retry counter, persisted parameters — and a subscriber that
+     * re-derived the query string on any store write ended up rewriting the address
+     * on writes that had nothing to say about it. That is how a deep link that spells
+     * out a default (`?mode=single&model=b4&kernel=js`) lost its explicit `?mode`:
+     * the kernel fallback wrote `?kernel=js` from the same partial state, which
+     * turned the rest of the address into this mount's assumptions instead of the
+     * user's URL.
+     */
+    if (previous && urlState(previous) === urlState(state)) return;
     const search = `${buildSearch(state)}${window.location.hash}`;
     if (search === `${window.location.search}${window.location.hash}`) {
       previousMode = state.mode;

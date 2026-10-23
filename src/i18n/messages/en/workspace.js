@@ -91,6 +91,7 @@ export default {
       dismiss: 'Dismiss',
       kernelTitle: 'Rust WebAssembly kernel unavailable',
       kernelFallback: '{detail} — switched to the JavaScript reference implementation; results are still valid. You can also click “Rust WASM” on the left to retry.',
+      kernelRetry: '{detail} — the Rust kernel could not be loaded. Press Calculate (or ⌘↵) to try loading it again, or switch to the JavaScript reference on the left.',
       calcTitle: 'Calculation failed',
       compareTitle: 'Kernel comparison failed',
     },

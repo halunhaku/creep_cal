@@ -87,6 +87,7 @@ export default {
       dismiss: '关闭',
       kernelTitle: 'Rust 内核不可用',
       kernelFallback: '{detail} —— 已自动切换为 JavaScript 参考实现，结果仍然有效；也可以点击左侧“Rust WASM”重试。',
+      kernelRetry: '{detail} —— Rust 内核加载失败。点击“计算”（或 ⌘↵）可重新加载，或在左侧切换到 JavaScript 参考实现。',
       calcTitle: '计算失败',
       compareTitle: '内核对比失败',
     },
