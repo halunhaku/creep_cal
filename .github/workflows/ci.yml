@@ -46,17 +46,17 @@ jobs:
       - run: npm ci
       - name: Rust unit tests
         run: cargo test --manifest-path rust-engine/Cargo.toml
-      # `npm run build:wasm` is rust-engine/build.sh: it builds through wasm-pack
-      # and restores the curated src/wasm-pkg/.gitignore that wasm-pack overwrites
-      # with a bare `*`. Running wasm-pack directly here used to leave that one
-      # file dirty and fail the drift check by itself.
-      - name: WASM artifact must match Rust source
-        run: |
-          npm run build:wasm
-          git diff --exit-code -- src/wasm-pkg || (echo "::error::src/wasm-pkg is stale — rebuild in the same commit (see README Rust WebAssembly)" && exit 1)
-      - name: Upload the rebuilt package when the check fails
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: wasm-rebuilt
-          path: src/wasm-pkg/
+      # The committed package's bytes are not comparable here: the same Rust
+      # source compiles to a module with slightly different function numbering
+      # on macOS and on Linux, so a byte diff says nothing about whether the
+      # package is current. What CI can check is that the package was built from
+      # this source — the build records a hash of its inputs (scripts/
+      # wasmSourceHash.mjs) and this compares it.
+      - name: Committed package matches the Rust source
+        run: node scripts/wasmSourceHash.mjs --check
+      # `npm run build:wasm` is rust-engine/build.sh: it builds through wasm-pack,
+      # restores the curated src/wasm-pkg/.gitignore that wasm-pack overwrites
+      # with a bare `*`, drops the generator-stamped producers section and stamps
+      # the source hash. A green run means the engine still builds as shipped.
+      - name: Rebuild the package
+        run: npm run build:wasm

@@ -46,6 +46,10 @@ if [ $? -eq 0 ]; then
     # one. Dropping the section keeps the committed bytes the same whichever
     # wasm-bindgen built them (see scripts/stripWasmProducers.mjs).
     node ../scripts/stripWasmProducers.mjs ../src/wasm-pkg/*.wasm
+    # Record which Rust source this package came from. CI compares that instead
+    # of the bytes: the same source compiles to slightly different function
+    # numbering on macOS and Linux (see scripts/wasmSourceHash.mjs).
+    node ../scripts/wasmSourceHash.mjs --write
     echo "✅ WebAssembly 构建成功！"
     echo "📁 输出目录: ../src/wasm-pkg"
     
