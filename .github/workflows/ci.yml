@@ -54,3 +54,9 @@ jobs:
         run: |
           npm run build:wasm
           git diff --exit-code -- src/wasm-pkg || (echo "::error::src/wasm-pkg is stale — rebuild in the same commit (see README Rust WebAssembly)" && exit 1)
+      - name: Upload the rebuilt package when the check fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-rebuilt
+          path: src/wasm-pkg/
